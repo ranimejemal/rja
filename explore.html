@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Explore Automations | Ranime Jemal Agency</title>
+<meta name="description" content="Search automations by product name, category, use case, or supported integration. Filter by price, delivery type, supported apps, difficulty, and rating.">
+<meta property="og:title" content="Explore Automations | Ranime Jemal Agency">
+<meta property="og:description" content="Search automations by product name, category, use case, or supported integration. Filter by price, delivery type, supported apps, difficulty, and rating.">
+<meta property="og:type" content="website">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Martian+Mono:wght@300;400&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body data-menu-status="closed">
+<header class="header">
+  <div class="container">
+    <div class="header__inner">
+      <a href="index.html" class="logo" aria-label="Ranime Jemal Agency — home">
+        <span class="logo__mark">rja</span>
+        <span class="logo__name">Ranime Jemal Agency</span>
+      </a>
+      <div class="header-btn__group">
+        <a href="explore.html" class="link-block is--hide-mobile">Explore</a>
+        <a href="sell.html" class="link-block is--hide-mobile">Sell an automation</a>
+        <button class="menu-button" data-menu-toggle aria-label="Open menu" aria-expanded="false">
+          <span class="menu-button-line"></span><span class="menu-button-line"></span><span class="menu-button-line"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
+<div class="menu" aria-label="Main menu">
+  <nav style="width:100%">
+    <ul class="menu-list">
+      <li class="menu-list__item"><a class="menu-list__link" href="index.html">Home <small>01</small></a></li>
+      <li class="menu-list__item"><a class="menu-list__link" href="explore.html">Explore Automations <small>02</small></a></li>
+      <li class="menu-list__item"><a class="menu-list__link" href="how-it-works.html">How It Works <small>03</small></a></li>
+      <li class="menu-list__item"><a class="menu-list__link" href="sell.html">Become a Seller <small>04</small></a></li>
+      <li class="menu-list__item"><a class="menu-list__link" href="platform.html">Platform &amp; Trust <small>05</small></a></li>
+    </ul>
+  </nav>
+</div>
+<main>
+<div data-explore>
+<section class="page-hero">
+  <div class="container">
+    <span class="heading-tag">(Explore automations)</span>
+    <h1 class="h-display">What do you want to <span class="serif">automate?</span></h1>
+    <form class="search" role="search">
+      <input type="search" data-search-input placeholder="Search by name, category, use case, or integration" aria-label="Search automations">
+      <button type="submit" class="button is--accent">Search</button>
+    </form>
+    <div class="chip-row" data-category-chips aria-label="Categories"></div>
+  </div>
+</section>
+
+<section class="section is--tight">
+  <div class="container">
+    <div class="explore-layout">
+      <aside class="filters" aria-label="Filters">
+        <div class="filter-group">
+          <span class="heading-tag">(Price)</span>
+          <select data-filter="price" aria-label="Price">
+            <option value="">Any price</option>
+            <option value="free">Free</option>
+            <option value="under-50">Under 50</option>
+            <option value="50-200">50 – 200</option>
+            <option value="over-200">Over 200</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <span class="heading-tag">(Delivery type)</span>
+          <label class="check"><input type="checkbox" data-filter="delivery" value="Download"> Download</label>
+          <label class="check"><input type="checkbox" data-filter="delivery" value="Guided setup"> Guided setup</label>
+          <label class="check"><input type="checkbox" data-filter="delivery" value="Hosted automation"> Hosted automation</label>
+          <label class="check"><input type="checkbox" data-filter="delivery" value="Custom implementation"> Custom implementation</label>
+        </div>
+        <div class="filter-group">
+          <span class="heading-tag">(Supported apps)</span>
+          <label class="check"><input type="checkbox" data-filter="apps" value="Email"> Email</label>
+          <label class="check"><input type="checkbox" data-filter="apps" value="Website forms"> Website forms</label>
+          <label class="check"><input type="checkbox" data-filter="apps" value="Google Sheets"> Google Sheets</label>
+          <label class="check"><input type="checkbox" data-filter="apps" value="CRM"> CRM</label>
+        </div>
+        <div class="filter-group">
+          <span class="heading-tag">(Difficulty)</span>
+          <select data-filter="difficulty" aria-label="Difficulty">
+            <option value="">Any difficulty</option>
+            <option value="Beginner">Beginner</option>
+            <option value="Intermediate">Intermediate</option>
+            <option value="Advanced">Advanced</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <span class="heading-tag">(Customer rating)</span>
+          <select data-filter="rating" aria-label="Customer rating">
+            <option value="">Any rating</option>
+            <option value="4">4 stars &amp; up</option>
+            <option value="3">3 stars &amp; up</option>
+          </select>
+        </div>
+      </aside>
+      <div>
+        <div class="results-meta">
+          <span class="heading-tag" data-results-count>—</span>
+          <span class="p-tiny muted">Every listing states what it does, what it does not do, and its n8n compatibility.</span>
+        </div>
+        <div class="grid-2" data-results></div>
+      </div>
+    </div>
+  </div>
+</section>
+</div>
+</main>
+<footer class="footer">
+  <div class="container">
+    <div class="footer__top">
+      <div class="footer__col">
+        <span class="heading-tag">(Ranime Jemal Agency)</span>
+        <p class="footer__brand">Build once.<br><span class="serif">sell repeatedly.</span></p>
+      </div>
+      <div class="footer__col">
+        <span class="heading-tag">Marketplace</span>
+        <a href="explore.html">Explore Automations</a>
+        <a href="index.html#categories">Categories</a>
+        <a href="product.html">Product Details</a>
+        <a href="how-it-works.html">How It Works</a>
+      </div>
+      <div class="footer__col">
+        <span class="heading-tag">Sellers</span>
+        <a href="sell.html">Become a Seller</a>
+        <a href="sell.html#customization">Customization Builder</a>
+        <a href="sell.html#testing">Testing &amp; Review</a>
+        <a href="sell.html#dashboard">Seller Dashboard</a>
+      </div>
+      <div class="footer__col">
+        <span class="heading-tag">Platform</span>
+        <a href="platform.html#rules">Licensing &amp; Product Rules</a>
+        <a href="platform.html#roles">Roles</a>
+        <a href="platform.html#architecture">Dashboards</a>
+        <a href="platform.html#roadmap">Roadmap</a>
+      </div>
+    </div>
+    <div class="footer__bottom">
+      <p class="p-small">© <span data-year>2026</span> Ranime Jemal Agency. AI Automation Marketplace.</p>
+      <p class="p-small mono">Automate your business without building everything from scratch.</p>
+    </div>
+  </div>
+</footer>
+<script src="assets/js/main.js" defer></script>
+<script src="assets/js/catalog.js" defer></script>
+</body>
+</html>
