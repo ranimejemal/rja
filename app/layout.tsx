@@ -4,9 +4,10 @@ import "./globals.css";
 import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
 import { Toast } from "@/components/client";
 import { Motion } from "@/components/Motion";
+import { SITE_URL } from "@/lib/public-env";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
+  metadataBase: new URL(SITE_URL),
   title: { default: "Ranime Jemal Agency — AI Automation Marketplace", template: "%s | Ranime Jemal Agency" },
   description: "Discover ready-to-use AI automations and n8n workflows built by creators to help businesses save time, streamline operations, and work smarter.",
   icons: { icon: "/images/rja-favicon.png", apple: "/images/rja-favicon.png" },

@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/database.types";
+import { SUPABASE_URL } from "@/lib/public-env";
 
 export const CARD_FIELDS = `id, slug, name, short_description, price_minor, currency, thumbnail_path, difficulty, integrations,
   customization_mode, is_featured, is_demo, ownership, sales_count, rating_avg, rating_count, published_at, platforms,
@@ -118,5 +119,5 @@ export async function listIntegrations(): Promise<string[]> {
 export function thumbnailUrl(path: string | null): string {
   if (!path) return "/images/rja-opengraph.jpg";
   if (path.startsWith("/")) return path;
-  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-media/${path}`;
+  return `${SUPABASE_URL}/storage/v1/object/public/product-media/${path}`;
 }
