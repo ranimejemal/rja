@@ -5,6 +5,7 @@ import { SUPABASE_URL } from "@/lib/public-env";
 
 export const CARD_FIELDS = `id, slug, name, short_description, price_minor, currency, thumbnail_path, difficulty, integrations,
   customization_mode, is_featured, is_demo, ownership, sales_count, rating_avg, rating_count, published_at, platforms,
+  top_rank, audience, price_label, quote_only,
   seller:seller_profiles!products_seller_id_fkey(slug, display_name, is_platform, is_demo),
   category:product_categories(slug, name)`;
 
@@ -15,6 +16,7 @@ export type ProductCardData = {
   customization_mode: Enums["customization_mode"]; is_featured: boolean; is_demo: boolean;
   ownership: Enums["product_ownership"]; sales_count: number; rating_avg: number | null; rating_count: number;
   published_at: string | null; platforms: string[];
+  top_rank: number | null; audience: string; price_label: string | null; quote_only: boolean;
   seller: { slug: string; display_name: string; is_platform: boolean; is_demo: boolean } | null;
   category: { slug: string; name: string } | null;
 };
@@ -57,6 +59,15 @@ export function parseFilters(sp: Record<string, string | string[] | undefined>):
   };
 }
 
+/** The ranked "Top automations" list shown on the home page. */
+export async function listTopAutomations(): Promise<ProductCardData[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("products").select(CARD_FIELDS).eq("status", "published")
+    .not("top_rank", "is", null).order("top_rank");
+  if (error) throw new Error(`Could not load top automations: ${error.message}`);
+  return (data ?? []) as unknown as ProductCardData[];
+}
+
 export async function listProducts(f: CatalogFilters, limit = 60): Promise<ProductCardData[]> {
   const supabase = await createClient();
   let query = supabase.from("products").select(CARD_FIELDS).eq("status", "published");
@@ -92,7 +103,8 @@ export async function listProducts(f: CatalogFilters, limit = 60): Promise<Produ
     case "price-asc": query = query.order("price_minor", { ascending: true }); break;
     case "price-desc": query = query.order("price_minor", { ascending: false }); break;
     case "rating": query = query.order("rating_avg", { ascending: false, nullsFirst: false }); break;
-    default: query = query.order("sales_count", { ascending: false }).order("is_featured", { ascending: false });
+    default: query = query.order("sales_count", { ascending: false }).order("top_rank", { ascending: true, nullsFirst: false })
+      .order("is_featured", { ascending: false });
   }
   const { data, error } = await query.limit(limit);
   if (error) throw new Error(`Could not load products: ${error.message}`);

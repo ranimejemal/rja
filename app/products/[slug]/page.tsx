@@ -59,6 +59,7 @@ export default async function ProductPage({ params }: Params) {
             <SellerBadge isPlatform={isPlatform} />
             <Badge kind="verified">Reviewed by our team</Badge>
             <Badge>{CUSTOMIZATION_LABEL[p.customization_mode]}</Badge>
+            {p.top_rank && <Badge kind="verified">Top {p.top_rank} AI automation for 2026</Badge>}
             {p.is_demo && <Badge kind="demo">Demo data — not for sale</Badge>}
             {!published && <Badge kind="demo">Not published ({p.status.replaceAll("_", " ")})</Badge>}
           </div>
@@ -88,12 +89,14 @@ export default async function ProductPage({ params }: Params) {
               <div className="table-wrap">
                 <table>
                   <tbody>
+                    {p.audience && <tr><th scope="row">Who buys it</th><td>{p.audience}</td></tr>}
+                    {p.price_label && <tr><th scope="row">Price</th><td>{p.price_label}</td></tr>}
                     <tr><th scope="row">Platform</th><td>{p.platforms.join(", ")}</td></tr>
                     <tr><th scope="row">Required apps</th><td><div className="badges">{p.integrations.map((i) => <Badge key={i}>{i}</Badge>)}</div></td></tr>
                     <tr><th scope="row">Prerequisites</th><td>{p.prerequisites || "—"}</td></tr>
                     <tr><th scope="row">Level</th><td style={{ textTransform: "capitalize" }}>{p.difficulty}</td></tr>
                     <tr><th scope="row">Customization</th><td>{CUSTOMIZATION_LABEL[p.customization_mode]}</td></tr>
-                    <tr><th scope="row">Current version</th><td>{versions?.[0]?.version ?? "—"}</td></tr>
+                    {!p.quote_only && <tr><th scope="row">Current version</th><td>{versions?.[0]?.version ?? "—"}</td></tr>}
                     <tr><th scope="row">Support</th><td>{p.support_policy || "—"}</td></tr>
                   </tbody>
                 </table>
@@ -101,7 +104,7 @@ export default async function ProductPage({ params }: Params) {
               <Notice tone="warn">You need your own accounts for the apps above. Their subscriptions and API usage costs are not included and are billed by those providers.</Notice>
             </div>
 
-            <div className="stack">
+            {!p.quote_only && <div className="stack">
               <span className="tag">(What you can customize)</span>
               {manifest?.ok && manifest.manifest.settings.length ? (
                 <ul className="prose">
@@ -110,19 +113,19 @@ export default async function ProductPage({ params }: Params) {
               ) : (
                 <p className="muted">This automation is ready to use; it has no buyer-editable settings beyond your own app connections.</p>
               )}
-            </div>
+            </div>}
 
             <div className="stack">
-              <span className="tag">(Installation)</span>
+              <span className="tag">{p.quote_only ? "(How the setup works)" : "(Installation)"}</span>
               <div className="prose" style={{ whiteSpace: "pre-line" }}>{p.install_instructions || "Instructions are included with the download."}</div>
             </div>
 
-            <div className="stack">
+            {!p.quote_only && <div className="stack">
               <span className="tag">(Version history)</span>
               {versions?.length ? (
                 <ul className="prose">{versions.map((v) => <li key={v.id}><strong>{v.version}</strong> — {v.changelog || "No notes."}</li>)}</ul>
               ) : <p className="muted">No published versions yet.</p>}
-            </div>
+            </div>}
 
             <div className="stack" id="reviews">
               <span className="tag">(Reviews from verified buyers)</span>
@@ -136,6 +139,7 @@ export default async function ProductPage({ params }: Params) {
           </div>
 
           <aside className="stack" style={{ position: "sticky", top: "5.5rem" }}>
+            {p.quote_only ? <QuoteCard name={p.name} priceLabel={p.price_label} audience={p.audience} /> : (
             <form action={startCheckout} className="card stack" id="buy">
               <input type="hidden" name="slug" value={p.slug} />
               <input type="hidden" name="agreement_id" value={license?.id ?? ""} />
@@ -173,6 +177,7 @@ export default async function ProductPage({ params }: Params) {
                 <SubmitButton className="btn accent" pendingText="Opening checkout…">{p.price_minor === 0 ? "Get it free" : "Buy now"}</SubmitButton>
               )}
             </form>
+            )}
 
             {seller && (
               <div className="card stack">
@@ -207,5 +212,27 @@ export default async function ProductPage({ params }: Params) {
         </div>
       </section>
     </>
+  );
+}
+
+/** Done-for-you setups are priced by scope, so buyers ask for a quote instead of checking out. */
+function QuoteCard({ name, priceLabel, audience }: { name: string; priceLabel: string | null; audience: string }) {
+  const subject = encodeURIComponent(`Quote request: ${name}`);
+  const body = encodeURIComponent(`Hello Ranime Jemal Agency,\n\nI'm interested in "${name}".\n\nMy business:\nThe tools I use:\nWhat I want to automate:\n`);
+  return (
+    <div className="card stack" id="buy">
+      <span className="tag">(Done-for-you setup)</span>
+      {priceLabel && <span className="price">{priceLabel}</span>}
+      {audience && <p className="small muted">Best for: {audience}.</p>}
+      <p className="small">We build and connect this automation in your own accounts. Tell us about your business and you get a fixed quote before any work starts.</p>
+      <a className="btn accent" href={`mailto:ranimejmal@gmail.com?subject=${subject}&body=${body}`}>Request a quote</a>
+      <div className="small muted stack" style={{ "--gap": "0.35rem" } as React.CSSProperties}>
+        <span>Or contact us directly:</span>
+        <a className="link" href="https://www.instagram.com/ranimejemalagency/" target="_blank" rel="noopener">Instagram @ranimejemalagency ↗</a>
+        <a className="link" href="tel:+21697017061">+216 97 017 061</a>
+        <a className="link" href="tel:+33624979941">+33 6 24 97 99 41</a>
+      </div>
+      <p className="tiny muted">Third-party app subscriptions and API usage are billed by those providers and are not included.</p>
+    </div>
   );
 }

@@ -149,6 +149,8 @@ select test.fails('license type must be offered',
   $q$select create_order(('[{"product_id":"' || test.id('p2') || '","license_type":"commercial"}]')::jsonb, current_agreement('buyer_license'), 'stripe')$q$, 'not offered');
 select test.fails('demo products cannot be bought',
   $q$select create_order(('[{"product_id":"' || (select id from products where is_demo and status = 'published' limit 1) || '","license_type":"single_business"}]')::jsonb, current_agreement('buyer_license'), 'stripe')$q$, 'demo');
+select test.fails('quote-only products cannot be checked out',
+  $q$select create_order(('[{"product_id":"' || (select id from products where quote_only limit 1) || '","license_type":"single_business"}]')::jsonb, current_agreement('buyer_license'), 'stripe')$q$, 'sold by quote');
 create temp table o1 as select create_order(
   ('[{"product_id":"' || test.id('p1') || '","license_type":"commercial"},{"product_id":"' || test.id('p2') || '","license_type":"single_business"}]')::jsonb,
   current_agreement('buyer_license'), 'stripe') as id;
@@ -268,6 +270,14 @@ select test.ok('refunded item loses entitlement',
   (select revoked_at is not null from entitlements where product_id = test.id('p1') and user_id = test.id('buyer')));
 select test.ok('order partially refunded', (select status from orders where id = test.id('o1')) = 'partially_refunded');
 select test.ok('audit log records admin actions', (select count(*) from audit_logs where actor_id = test.id('admin')) >= 6);
+
+select test.act_as(null);
+select test.ok('top 7 automations are ranked 1 to 7',
+  (select array_agg(top_rank order by top_rank) from products where top_rank is not null) = array[1,2,3,4,5,6,7]::smallint[]);
+select test.act_as('seller');
+select test.fails('sellers cannot set quote-only or ranking fields',
+  $q$update products set top_rank = 9 where id = test.id('p2')$q$, 'permission denied');
+select test.act_as(null);
 
 -- ---------------------------------------------------------------- report
 \o

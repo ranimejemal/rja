@@ -998,6 +998,10 @@ export type Database = {
           support_policy: string
           tags: string[]
           thumbnail_path: string | null
+          top_rank: number | null
+          audience: string
+          price_label: string | null
+          quote_only: boolean
           updated_at: string
         }
         Insert: {
@@ -1033,6 +1037,10 @@ export type Database = {
           support_policy?: string
           tags?: string[]
           thumbnail_path?: string | null
+          top_rank?: number | null
+          audience?: string
+          price_label?: string | null
+          quote_only?: boolean
           updated_at?: string
         }
         Update: {
@@ -1068,6 +1076,10 @@ export type Database = {
           support_policy?: string
           tags?: string[]
           thumbnail_path?: string | null
+          top_rank?: number | null
+          audience?: string
+          price_label?: string | null
+          quote_only?: boolean
           updated_at?: string
         }
         Relationships: [

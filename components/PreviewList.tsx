@@ -4,10 +4,12 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 
-export type PreviewRow = { href: string; name: string; seller: string; category: string; price: string; level: string; image: string; platform: boolean };
+export type PreviewRow = { href: string; name: string; cells: [string, string, string]; price: string; image: string; rank?: string };
+
+const DEFAULT_HEADS: [string, string, string] = ["Category", "Seller", "Level"];
 
 /** List view from the template's portfolio page: rows with a preview image that follows the cursor. */
-export function PreviewList({ rows }: { rows: PreviewRow[] }) {
+export function PreviewList({ rows, heads = DEFAULT_HEADS, nameHead = "Automation" }: { rows: PreviewRow[]; heads?: [string, string, string]; nameHead?: string }) {
   const wrap = useRef<HTMLDivElement>(null);
   const follower = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState<number | null>(null);
@@ -30,16 +32,14 @@ export function PreviewList({ rows }: { rows: PreviewRow[] }) {
   return (
     <div className="preview" ref={wrap} onMouseLeave={() => setActive(null)}>
       <div className="preview-row preview-head tag" aria-hidden="true">
-        <span>Automation</span><span>Category</span><span>Seller</span><span>Level</span><span className="num">Price</span>
+        <span>{nameHead}</span>{heads.map((h) => <span key={h}>{h}</span>)}<span className="num">Price</span>
       </div>
       <ul className="preview-list">
         {rows.map((r, i) => (
           <li key={r.href}>
             <Link href={r.href} className="preview-row" data-scramble-hover="" onMouseEnter={() => setActive(i)} onFocus={() => setActive(i)}>
-              <span className="preview-name" data-scramble-target="">{r.name}</span>
-              <span className="muted">{r.category}</span>
-              <span className="muted">{r.platform ? "Platform" : r.seller}</span>
-              <span className="muted" style={{ textTransform: "capitalize" }}>{r.level}</span>
+              <span className="preview-name">{r.rank && <span className="preview-rank">{r.rank}</span>}<span data-scramble-target="">{r.name}</span></span>
+              {r.cells.map((c, j) => <span key={j} className="muted">{c}</span>)}
               <span className="num">{r.price}</span>
             </Link>
           </li>

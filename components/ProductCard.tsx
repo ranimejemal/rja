@@ -13,6 +13,7 @@ export function ProductCard({ p }: { p: ProductCardData }) {
         <div className="badges">
           <SellerBadge isPlatform={isPlatform} />
           {p.customization_mode !== "ready_to_use" && <Badge>{CUSTOMIZATION_LABEL[p.customization_mode]}</Badge>}
+          {p.top_rank && <Badge kind="verified">Top {p.top_rank} for 2026</Badge>}
           {p.is_demo && <Badge kind="demo">Demo data</Badge>}
         </div>
         <h3 className="h3">{p.name}</h3>
@@ -28,7 +29,7 @@ export function ProductCard({ p }: { p: ProductCardData }) {
             <Rating avg={p.rating_avg} count={p.rating_count} />
           </div>
           <div className="stack" style={{ "--gap": "0.1rem", alignItems: "flex-end" } as React.CSSProperties}>
-            <Price minor={p.price_minor} currency={p.currency} />
+            {p.price_label ? <span className="price">{p.price_label}</span> : <Price minor={p.price_minor} currency={p.currency} />}
             {p.sales_count > 0 && !p.is_demo && <span className="tiny muted">{p.sales_count} sales</span>}
           </div>
         </div>

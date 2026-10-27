@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { listCategories, listProducts } from "@/lib/catalog";
+import { listCategories, listProducts, listTopAutomations } from "@/lib/catalog";
+import { PreviewList } from "@/components/PreviewList";
 import { createClient } from "@/lib/supabase/server";
 import { ProductGrid } from "@/components/ProductCard";
 import { EmptyState, SectionHead, SellerBadge } from "@/components/ui";
@@ -9,19 +10,22 @@ import { thumbnailUrl } from "@/lib/catalog";
 
 export default async function HomePage() {
   const supabase = await createClient();
-  const [featured, best, recent, categories, { data: creators }] = await Promise.all([
-    listProducts({ featured: true, sort: "recent" }, 3),
+  const [top, featuredAll, best, recent, categories, { data: creators }] = await Promise.all([
+    listTopAutomations(),
+    listProducts({ featured: true, sort: "recent" }, 12),
     listProducts({ sort: "popular" }, 3),
     listProducts({ sort: "recent" }, 3),
     listCategories(),
     supabase.from("seller_profiles").select("slug, display_name, bio, is_platform, is_demo").eq("status", "approved").order("is_platform", { ascending: false }).limit(6),
   ]);
+  // The ranked automations have their own section, so "Featured" shows the rest.
+  const featured = featuredAll.filter((p) => !p.top_rank).slice(0, 3);
   const popularCategories = [...categories].sort((a, b) => b.count - a.count).slice(0, 8);
   const anyDemo = [...featured, ...best, ...recent].some((p) => p.is_demo);
 
   return (
     <>
-      <HomeIntro images={[...featured, ...best, ...recent].map((p) => thumbnailUrl(p.thumbnail_path)).filter((v, i, a) => a.indexOf(v) === i)} />
+      <HomeIntro images={[...top, ...featured, ...best, ...recent].map((p) => thumbnailUrl(p.thumbnail_path)).filter((v, i, a) => a.indexOf(v) === i)} />
       <section className="hero">
         <div className="container stack" style={{ "--gap": "1.75rem" } as React.CSSProperties}>
           <span className="tag" data-scramble-loop="">(AI automation marketplace)</span>
@@ -38,6 +42,26 @@ export default async function HomePage() {
           {anyDemo && <p className="tiny muted">Listings marked “Demo data” are sample products for development and cannot be purchased.</p>}
         </div>
       </section>
+
+      {top.length > 0 && (
+        <section className="section">
+          <div className="container">
+            <SectionHead tag="Top sellers" title={<>Top {top.length} AI automations <span className="serif">to sell in 2026.</span></>}>
+              <a className="btn ghost small" href="mailto:ranimejmal@gmail.com?subject=Automation%20setup%20quote" style={{ alignSelf: "flex-start" }}>Request a quote</a>
+            </SectionHead>
+            <PreviewList
+              nameHead="Rank · Automation"
+              heads={["Who buys it", "Category", "Setup"]}
+              rows={top.map((p) => ({
+                href: `/products/${p.slug}`, name: p.name, image: thumbnailUrl(p.thumbnail_path),
+                rank: ["🥇", "🥈", "🥉"][(p.top_rank ?? 0) - 1] ?? String(p.top_rank).padStart(2, "0"),
+                cells: [p.audience, p.category?.name ?? "", "Done for you"],
+                price: p.price_label ?? "",
+              }))}
+            />
+          </div>
+        </section>
+      )}
 
       <section className="section">
         <div className="container">

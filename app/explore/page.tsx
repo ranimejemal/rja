@@ -132,9 +132,11 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
             {products.length ? (
               view === "list" ? (
                 <PreviewList rows={products.map((p) => ({
-                  href: `/products/${p.slug}`, name: p.name, seller: p.seller?.display_name ?? "", category: p.category?.name ?? "",
-                  price: p.price_minor ? formatMoney(p.price_minor, p.currency) : "Free", level: p.difficulty,
-                  image: thumbnailUrl(p.thumbnail_path), platform: p.ownership === "platform",
+                  href: `/products/${p.slug}`, name: p.name,
+                  cells: [p.category?.name ?? "", p.ownership === "platform" ? "Platform" : p.seller?.display_name ?? "",
+                    p.difficulty.charAt(0).toUpperCase() + p.difficulty.slice(1)],
+                  price: p.price_label ?? (p.price_minor ? formatMoney(p.price_minor, p.currency) : "Free"),
+                  image: thumbnailUrl(p.thumbnail_path),
                 }))} />
               ) : <ProductGrid products={products} cols={2} />
             ) : (
