@@ -1,0 +1,832 @@
+{
+  "name": "AI Social Media Automation | Ranime Jemal Agency",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## AI Social Media Automation\n1. Fill in **Settings**.\n2. Make a Google Sheet with a **Content plan** tab (columns in `content-plan.csv`). Add one row per post: post_id, publish_at, topic, status = idea.\n3. Every Monday the AI writes the posts and emails the approver. Change status to **approved** in the sheet to publish.\n4. Every hour the next approved post whose time has come is published (one post per hour).\n5. Connect OpenAI, Google Sheets, Gmail, Facebook Graph API (page token) and LinkedIn. X is disabled: enable it if you have API access.",
+        "height": 320,
+        "width": 560,
+        "color": 4
+      },
+      "id": "node-006e",
+      "name": "Note 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -460
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * 1"
+            }
+          ]
+        }
+      },
+      "id": "node-006f",
+      "name": "Every Monday at 8:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -560,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "10 * * * *"
+            }
+          ]
+        }
+      },
+      "id": "node-0070",
+      "name": "Every hour",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -560,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-0071",
+              "name": "businessName",
+              "value": "Your brand",
+              "type": "string"
+            },
+            {
+              "id": "set-0072",
+              "name": "businessDescription",
+              "value": "What the brand does, in one or two sentences.",
+              "type": "string"
+            },
+            {
+              "id": "set-0073",
+              "name": "brandVoice",
+              "value": "warm, confident, no jargon",
+              "type": "string"
+            },
+            {
+              "id": "set-0074",
+              "name": "language",
+              "value": "English",
+              "type": "string"
+            },
+            {
+              "id": "set-0075",
+              "name": "defaultCallToAction",
+              "value": "Send us a message to learn more.",
+              "type": "string"
+            },
+            {
+              "id": "set-0076",
+              "name": "approverEmail",
+              "value": "you@yourbrand.com",
+              "type": "string"
+            },
+            {
+              "id": "set-0077",
+              "name": "facebookPageId",
+              "value": "YOUR_FACEBOOK_PAGE_ID",
+              "type": "string"
+            },
+            {
+              "id": "set-0078",
+              "name": "instagramAccountId",
+              "value": "YOUR_INSTAGRAM_BUSINESS_ACCOUNT_ID",
+              "type": "string"
+            },
+            {
+              "id": "set-0079",
+              "name": "linkedinOrganizationId",
+              "value": "YOUR_LINKEDIN_ORGANIZATION_ID",
+              "type": "string"
+            },
+            {
+              "id": "set-007a",
+              "name": "googleSheetUrl",
+              "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
+              "type": "string"
+            },
+            {
+              "id": "set-007b",
+              "name": "daysAhead",
+              "value": 7,
+              "type": "number"
+            },
+            {
+              "id": "set-007c",
+              "name": "senderName",
+              "value": "Social media assistant",
+              "type": "string"
+            },
+            {
+              "id": "set-007d",
+              "name": "openAiModel",
+              "value": "gpt-4.1-mini",
+              "type": "string"
+            },
+            {
+              "id": "set-007e",
+              "name": "openAiBaseUrl",
+              "value": "https://api.openai.com/v1",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "node-007f",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -320,
+        200
+      ],
+      "notes": "Fill in these values before activating.",
+      "color": "#FFD233"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "cond-0080",
+                    "leftValue": "={{ $('Every Monday at 8:00').isExecuted }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Write drafts"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "cond-0081",
+                    "leftValue": "={{ $('Every hour').isExecuted }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Publish"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-0082",
+      "name": "Route",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -100,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Settings').first().json.googleSheetUrl }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Content plan"
+        },
+        "options": {}
+      },
+      "id": "node-0083",
+      "name": "Read content plan",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        160,
+        0
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "function contentToDraft(rows, nowIso, daysAhead) {\n  const now = Date.parse(nowIso);\n  return rows.filter((r) => {\n    const at = Date.parse(r.publish_at);\n    return String(r.status).toLowerCase() === \"idea\" && r.topic && Number.isFinite(at) && at >= now - 86400000 && at <= now + daysAhead * 86400000;\n  });\n}\n\nfunction buildCaptionRequest(row, s) {\n  const system = [\n    `You are the social media writer for ${s.businessName}. ${s.businessDescription}`,\n    `Brand voice: ${s.brandVoice}. Language: ${s.language}.`,\n    \"Write one post per network for the topic. Instagram: hook first line, up to 150 words, line breaks. Facebook: up to 100 words.\",\n    \"LinkedIn: professional, up to 150 words. X: under 260 characters. No made-up facts, prices or statistics.\",\n    'Answer with JSON only: {\"instagram\":\"...\",\"facebook\":\"...\",\"linkedin\":\"...\",\"x\":\"...\",\"hashtags\":\"#tag1 #tag2 ...\"}',\n  ].join(\"\\n\");\n  const user = JSON.stringify({ topic: row.topic, notes: row.notes || \"\", call_to_action: row.call_to_action || s.defaultCallToAction });\n  return {\n    model: s.openAiModel,\n    temperature: 0.7,\n    response_format: { type: \"json_object\" },\n    messages: [{ role: \"system\", content: system }, { role: \"user\", content: user }],\n  };\n}\n\nconst s = $('Settings').first().json;\nconst input = $input.all();\nconst index = new Map(input.map((it, i) => [it.json, i]));\nconst rows = input.map((i) => i.json).filter((r) => r.post_id);\nreturn contentToDraft(rows, new Date().toISOString(), Number(s.daysAhead)).map((row) => ({ json: { ...row, request: buildCaptionRequest(row, s) }, pairedItem: { item: index.get(row) } }));"
+      },
+      "id": "node-0084",
+      "name": "Posts to write",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        380,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Settings').first().json.openAiBaseUrl }}/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.request) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "node-0085",
+      "name": "Write posts with AI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        600,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "function readAiJson(response) {\n  const content = response && response.choices && response.choices[0] && response.choices[0].message && response.choices[0].message.content;\n  if (!content) throw new Error(\"OpenAI returned no answer: \" + JSON.stringify(response).slice(0, 300));\n  try {\n    return JSON.parse(content);\n  } catch {\n    throw new Error(\"OpenAI answer was not valid JSON: \" + content.slice(0, 300));\n  }\n}\n\nconst rows = $('Posts to write').all();\nreturn $input.all().map((item, i) => {\n  const row = rows[i].json;\n  const ai = readAiJson(item.json);\n  return { json: { post_id: row.post_id, status: 'waiting approval', instagram: ai.instagram || '', facebook: ai.facebook || '',\n    linkedin: ai.linkedin || '', x: ai.x || '', hashtags: ai.hashtags || '', topic: row.topic, publish_at: row.publish_at }, pairedItem: { item: i } };\n});"
+      },
+      "id": "node-0086",
+      "name": "Draft rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        820,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Settings').first().json.googleSheetUrl }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Content plan"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "post_id"
+          ],
+          "schema": []
+        },
+        "options": {
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "node-0087",
+      "name": "Save drafts",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1040,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const posts = $('Draft rows').all().map((i) => i.json);\nconst list = posts.map((p) => '- ' + p.publish_at + ': ' + p.topic).join('\\n');\nreturn [{ json: { count: posts.length, list }, pairedItem: $input.all().map((_, i) => ({ item: i })) }];"
+      },
+      "id": "node-0088",
+      "name": "Approval summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Settings').first().json.approverEmail }}",
+        "subject": "={{ $json.count }} social posts are ready for approval",
+        "emailType": "text",
+        "message": "=Hello,\n\nThe posts for the coming days are written:\n{{ $json.list }}\n\nOpen the content plan, check and edit the texts, then set the status to \"approved\" for each post you want published:\n{{ $('Settings').first().json.googleSheetUrl }}\n\nApproved posts are published automatically at their publish time.",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "={{ $('Settings').first().json.senderName }}"
+        }
+      },
+      "id": "node-0089",
+      "name": "Ask for approval",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Settings').first().json.googleSheetUrl }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Content plan"
+        },
+        "options": {}
+      },
+      "id": "node-008a",
+      "name": "Read approved posts",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        160,
+        400
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "function duePosts(rows, nowIso) {\n  const now = Date.parse(nowIso);\n  return rows.filter((r) => String(r.status).toLowerCase() === \"approved\" && Date.parse(r.publish_at) <= now);\n}\n\nconst input = $input.all();\nconst index = new Map(input.map((it, i) => [it.json, i]));\nconst rows = input.map((i) => i.json).filter((r) => r.post_id);\n// One post per run (the trigger runs hourly), so each result clearly belongs to one post.\nreturn duePosts(rows, new Date().toISOString()).slice(0, 1).map((row) => ({ json: row, pairedItem: { item: index.get(row) } }));"
+      },
+      "id": "node-008b",
+      "name": "Posts due now",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        380,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "httpRequestMethod": "POST",
+        "graphApiVersion": "v22.0",
+        "node": "={{ $('Settings').first().json.facebookPageId }}",
+        "edge": "feed",
+        "options": {
+          "queryParameters": {
+            "parameter": [
+              {
+                "name": "message",
+                "value": "={{ $('Posts due now').first().json.facebook }}\n\n{{ $('Posts due now').first().json.hashtags }}"
+              }
+            ]
+          }
+        }
+      },
+      "id": "node-008c",
+      "name": "Post to Facebook",
+      "type": "n8n-nodes-base.facebookGraphApi",
+      "typeVersion": 1,
+      "position": [
+        600,
+        400
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "httpRequestMethod": "POST",
+        "graphApiVersion": "v22.0",
+        "node": "={{ $('Settings').first().json.instagramAccountId }}",
+        "edge": "media",
+        "options": {
+          "queryParameters": {
+            "parameter": [
+              {
+                "name": "image_url",
+                "value": "={{ $('Posts due now').first().json.image_url }}"
+              },
+              {
+                "name": "caption",
+                "value": "={{ $('Posts due now').first().json.instagram }}\n\n{{ $('Posts due now').first().json.hashtags }}"
+              }
+            ]
+          }
+        }
+      },
+      "id": "node-008d",
+      "name": "Instagram: upload image",
+      "type": "n8n-nodes-base.facebookGraphApi",
+      "typeVersion": 1,
+      "position": [
+        820,
+        400
+      ],
+      "onError": "continueErrorOutput",
+      "notes": "Instagram needs an image: put a public image URL in the image_url column."
+    },
+    {
+      "parameters": {
+        "httpRequestMethod": "POST",
+        "graphApiVersion": "v22.0",
+        "node": "={{ $('Settings').first().json.instagramAccountId }}",
+        "edge": "media_publish",
+        "options": {
+          "queryParameters": {
+            "parameter": [
+              {
+                "name": "creation_id",
+                "value": "={{ $json.id }}"
+              }
+            ]
+          }
+        }
+      },
+      "id": "node-008e",
+      "name": "Instagram: publish",
+      "type": "n8n-nodes-base.facebookGraphApi",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        340
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "postAs": "organization",
+        "organization": "={{ $('Settings').first().json.linkedinOrganizationId }}",
+        "text": "={{ $('Posts due now').first().json.linkedin }}\n\n{{ $('Posts due now').first().json.hashtags }}",
+        "shareMediaCategory": "NONE",
+        "additionalFields": {}
+      },
+      "id": "node-008f",
+      "name": "Post to LinkedIn",
+      "type": "n8n-nodes-base.linkedIn",
+      "typeVersion": 1,
+      "position": [
+        1260,
+        400
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "text": "={{ $('Posts due now').first().json.x }}",
+        "additionalFields": {}
+      },
+      "id": "node-0090",
+      "name": "Post to X",
+      "type": "n8n-nodes-base.twitter",
+      "typeVersion": 2,
+      "position": [
+        1480,
+        400
+      ],
+      "onError": "continueErrorOutput",
+      "disabled": true,
+      "notes": "Enable if you have X API access."
+    },
+    {
+      "parameters": {
+        "jsCode": "function publishOutcome(results) {\n  const failed = results.filter((r) => r.enabled && r.error).map((r) => `${r.network}: ${r.error}`);\n  const done = results.filter((r) => r.enabled && !r.error).map((r) => r.network);\n  return {\n    status: failed.length === 0 ? \"published\" : done.length ? \"partly published\" : \"failed\",\n    published_to: done.join(\", \"),\n    errors: failed.join(\" | \").slice(0, 1000),\n  };\n}\n\n// Each network node sends failures to its error output. A disabled node passes its input through unchanged,\n// so a network only counts as published when its node returned a new response without an error.\nconst post = $('Posts due now').first();\nconst steps = [\n  ['facebook', 'Post to Facebook'], ['instagram', 'Instagram: upload image'], ['instagram', 'Instagram: publish'],\n  ['linkedin', 'Post to LinkedIn'], ['x', 'Post to X'],\n];\nconst emitted = (node) => {\n  try { if (!$(node).isExecuted) return null; } catch { return null; }\n  let failed = [];\n  try { failed = $(node).all(1); } catch { failed = []; }\n  if (failed.length) return { json: failed[0].json, failed: true };\n  const ok = $(node).all(0);\n  return ok.length ? { json: ok[0].json, failed: false } : null;\n};\nconst status = {};\nlet previous = JSON.stringify(post.json);\nfor (const [network, node] of steps) {\n  const out = emitted(node);\n  if (!out) { status[network] = status[network] || { network, enabled: false }; continue; }\n  const now = JSON.stringify(out.json);\n  const passedThrough = !out.failed && now === previous;\n  previous = now;\n  if (status[network] && status[network].error) continue;\n  if (passedThrough) { status[network] = status[network] || { network, enabled: false }; continue; }\n  const e = out.json.error;\n  const message = out.failed ? (e && (e.message || e.description || e)) || 'failed' : out.json.statusCode ? out.json.message || 'HTTP ' + out.json.statusCode : '';\n  status[network] = { network, enabled: true, error: message ? String(message).slice(0, 200) : '' };\n}\nreturn [{ json: { post_id: post.json.post_id, ...publishOutcome(Object.values(status)), published_at: new Date().toISOString() }, pairedItem: { item: 0 } }];"
+      },
+      "id": "node-0091",
+      "name": "Publishing result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1700,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Settings').first().json.googleSheetUrl }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Content plan"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "post_id"
+          ],
+          "schema": []
+        },
+        "options": {
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "node-0092",
+      "name": "Record publishing",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1920,
+        400
+      ]
+    }
+  ],
+  "connections": {
+    "Every Monday at 8:00": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every hour": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Route",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route": {
+      "main": [
+        [
+          {
+            "node": "Read content plan",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Read approved posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read content plan": {
+      "main": [
+        [
+          {
+            "node": "Posts to write",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Posts to write": {
+      "main": [
+        [
+          {
+            "node": "Write posts with AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write posts with AI": {
+      "main": [
+        [
+          {
+            "node": "Draft rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft rows": {
+      "main": [
+        [
+          {
+            "node": "Save drafts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save drafts": {
+      "main": [
+        [
+          {
+            "node": "Approval summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approval summary": {
+      "main": [
+        [
+          {
+            "node": "Ask for approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read approved posts": {
+      "main": [
+        [
+          {
+            "node": "Posts due now",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Posts due now": {
+      "main": [
+        [
+          {
+            "node": "Post to Facebook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post to Facebook": {
+      "main": [
+        [
+          {
+            "node": "Instagram: upload image",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Instagram: upload image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Instagram: publish": {
+      "main": [
+        [
+          {
+            "node": "Post to LinkedIn",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Post to LinkedIn",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post to LinkedIn": {
+      "main": [
+        [
+          {
+            "node": "Post to X",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Post to X",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post to X": {
+      "main": [
+        [
+          {
+            "node": "Publishing result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Publishing result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Instagram: upload image": {
+      "main": [
+        [
+          {
+            "node": "Instagram: publish",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Post to LinkedIn",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publishing result": {
+      "main": [
+        [
+          {
+            "node": "Record publishing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

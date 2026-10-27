@@ -1,0 +1,74 @@
+{
+  "name": "AI Receptionist",
+  "firstMessage": "Hello, thank you for calling. How can I help you today?",
+  "model": {
+    "provider": "openai",
+    "model": "gpt-4.1-mini",
+    "temperature": 0.3,
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are the phone receptionist of YOUR BUSINESS NAME, at YOUR ADDRESS. Opening hours: Monday to Saturday, 9:00 to 18:00. Services: LIST YOUR SERVICES AND PRICES.\n\nSpeak naturally and briefly, one or two sentences at a time, in the caller's language.\n- Answer questions about hours, location and services from the information above only. If you do not know, offer to take a message.\n- To book: ask what service they want and which day, call check_availability with that date (YYYY-MM-DD), offer two or three of the free times, then collect their full name and confirm the exact time before calling book_appointment. Read back the booking.\n- If the caller wants a person, has a complaint, or asks something you cannot handle, call take_message with their name, phone number and message, and say someone will call them back.\n- Never invent prices, availability or policies. Never book outside opening hours.\n- Today's date is {{\"now\" | date: \"%A %d %B %Y\", \"Europe/Paris\"}}."
+      }
+    ],
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "check_availability",
+          "description": "Returns the free appointment start times on a given day.",
+          "parameters": {
+            "type": "object",
+            "properties": { "date": { "type": "string", "description": "The day to check, YYYY-MM-DD" } },
+            "required": ["date"]
+          }
+        },
+        "server": { "url": "https://YOUR-N8N-DOMAIN/webhook/vapi/tools", "secret": "SAME-SECRET-AS-N8N-HEADER-AUTH" }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "book_appointment",
+          "description": "Books an appointment after the caller has confirmed the exact time.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "date": { "type": "string", "description": "YYYY-MM-DD" },
+              "time": { "type": "string", "description": "Start time, HH:MM in 24-hour format" },
+              "name": { "type": "string", "description": "Caller's full name" },
+              "phone": { "type": "string", "description": "Phone number to reach the caller, if different from the one they are calling from" },
+              "service": { "type": "string", "description": "The service booked" },
+              "notes": { "type": "string", "description": "Anything else the caller mentioned" }
+            },
+            "required": ["date", "time", "name"]
+          }
+        },
+        "server": { "url": "https://YOUR-N8N-DOMAIN/webhook/vapi/tools", "secret": "SAME-SECRET-AS-N8N-HEADER-AUTH" }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "take_message",
+          "description": "Passes a message to the team, who will call the caller back.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string", "description": "Caller's name" },
+              "phone": { "type": "string", "description": "Number to call back, if different from the one they are calling from" },
+              "message": { "type": "string", "description": "The message, in a few sentences" },
+              "urgent": { "type": "boolean", "description": "True if the caller says it is urgent" }
+            },
+            "required": ["name", "message"]
+          }
+        },
+        "server": { "url": "https://YOUR-N8N-DOMAIN/webhook/vapi/tools", "secret": "SAME-SECRET-AS-N8N-HEADER-AUTH" }
+      }
+    ]
+  },
+  "voice": { "provider": "vapi", "voiceId": "Elliot" },
+  "transcriber": { "provider": "deepgram", "model": "nova-2", "language": "multi" },
+  "server": { "url": "https://YOUR-N8N-DOMAIN/webhook/vapi/events", "secret": "SAME-SECRET-AS-N8N-HEADER-AUTH" },
+  "serverMessages": ["end-of-call-report"],
+  "endCallFunctionEnabled": true,
+  "recordingEnabled": true
+}

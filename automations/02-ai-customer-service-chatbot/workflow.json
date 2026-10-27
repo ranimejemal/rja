@@ -1,0 +1,399 @@
+{
+  "name": "AI Customer Service Chatbot | Ranime Jemal Agency",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## AI Customer Service Chatbot\n1. Fill in **Settings**.\n2. Make a Google Sheet with an **FAQ** tab (question, answer) and a **Conversations** tab (see the CSV files).\n3. Connect OpenAI, Google Sheets and Gmail.\n4. Activate, then open the **Chat** node to copy the chat URL or the website embed code.",
+        "height": 260,
+        "width": 520,
+        "color": 4
+      },
+      "id": "node-0039",
+      "name": "Note 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -400
+      ]
+    },
+    {
+      "parameters": {
+        "public": true,
+        "mode": "hostedChat",
+        "initialMessages": "Hi! How can I help you today?",
+        "options": {
+          "title": "Customer support",
+          "subtitle": "We usually answer instantly.",
+          "inputPlaceholder": "Type your message...",
+          "showWelcomeScreen": false
+        }
+      },
+      "id": "node-003b",
+      "name": "Chat",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -560,
+        0
+      ],
+      "webhookId": "hook-003a"
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-003c",
+              "name": "businessName",
+              "value": "Your business name",
+              "type": "string"
+            },
+            {
+              "id": "set-003d",
+              "name": "businessDescription",
+              "value": "What you sell and to whom.",
+              "type": "string"
+            },
+            {
+              "id": "set-003e",
+              "name": "openingHours",
+              "value": "Monday to Friday, 9:00 to 18:00",
+              "type": "string"
+            },
+            {
+              "id": "set-003f",
+              "name": "contactDetails",
+              "value": "support@yourbusiness.com, +33 6 00 00 00 00",
+              "type": "string"
+            },
+            {
+              "id": "set-0040",
+              "name": "tone",
+              "value": "friendly, short and clear",
+              "type": "string"
+            },
+            {
+              "id": "set-0041",
+              "name": "teamEmail",
+              "value": "support@yourbusiness.com",
+              "type": "string"
+            },
+            {
+              "id": "set-0042",
+              "name": "googleSheetUrl",
+              "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
+              "type": "string"
+            },
+            {
+              "id": "set-0043",
+              "name": "openAiModel",
+              "value": "gpt-4.1-mini",
+              "type": "string"
+            },
+            {
+              "id": "set-0044",
+              "name": "openAiBaseUrl",
+              "value": "https://api.openai.com/v1",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "node-0045",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -320,
+        0
+      ],
+      "notes": "Fill in these values before activating.",
+      "color": "#FFD233"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Chat').first().json.chatInput }}",
+        "options": {
+          "systemMessage": "=You are the customer service assistant of {{ $('Settings').first().json.businessName }}. {{ $('Settings').first().json.businessDescription }}\nTone: {{ $('Settings').first().json.tone }}. Always answer in the customer's language.\nOpening hours: {{ $('Settings').first().json.openingHours }}. Contact: {{ $('Settings').first().json.contactDetails }}.\n\nRules:\n- Before answering any question about the business, its products, prices, delivery, returns or policies, call the \"faq\" tool and answer only from what it returns.\n- If the FAQ does not cover the question, say you are not sure and offer to pass the question to the team.\n- Never invent prices, delivery dates, discounts or policies.\n- If the customer is upset, asks for a person, or needs something you cannot do (refunds, order changes, complaints), collect their name and email or phone, then call \"handoff_to_team\" and tell them a person will get back to them.\n- Keep answers short: two to four sentences unless the customer asks for detail.",
+          "maxIterations": 6
+        }
+      },
+      "id": "node-0046",
+      "name": "Customer service agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -80,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Settings').first().json.openAiModel }}"
+        },
+        "options": {
+          "temperature": 0.3,
+          "baseURL": "={{ $('Settings').first().json.openAiBaseUrl }}"
+        }
+      },
+      "id": "node-0047",
+      "name": "OpenAI chat model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -220,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Chat').first().json.sessionId }}",
+        "contextWindowLength": 12
+      },
+      "id": "node-0048",
+      "name": "Conversation memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -60,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Returns the business FAQ as rows with a question and an answer. Use it to answer questions about products, prices, delivery, returns, opening hours and policies.",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Settings').first().json.googleSheetUrl }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "FAQ"
+        },
+        "options": {}
+      },
+      "id": "node-0049",
+      "name": "faq",
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.5,
+      "position": [
+        100,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Sends the conversation to a human team member. Use it when the customer asks for a person, is upset, or needs something you cannot do. Include the customer's name, contact details and a short summary.",
+        "sendTo": "={{ $('Settings').first().json.teamEmail }}",
+        "subject": "=Chatbot handoff: {{ $fromAI('customer_name', 'Customer name', 'string') }}",
+        "emailType": "text",
+        "message": "=Customer: {{ $fromAI('customer_name', 'Customer name', 'string') }}\nContact: {{ $fromAI('customer_contact', 'Customer email or phone number', 'string') }}\n\nSummary:\n{{ $fromAI('summary', 'What the customer needs, in a few sentences', 'string') }}\n\nChat session: {{ $('Chat').first().json.sessionId }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "node-004a",
+      "name": "handoff_to_team",
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.1,
+      "position": [
+        260,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: {\n  time: new Date().toISOString(),\n  session_id: $('Chat').first().json.sessionId,\n  question: $('Chat').first().json.chatInput,\n  answer: $input.first().json.output,\n}, pairedItem: { item: 0 } }];"
+      },
+      "id": "node-004b",
+      "name": "Conversation row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Settings').first().json.googleSheetUrl }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Conversations"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "node-004c",
+      "name": "Log conversation",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        440,
+        0
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-004d",
+              "name": "output",
+              "value": "={{ $('Customer service agent').first().json.output }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-004e",
+      "name": "Reply",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        660,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Chat": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Customer service agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI chat model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Customer service agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Conversation memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Customer service agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "faq": {
+      "ai_tool": [
+        [
+          {
+            "node": "Customer service agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "handoff_to_team": {
+      "ai_tool": [
+        [
+          {
+            "node": "Customer service agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Customer service agent": {
+      "main": [
+        [
+          {
+            "node": "Conversation row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Conversation row": {
+      "main": [
+        [
+          {
+            "node": "Log conversation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log conversation": {
+      "main": [
+        [
+          {
+            "node": "Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

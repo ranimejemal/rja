@@ -1,0 +1,600 @@
+{
+  "name": "AI Appointment Booking | Ranime Jemal Agency",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## AI Appointment Booking\n1. Fill in **Settings** (calendar ID: Google Calendar > Settings > Integrate calendar).\n2. Connect OpenAI, Google Calendar and Gmail.\n3. Activate. Share the chat URL from the **Chat** node, or embed it on your site.\nReminders are emailed every hour for appointments starting in 24 hours.",
+        "height": 260,
+        "width": 520,
+        "color": 4
+      },
+      "id": "node-004f",
+      "name": "Note 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -420
+      ]
+    },
+    {
+      "parameters": {
+        "public": true,
+        "mode": "hostedChat",
+        "initialMessages": "Hi! I can book, move or cancel an appointment for you. What would you like to do?",
+        "options": {
+          "title": "Book an appointment",
+          "subtitle": "Pick a time that suits you.",
+          "inputPlaceholder": "Type your message...",
+          "showWelcomeScreen": false
+        }
+      },
+      "id": "node-0051",
+      "name": "Chat",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -560,
+        0
+      ],
+      "webhookId": "hook-0050"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "5 * * * *"
+            }
+          ]
+        }
+      },
+      "id": "node-0052",
+      "name": "Every hour",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -560,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-0053",
+              "name": "businessName",
+              "value": "Your business name",
+              "type": "string"
+            },
+            {
+              "id": "set-0054",
+              "name": "services",
+              "value": "Haircut (60 min), Colour (60 min), Consultation (60 min)",
+              "type": "string"
+            },
+            {
+              "id": "set-0055",
+              "name": "address",
+              "value": "12 Example Street, Paris",
+              "type": "string"
+            },
+            {
+              "id": "set-0056",
+              "name": "calendarId",
+              "value": "primary",
+              "type": "string"
+            },
+            {
+              "id": "set-0057",
+              "name": "timezone",
+              "value": "Europe/Paris",
+              "type": "string"
+            },
+            {
+              "id": "set-0058",
+              "name": "openDays",
+              "value": "Monday to Saturday",
+              "type": "string"
+            },
+            {
+              "id": "set-0059",
+              "name": "openTime",
+              "value": "09:00",
+              "type": "string"
+            },
+            {
+              "id": "set-005a",
+              "name": "closeTime",
+              "value": "18:00",
+              "type": "string"
+            },
+            {
+              "id": "set-005b",
+              "name": "slotMinutes",
+              "value": 60,
+              "type": "number"
+            },
+            {
+              "id": "set-005c",
+              "name": "reminderHoursBefore",
+              "value": 24,
+              "type": "number"
+            },
+            {
+              "id": "set-005d",
+              "name": "senderName",
+              "value": "Your business name",
+              "type": "string"
+            },
+            {
+              "id": "set-005e",
+              "name": "openAiModel",
+              "value": "gpt-4.1-mini",
+              "type": "string"
+            },
+            {
+              "id": "set-005f",
+              "name": "openAiBaseUrl",
+              "value": "https://api.openai.com/v1",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "node-0060",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -320,
+        200
+      ],
+      "notes": "Fill in these values before activating.",
+      "color": "#FFD233"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "cond-0061",
+                    "leftValue": "={{ $('Chat').isExecuted }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Chat"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "cond-0062",
+                    "leftValue": "={{ $('Every hour').isExecuted }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Reminders"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-0063",
+      "name": "Route",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -100,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Chat').first().json.chatInput }}",
+        "options": {
+          "systemMessage": "=You book appointments for {{ $('Settings').first().json.businessName }} ({{ $('Settings').first().json.address }}).\nServices: {{ $('Settings').first().json.services }}.\nOpening hours: {{ $('Settings').first().json.openDays }}, {{ $('Settings').first().json.openTime }} to {{ $('Settings').first().json.closeTime }}, time zone {{ $('Settings').first().json.timezone }}. Appointments last {{ $('Settings').first().json.slotMinutes }} minutes.\nCurrent date and time: {{ $now.setZone($('Settings').first().json.timezone).toFormat(\"cccc d LLLL yyyy, HH:mm\") }}.\n\nHow to work:\n- Answer in the customer's language. Be brief and friendly.\n- To find free times, call \"check_availability\" for the day asked (from the opening time to the closing time). It returns the busy periods; offer up to three free start times inside opening hours that do not overlap them.\n- Before booking you need: the service, the date and time, the customer's full name, email and phone number.\n- Book with \"book_appointment\" only after the customer confirms the exact time. Use ISO 8601 times with the {{ $('Settings').first().json.timezone }} offset.\n- To move or cancel, ask for their email, call \"find_bookings\" to find the appointment, confirm which one, then \"cancel_booking\" (and book the new time when moving).\n- Never book outside opening hours or in the past. Never invent availability.",
+          "maxIterations": 8
+        }
+      },
+      "id": "node-0064",
+      "name": "Booking assistant",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        200,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Settings').first().json.openAiModel }}"
+        },
+        "options": {
+          "temperature": 0.2,
+          "baseURL": "={{ $('Settings').first().json.openAiBaseUrl }}"
+        }
+      },
+      "id": "node-0065",
+      "name": "OpenAI chat model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        140,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Chat').first().json.sessionId }}",
+        "contextWindowLength": 12
+      },
+      "id": "node-0066",
+      "name": "Conversation memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        300,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Returns the busy periods in the calendar between two times. Use it before offering times.",
+        "resource": "calendar",
+        "calendar": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Settings').first().json.calendarId }}"
+        },
+        "timeMin": "={{ $fromAI('start', 'Start of the period to check, ISO 8601 with time zone offset', 'string') }}",
+        "timeMax": "={{ $fromAI('end', 'End of the period to check, ISO 8601 with time zone offset', 'string') }}",
+        "options": {
+          "outputFormat": "bookedSlots",
+          "timezone": {
+            "__rl": true,
+            "mode": "id",
+            "value": "={{ $('Settings').first().json.timezone }}"
+          }
+        }
+      },
+      "id": "node-0067",
+      "name": "check_availability",
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        460,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Books an appointment in the calendar and emails the customer an invitation.",
+        "calendar": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Settings').first().json.calendarId }}"
+        },
+        "start": "={{ $fromAI('start', 'Appointment start, ISO 8601 with time zone offset', 'string') }}",
+        "end": "={{ $fromAI('end', 'Appointment end, ISO 8601 with time zone offset', 'string') }}",
+        "additionalFields": {
+          "summary": "={{ $fromAI('service', 'The service booked', 'string') }} - {{ $fromAI('customer_name', 'Customer full name', 'string') }}",
+          "attendees": "={{ $fromAI('customer_email', 'Customer email address', 'string') }}",
+          "description": "=Customer: {{ $fromAI('customer_name', 'Customer full name', 'string') }}\nEmail: {{ $fromAI('customer_email', 'Customer email address', 'string') }}\nPhone: {{ $fromAI('customer_phone', 'Customer phone number', 'string') }}\nNotes: {{ $fromAI('notes', 'Anything else the customer mentioned', 'string') }}\nBooked by the AI assistant.",
+          "sendUpdates": "all"
+        }
+      },
+      "id": "node-0068",
+      "name": "book_appointment",
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        620,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Finds upcoming appointments for a customer by their email address. Returns event IDs, times and titles.",
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Settings').first().json.calendarId }}"
+        },
+        "returnAll": true,
+        "timeMin": "={{ $now.toISO() }}",
+        "timeMax": "={{ $now.plus({ days: 90 }).toISO() }}",
+        "options": {
+          "query": "={{ $fromAI('customer_email', 'Customer email address', 'string') }}",
+          "singleEvents": true,
+          "orderBy": "startTime"
+        }
+      },
+      "id": "node-0069",
+      "name": "find_bookings",
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        780,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Cancels an appointment by its event ID (from find_bookings) and notifies the customer.",
+        "operation": "delete",
+        "calendar": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Settings').first().json.calendarId }}"
+        },
+        "eventId": "={{ $fromAI('event_id', 'The event ID of the appointment to cancel', 'string') }}",
+        "options": {
+          "sendUpdates": "all"
+        }
+      },
+      "id": "node-006a",
+      "name": "cancel_booking",
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        940,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Settings').first().json.calendarId }}"
+        },
+        "returnAll": true,
+        "timeMin": "={{ $now.plus({ hours: $('Settings').first().json.reminderHoursBefore }).toISO() }}",
+        "timeMax": "={{ $now.plus({ hours: $('Settings').first().json.reminderHoursBefore + 1 }).toISO() }}",
+        "options": {
+          "singleEvents": true
+        }
+      },
+      "id": "node-006b",
+      "name": "Upcoming appointments",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        200,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function dueReminders(events, nowIso, hoursBefore) {\n  const now = Date.parse(nowIso);\n  const from = now + hoursBefore * 3600000;\n  const to = from + 3600000;\n  const out = [];\n  for (const e of events) {\n    const start = Date.parse((e.start && (e.start.dateTime || e.start.date)) || \"\");\n    if (!Number.isFinite(start) || start < from || start >= to || e.status === \"cancelled\") continue;\n    const attendee = (e.attendees || []).find((a) => a.email && !a.self && !a.organizer);\n    const fromDescription = String(e.description || \"\").match(/[^\\s<>\"]+@[^\\s<>\"]+\\.[a-z]{2,}/i);\n    const email = attendee ? attendee.email : fromDescription ? fromDescription[0] : \"\";\n    if (email) out.push({ event_id: e.id, summary: e.summary || \"Appointment\", start: new Date(start).toISOString(), email });\n  }\n  return out;\n}\n\nconst s = $('Settings').first().json;\nconst input = $input.all();\nconst events = input.map((i) => i.json).filter((e) => e.id);\nconst index = new Map(input.map((it, i) => [it.json.id, i]));\nreturn dueReminders(events, new Date().toISOString(), Number(s.reminderHoursBefore)).map((r) => ({ json: {\n  ...r,\n  when: DateTime.fromISO(r.start).setZone(s.timezone).toFormat(\"cccc d LLLL 'at' HH:mm\"),\n}, pairedItem: { item: index.get(r.event_id) } }));"
+      },
+      "id": "node-006c",
+      "name": "Reminders to send",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "=Reminder: your appointment at {{ $('Settings').first().json.businessName }}",
+        "emailType": "text",
+        "message": "=Hello,\n\nThis is a reminder of your appointment ({{ $json.summary }}) on {{ $json.when }} at {{ $('Settings').first().json.address }}.\n\nIf you need to change it, just reply to this email.\n\nSee you soon,\n{{ $('Settings').first().json.senderName }}",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "={{ $('Settings').first().json.senderName }}"
+        }
+      },
+      "id": "node-006d",
+      "name": "Send reminder",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        640,
+        460
+      ]
+    }
+  ],
+  "connections": {
+    "Chat": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every hour": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Route",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route": {
+      "main": [
+        [
+          {
+            "node": "Booking assistant",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Upcoming appointments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI chat model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Booking assistant",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Conversation memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Booking assistant",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check_availability": {
+      "ai_tool": [
+        [
+          {
+            "node": "Booking assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "book_appointment": {
+      "ai_tool": [
+        [
+          {
+            "node": "Booking assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "find_bookings": {
+      "ai_tool": [
+        [
+          {
+            "node": "Booking assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "cancel_booking": {
+      "ai_tool": [
+        [
+          {
+            "node": "Booking assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upcoming appointments": {
+      "main": [
+        [
+          {
+            "node": "Reminders to send",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reminders to send": {
+      "main": [
+        [
+          {
+            "node": "Send reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

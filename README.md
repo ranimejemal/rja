@@ -114,6 +114,11 @@ delete from seller_profiles where is_demo and not is_platform;
   `HomeIntro.tsx`). All motion is off for reduced-motion users. The original Webflow stylesheet itself is not included because its
   CDN host was blocked in the build environment.
 
+## Automation workflows
+
+The seven "Top AI automations for 2026" listings are delivered as n8n workflows in [`automations/`](automations/README.md),
+with setup guides, Google Sheet templates and tests (`npm run build:workflows`, `npm run test:workflows`).
+
 ## Repository layout
 
 ```
@@ -121,6 +126,7 @@ app/                Next.js routes (public pages, /dashboard buyer, /seller, /ad
 components/         UI components (product card, config form, dialogs, …)
 lib/                domain logic: catalog, manifest, workflow scan, files, money, payments, auth
 supabase/           migrations and SQL tests
+automations/        the 7 n8n workflows sold as setup services, with sheet templates, guides and tests
 tests/              unit tests
 static-site/        previous static website (reference only)
 ```

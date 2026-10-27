@@ -1,0 +1,468 @@
+{
+  "name": "AI Document Processing | Ranime Jemal Agency",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## AI Document Processing\nReads invoices and receipts (PDF or photo) from **email** or an **upload form**, extracts the data with AI, checks it, files the document in Google Drive and logs it in Google Sheets. Anything that does not add up is flagged for review.\n1. Fill in **Settings** (Drive folder ID is the last part of the folder URL).\n2. Make a Google Sheet with a **Documents** tab (columns in `documents-sheet.csv`).\n3. Connect Gmail, Google Drive, Google Sheets and OpenAI. 4. Activate.",
+        "height": 300,
+        "width": 560,
+        "color": 4
+      },
+      "id": "node-00bb",
+      "name": "Note 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -460
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "value": 5,
+              "unit": "minutes"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "q": "has:attachment (filename:pdf OR filename:jpg OR filename:jpeg OR filename:png) -from:me"
+        },
+        "options": {
+          "downloadAttachments": true,
+          "dataPropertyAttachmentsPrefixName": "attachment_"
+        }
+      },
+      "id": "node-00bc",
+      "name": "Document received by email",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -560,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "formTitle": "Upload invoices and receipts",
+        "formDescription": "PDF, JPG or PNG. You can select several files.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Documents",
+              "fieldType": "file",
+              "multipleFiles": true,
+              "acceptFileTypes": ".pdf,.jpg,.jpeg,.png",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {
+          "appendAttribution": false,
+          "respondWithOptions": {
+            "values": {
+              "respondWith": "text",
+              "formSubmittedText": "Thanks! The documents are being processed."
+            }
+          }
+        }
+      },
+      "id": "node-00be",
+      "name": "Upload form",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        -560,
+        200
+      ],
+      "webhookId": "hook-00bd"
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-00bf",
+              "name": "googleSheetUrl",
+              "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
+              "type": "string"
+            },
+            {
+              "id": "set-00c0",
+              "name": "driveFolderId",
+              "value": "YOUR_DRIVE_FOLDER_ID",
+              "type": "string"
+            },
+            {
+              "id": "set-00c1",
+              "name": "teamEmail",
+              "value": "accounts@yourbusiness.com",
+              "type": "string"
+            },
+            {
+              "id": "set-00c2",
+              "name": "minImageKb",
+              "value": 30,
+              "type": "number"
+            },
+            {
+              "id": "set-00c3",
+              "name": "senderName",
+              "value": "Document assistant",
+              "type": "string"
+            },
+            {
+              "id": "set-00c4",
+              "name": "openAiModel",
+              "value": "gpt-4.1-mini",
+              "type": "string"
+            },
+            {
+              "id": "set-00c5",
+              "name": "openAiBaseUrl",
+              "value": "https://api.openai.com/v1",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "node-00c6",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -320,
+        100
+      ],
+      "notes": "Fill in these values before activating.",
+      "color": "#FFD233"
+    },
+    {
+      "parameters": {
+        "jsCode": "const s = $('Settings').first().json;\nconst fromEmail = $('Document received by email').isExecuted;\nconst out = [];\n$input.all().forEach((item, index) => {\n  for (const [key, file] of Object.entries(item.binary || {})) {\n    const mime = file.mimeType || '';\n    const supported = mime === 'application/pdf' || /^image\\/(png|jpe?g|webp)$/.test(mime);\n    if (!supported) continue;\n    // Skip small images in emails: usually logos and signatures, not receipts.\n    const kb = Number(String(file.fileSize || '0').replace(/[^0-9.]/g, '')) * (/mb/i.test(String(file.fileSize)) ? 1024 : 1);\n    if (fromEmail && mime.startsWith('image/') && kb && kb < Number(s.minImageKb)) continue;\n    const from = fromEmail ? ((item.json.from && item.json.from.text) || item.json.from || '') : 'upload form';\n    out.push({ json: { file_name: file.fileName || key, mime_type: mime, source: fromEmail ? 'email' : 'upload', received_from: String(from), email_subject: item.json.subject || '' },\n      binary: { data: file }, pairedItem: { item: index } });\n  }\n});\nreturn out;"
+      },
+      "id": "node-00c7",
+      "name": "One item per file",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -100,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function documentPart(mimeType, base64, fileName) {\n  if (mimeType === \"application/pdf\") {\n    return { type: \"file\", file: { filename: fileName || \"document.pdf\", file_data: `data:application/pdf;base64,${base64}` } };\n  }\n  if (/^image\\/(png|jpe?g|webp|gif)$/.test(mimeType)) {\n    return { type: \"image_url\", image_url: { url: `data:${mimeType};base64,${base64}` } };\n  }\n  return null;\n}\n\nfunction buildExtractRequest(part, s) {\n  const system = [\n    \"You extract data from invoices, receipts and bills. Read the document carefully. Never guess: use null when a value is missing or unreadable.\",\n    \"Dates as YYYY-MM-DD. Amounts as numbers with a dot for decimals, no currency symbols. Currency as a 3-letter ISO code.\",\n    'Answer with JSON only: {\"document_type\":\"invoice|receipt|credit_note|other\",\"supplier_name\":\"\",\"supplier_vat_id\":null,\"customer_name\":null,',\n    '\"invoice_number\":null,\"invoice_date\":null,\"due_date\":null,\"currency\":null,\"subtotal\":null,\"vat_amount\":null,\"total\":null,',\n    '\"line_items\":[{\"description\":\"\",\"quantity\":null,\"unit_price\":null,\"amount\":null}],\"confidence\":\"high|medium|low\"}',\n  ].join(\"\\n\");\n  return {\n    model: s.openAiModel,\n    temperature: 0,\n    response_format: { type: \"json_object\" },\n    messages: [\n      { role: \"system\", content: system },\n      { role: \"user\", content: [{ type: \"text\", text: \"Extract the data from this document.\" }, part] },\n    ],\n  };\n}\n\nconst s = $('Settings').first().json;\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const buffer = await this.helpers.getBinaryDataBuffer(i, 'data');\n  const part = documentPart(items[i].json.mime_type, buffer.toString('base64'), items[i].json.file_name);\n  items[i].json.request = buildExtractRequest(part, s);\n  items[i].pairedItem = { item: i };\n}\nreturn items;"
+      },
+      "id": "node-00c8",
+      "name": "Prepare extraction",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        120,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Settings').first().json.openAiBaseUrl }}/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.request) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "node-00c9",
+      "name": "Extract data with AI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        340,
+        100
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "function readAiJson(response) {\n  const content = response && response.choices && response.choices[0] && response.choices[0].message && response.choices[0].message.content;\n  if (!content) throw new Error(\"OpenAI returned no answer: \" + JSON.stringify(response).slice(0, 300));\n  try {\n    return JSON.parse(content);\n  } catch {\n    throw new Error(\"OpenAI answer was not valid JSON: \" + content.slice(0, 300));\n  }\n}\n\nfunction checkExtraction(x) {\n  const issues = [];\n  const num = (v) => (v === null || v === undefined || v === \"\" ? null : Number(v));\n  const subtotal = num(x.subtotal);\n  const vat = num(x.vat_amount);\n  const total = num(x.total);\n  if (!x.supplier_name) issues.push(\"supplier missing\");\n  if (!x.invoice_date || !/^\\d{4}-\\d{2}-\\d{2}$/.test(x.invoice_date)) issues.push(\"date missing\");\n  if (total === null || Number.isNaN(total)) issues.push(\"total missing\");\n  if (!x.currency) issues.push(\"currency missing\");\n  if (subtotal !== null && vat !== null && total !== null && Math.abs(subtotal + vat - total) > 0.02) {\n    issues.push(`subtotal + VAT (${(subtotal + vat).toFixed(2)}) does not match total (${total.toFixed(2)})`);\n  }\n  const lines = Array.isArray(x.line_items) ? x.line_items : [];\n  const lineSum = lines.reduce((sum, l) => sum + (Number(l.amount) || 0), 0);\n  if (lines.length && subtotal !== null && Math.abs(lineSum - subtotal) > 0.05 && Math.abs(lineSum - (total || 0)) > 0.05) {\n    issues.push(\"line items do not add up\");\n  }\n  if (x.confidence === \"low\") issues.push(\"low confidence reading\");\n  return { status: issues.length ? \"needs review\" : \"ok\", issues: issues.join(\"; \") };\n}\n\nfunction documentFileName(x, originalName) {\n  const clean = (v) => String(v || \"\").normalize(\"NFKD\").replace(/[^\\w.-]+/g, \"-\").replace(/-+/g, \"-\").replace(/^-|-$/g, \"\").slice(0, 40);\n  const ext = (String(originalName || \"\").match(/\\.[a-z0-9]{2,5}$/i) || [\".pdf\"])[0].toLowerCase();\n  return [clean(x.invoice_date) || \"undated\", clean(x.supplier_name) || \"unknown-supplier\", clean(x.invoice_number) || \"no-number\"].join(\"_\") + ext;\n}\n\nconst prepared = $('Prepare extraction').all();\nreturn $input.all().map((item, i) => {\n  const src = prepared[i];\n  let x;\n  try { x = readAiJson(item.json); } catch (e) { x = { confidence: 'low', error: e.message }; }\n  const check = checkExtraction(x);\n  return {\n    json: {\n      processed_at: new Date().toISOString(), source: src.json.source, received_from: src.json.received_from, original_file: src.json.file_name,\n      document_type: x.document_type || '', supplier_name: x.supplier_name || '', supplier_vat_id: x.supplier_vat_id || '',\n      invoice_number: x.invoice_number || '', invoice_date: x.invoice_date || '', due_date: x.due_date || '', currency: x.currency || '',\n      subtotal: x.subtotal ?? '', vat_amount: x.vat_amount ?? '', total: x.total ?? '',\n      line_items: JSON.stringify(x.line_items || []), status: check.status, issues: check.issues,\n      drive_name: documentFileName(x, src.json.file_name),\n    },\n    binary: src.binary,\n    pairedItem: { item: i },\n  };\n});"
+      },
+      "id": "node-00ca",
+      "name": "Check the data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "name": "={{ $json.drive_name }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Settings').first().json.driveFolderId }}"
+        },
+        "options": {}
+      },
+      "id": "node-00cb",
+      "name": "Save to Google Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        780,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $('Check the data').all();\nreturn $input.all().map((item, i) => {\n  const { drive_name, ...data } = rows[i].json;\n  return { json: { ...data, drive_file: drive_name, drive_link: item.json.webViewLink || ('https://drive.google.com/file/d/' + item.json.id + '/view') }, pairedItem: { item: i } };\n});"
+      },
+      "id": "node-00cc",
+      "name": "Document row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Settings').first().json.googleSheetUrl }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Documents"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "node-00cd",
+      "name": "Log in sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1220,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-00ce",
+              "leftValue": "={{ $('Document row').item.json.status }}",
+              "rightValue": "needs review",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "node-00cf",
+      "name": "Needs review?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1440,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Settings').first().json.teamEmail }}",
+        "subject": "=Please check: {{ $('Document row').item.json.original_file }}",
+        "emailType": "text",
+        "message": "=A document needs a quick check: {{ $('Document row').item.json.issues }}\n\nSupplier: {{ $('Document row').item.json.supplier_name }}\nNumber: {{ $('Document row').item.json.invoice_number }}\nDate: {{ $('Document row').item.json.invoice_date }}\nTotal: {{ $('Document row').item.json.total }} {{ $('Document row').item.json.currency }}\n\nFile: {{ $('Document row').item.json.drive_link }}\nSheet: {{ $('Settings').first().json.googleSheetUrl }}",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "={{ $('Settings').first().json.senderName }}"
+        }
+      },
+      "id": "node-00d0",
+      "name": "Ask for a review",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1660,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Document received by email": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload form": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "One item per file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "One item per file": {
+      "main": [
+        [
+          {
+            "node": "Prepare extraction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare extraction": {
+      "main": [
+        [
+          {
+            "node": "Extract data with AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract data with AI": {
+      "main": [
+        [
+          {
+            "node": "Check the data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check the data": {
+      "main": [
+        [
+          {
+            "node": "Save to Google Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to Google Drive": {
+      "main": [
+        [
+          {
+            "node": "Document row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Document row": {
+      "main": [
+        [
+          {
+            "node": "Log in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log in sheet": {
+      "main": [
+        [
+          {
+            "node": "Needs review?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs review?": {
+      "main": [
+        [
+          {
+            "node": "Ask for a review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

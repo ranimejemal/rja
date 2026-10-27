@@ -1,0 +1,1331 @@
+{
+  "name": "AI Lead Generation & Follow-up | Ranime Jemal Agency",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## AI Lead Generation & Follow-up\n1. Fill in **Settings**.\n2. Make a Google Sheet with a **Leads** tab (columns in `leads-sheet.csv`).\n3. Connect Gmail, Google Sheets and OpenAI credentials.\n4. Optional: enable **Facebook Lead Ads** and pick your page and form.\n5. Activate. Share the form URL or post leads to the webhook.",
+        "height": 300,
+        "width": 520,
+        "color": 4
+      },
+      "id": "node-0001",
+      "name": "Note 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -460
+      ]
+    },
+    {
+      "parameters": {
+        "formTitle": "Tell us about your project",
+        "formDescription": "We reply within minutes.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Email",
+              "fieldType": "email",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Phone"
+            },
+            {
+              "fieldLabel": "Company"
+            },
+            {
+              "fieldLabel": "How can we help?",
+              "fieldType": "textarea",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Budget",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Not sure yet"
+                  },
+                  {
+                    "option": "Under $500"
+                  },
+                  {
+                    "option": "$500 - $2,000"
+                  },
+                  {
+                    "option": "$2,000 - $10,000"
+                  },
+                  {
+                    "option": "Over $10,000"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "options": {
+          "appendAttribution": false,
+          "respondWithOptions": {
+            "values": {
+              "respondWith": "text",
+              "formSubmittedText": "Thank you! We will get back to you very soon."
+            }
+          }
+        }
+      },
+      "id": "node-0003",
+      "name": "New lead form",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        -560,
+        -100
+      ],
+      "webhookId": "hook-0002"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "new-lead",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "node-0005",
+      "name": "Website or ads webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        80
+      ],
+      "webhookId": "hook-0004"
+    },
+    {
+      "parameters": {
+        "page": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "form": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "options": {}
+      },
+      "id": "node-0007",
+      "name": "Facebook Lead Ads",
+      "type": "n8n-nodes-base.facebookLeadAdsTrigger",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        260
+      ],
+      "disabled": true,
+      "webhookId": "hook-0006",
+      "notes": "Enable, then pick your Facebook page and lead form."
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "node-0008",
+      "name": "Every weekday at 9:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -560,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "value": 10,
+              "unit": "minutes"
+            }
+          ]
+        },
+        "simple": true,
+        "filters": {
+          "q": "in:inbox -from:me"
+        },
+        "options": {}
+      },
+      "id": "node-0009",
+      "name": "Lead replied by email",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -560,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-000a",
+              "name": "businessName",
+              "value": "Your business name",
+              "type": "string"
+            },
+            {
+              "id": "set-000b",
+              "name": "businessDescription",
+              "value": "What you sell, in one or two sentences.",
+              "type": "string"
+            },
+            {
+              "id": "set-000c",
+              "name": "idealCustomer",
+              "value": "Who is a good fit: industry, size, need, budget.",
+              "type": "string"
+            },
+            {
+              "id": "set-000d",
+              "name": "senderName",
+              "value": "Your name, Your business",
+              "type": "string"
+            },
+            {
+              "id": "set-000e",
+              "name": "bookingLink",
+              "value": "https://calendly.com/your-link",
+              "type": "string"
+            },
+            {
+              "id": "set-000f",
+              "name": "teamEmail",
+              "value": "you@yourbusiness.com",
+              "type": "string"
+            },
+            {
+              "id": "set-0010",
+              "name": "googleSheetUrl",
+              "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
+              "type": "string"
+            },
+            {
+              "id": "set-0011",
+              "name": "autoSendReplies",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "set-0012",
+              "name": "followUpDays",
+              "value": 2,
+              "type": "number"
+            },
+            {
+              "id": "set-0013",
+              "name": "maxFollowUps",
+              "value": 3,
+              "type": "number"
+            },
+            {
+              "id": "set-0014",
+              "name": "openAiModel",
+              "value": "gpt-4.1-mini",
+              "type": "string"
+            },
+            {
+              "id": "set-0015",
+              "name": "openAiBaseUrl",
+              "value": "https://api.openai.com/v1",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "node-0016",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -300,
+        280
+      ],
+      "notes": "Fill in these values before activating.",
+      "color": "#FFD233"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "cond-0017",
+                    "leftValue": "={{ $('New lead form').isExecuted || $('Website or ads webhook').isExecuted || $('Facebook Lead Ads').isExecuted }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "New lead"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "cond-0018",
+                    "leftValue": "={{ $('Every weekday at 9:00').isExecuted }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Follow-ups"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "cond-0019",
+                    "leftValue": "={{ $('Lead replied by email').isExecuted }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Reply"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-001a",
+      "name": "Route",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -80,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function normalizeLead(input, source, nowIso) {\n  const flat = {};\n  const add = (obj) => {\n    for (const [k, v] of Object.entries(obj || {})) {\n      if (v && typeof v === \"object\" && !Array.isArray(v)) continue;\n      flat[k.toLowerCase().replace(/[^a-z0-9]+/g, \"_\").replace(/^_|_$/g, \"\")] = Array.isArray(v) ? v.join(\", \") : v;\n    }\n  };\n  add(input);\n  add(input && input.body);\n  add(input && input.data);\n  const pick = (...keys) => {\n    for (const k of keys) if (flat[k] != null && String(flat[k]).trim() !== \"\") return String(flat[k]).trim();\n    return \"\";\n  };\n  const first = pick(\"first_name\", \"firstname\");\n  const last = pick(\"last_name\", \"lastname\");\n  const name = pick(\"name\", \"full_name\", \"fullname\", \"your_name\") || [first, last].filter(Boolean).join(\" \");\n  const email = pick(\"email\", \"email_address\", \"your_email\", \"e_mail\").toLowerCase();\n  const lead = {\n    lead_id: \"L\" + Date.parse(nowIso).toString(36).toUpperCase() + Math.random().toString(36).slice(2, 6).toUpperCase(),\n    received_at: nowIso,\n    source,\n    name,\n    email,\n    phone: pick(\"phone\", \"phone_number\", \"mobile\", \"telephone\", \"whatsapp\"),\n    company: pick(\"company\", \"company_name\", \"business\", \"organisation\", \"organization\"),\n    message: pick(\"message\", \"notes\", \"how_can_we_help\", \"comments\", \"enquiry\", \"inquiry\", \"details\").slice(0, 4000),\n    budget: pick(\"budget\", \"budget_range\"),\n  };\n  const valid = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email);\n  return { ...lead, valid, problem: valid ? \"\" : \"missing or invalid email\" };\n}\n\nfunction buildQualifyRequest(lead, s) {\n  const system = [\n    `You qualify inbound leads for ${s.businessName}. ${s.businessDescription}`,\n    `Ideal customer: ${s.idealCustomer}`,\n    \"Score the lead: hot = clear need and fit, ready to talk; warm = some fit or vague need; cold = poor fit, spam or no real need.\",\n    `Write a short, friendly first reply email in the lead's language, signed \"${s.senderName}\".`,\n    `Invite them to book a call here: ${s.bookingLink}. Never promise prices, discounts or dates.`,\n    'Answer with JSON only: {\"score\":\"hot|warm|cold\",\"reason\":\"...\",\"summary\":\"one line\",\"subject\":\"...\",\"reply\":\"plain text email body\"}',\n  ].join(\"\\n\");\n  const user = JSON.stringify({ name: lead.name, company: lead.company, message: lead.message, budget: lead.budget, source: lead.source });\n  return {\n    model: s.openAiModel,\n    temperature: 0.4,\n    response_format: { type: \"json_object\" },\n    messages: [{ role: \"system\", content: system }, { role: \"user\", content: user }],\n  };\n}\n\nconst s = $('Settings').first().json;\nconst source = $('New lead form').isExecuted ? 'website form' : $('Facebook Lead Ads').isExecuted ? 'facebook lead ads' : 'webhook';\nconst now = new Date().toISOString();\nreturn $input.all().map((item, i) => {\n  const lead = normalizeLead(item.json, source, now);\n  return { json: { ...lead, request: buildQualifyRequest(lead, s) }, pairedItem: { item: i } };\n});"
+      },
+      "id": "node-001b",
+      "name": "Normalize lead",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        160,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-001c",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "node-001d",
+      "name": "Has an email?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        380,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Settings').first().json.openAiBaseUrl }}/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.request) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "node-001e",
+      "name": "Qualify lead with AI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        600,
+        -100
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "function readAiJson(response) {\n  const content = response && response.choices && response.choices[0] && response.choices[0].message && response.choices[0].message.content;\n  if (!content) throw new Error(\"OpenAI returned no answer: \" + JSON.stringify(response).slice(0, 300));\n  try {\n    return JSON.parse(content);\n  } catch {\n    throw new Error(\"OpenAI answer was not valid JSON: \" + content.slice(0, 300));\n  }\n}\n\nconst leads = $('Normalize lead').all().filter((i) => i.json.valid);\nconst now = new Date().toISOString();\nreturn $input.all().map((item, i) => {\n  const lead = leads[i].json;\n  const ai = readAiJson(item.json);\n  return { json: {\n    lead_id: lead.lead_id, received_at: lead.received_at, source: lead.source, name: lead.name, email: lead.email,\n    phone: lead.phone, company: lead.company, message: lead.message, budget: lead.budget,\n    score: ['hot', 'warm', 'cold'].includes(ai.score) ? ai.score : 'warm', reason: ai.reason || '', summary: ai.summary || '',\n    status: 'contacted', follow_ups: 0, last_contact_at: now, replied_at: '',\n    reply_subject: ai.subject || 'Thanks for getting in touch', reply_body: ai.reply || '',\n  }, pairedItem: { item: i } };\n});"
+      },
+      "id": "node-001f",
+      "name": "Lead row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        820,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Settings').first().json.googleSheetUrl }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Leads"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "node-0020",
+      "name": "Save lead",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1040,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-0021",
+              "leftValue": "={{ $('Settings').first().json.autoSendReplies }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "node-0022",
+      "name": "Send automatically?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1260,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Lead row').item.json.email }}",
+        "subject": "={{ $('Lead row').item.json.reply_subject }}",
+        "emailType": "text",
+        "message": "={{ $('Lead row').item.json.reply_body }}",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "={{ $('Settings').first().json.senderName }}"
+        }
+      },
+      "id": "node-0023",
+      "name": "Send first reply",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1480,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "={{ $('Lead row').item.json.reply_subject }}",
+        "emailType": "text",
+        "message": "={{ $('Lead row').item.json.reply_body }}",
+        "options": {
+          "sendTo": "={{ $('Lead row').item.json.email }}"
+        }
+      },
+      "id": "node-0024",
+      "name": "Draft first reply",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-0025",
+              "leftValue": "={{ $('Lead row').item.json.score }}",
+              "rightValue": "hot",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "node-0026",
+      "name": "Hot lead?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1700,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Settings').first().json.teamEmail }}",
+        "subject": "=Hot lead: {{ $('Lead row').item.json.name }} ({{ $('Lead row').item.json.company || $('Lead row').item.json.email }})",
+        "emailType": "text",
+        "message": "=A hot lead just came in.\n\nName: {{ $('Lead row').item.json.name }}\nEmail: {{ $('Lead row').item.json.email }}\nPhone: {{ $('Lead row').item.json.phone }}\nCompany: {{ $('Lead row').item.json.company }}\nBudget: {{ $('Lead row').item.json.budget }}\n\nSummary: {{ $('Lead row').item.json.summary }}\nWhy hot: {{ $('Lead row').item.json.reason }}\n\nMessage:\n{{ $('Lead row').item.json.message }}",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "={{ $('Settings').first().json.senderName }}"
+        }
+      },
+      "id": "node-0027",
+      "name": "Alert team about hot lead",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1920,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((item, i) => ({ pairedItem: { item: i }, json: {\n  lead_id: item.json.lead_id, received_at: item.json.received_at, source: item.json.source, name: item.json.name, email: '',\n  phone: item.json.phone, company: item.json.company, message: item.json.message, budget: item.json.budget,\n  score: '', reason: '', summary: '', status: 'call - no email', follow_ups: 0, last_contact_at: '', replied_at: '',\n} }));"
+      },
+      "id": "node-0028",
+      "name": "Lead row (no email)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        600,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Settings').first().json.googleSheetUrl }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Leads"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "node-0029",
+      "name": "Save lead (no email)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        820,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Settings').first().json.teamEmail }}",
+        "subject": "=New lead to call: {{ $('Lead row (no email)').item.json.name || $('Lead row (no email)').item.json.phone }}",
+        "emailType": "text",
+        "message": "=This lead left no email address, so no automatic reply was sent. Please call them.\n\nName: {{ $('Lead row (no email)').item.json.name }}\nPhone: {{ $('Lead row (no email)').item.json.phone }}\nMessage: {{ $('Lead row (no email)').item.json.message }}",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "={{ $('Settings').first().json.senderName }}"
+        }
+      },
+      "id": "node-002a",
+      "name": "Ask team to call",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1040,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Settings').first().json.googleSheetUrl }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Leads"
+        },
+        "options": {}
+      },
+      "id": "node-002b",
+      "name": "Read leads",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        160,
+        420
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "function dueFollowUps(rows, nowIso, followUpDays, maxFollowUps) {\n  const now = Date.parse(nowIso);\n  return rows.filter((r) => {\n    if (String(r.status).toLowerCase() !== \"contacted\" || !r.email) return false;\n    const sent = Number(r.follow_ups || 0);\n    const last = Date.parse(r.last_contact_at);\n    return sent < maxFollowUps && Number.isFinite(last) && now - last >= followUpDays * 86400000;\n  });\n}\n\nfunction buildFollowUpRequest(row, n, s) {\n  const system = [\n    `You write follow-up emails for ${s.businessName}. ${s.businessDescription}`,\n    `This is follow-up number ${n} to a lead who has not replied. Keep it under 80 words, polite, no pressure, in the lead's language.`,\n    `Remind them of what they asked about and offer the booking link: ${s.bookingLink}. Sign as \"${s.senderName}\".`,\n    'Answer with JSON only: {\"subject\":\"...\",\"reply\":\"plain text email body\"}',\n  ].join(\"\\n\");\n  const user = JSON.stringify({ name: row.name, company: row.company, original_message: row.message, summary: row.summary });\n  return {\n    model: s.openAiModel,\n    temperature: 0.5,\n    response_format: { type: \"json_object\" },\n    messages: [{ role: \"system\", content: system }, { role: \"user\", content: user }],\n  };\n}\n\nconst s = $('Settings').first().json;\nconst input = $input.all();\nconst index = new Map(input.map((it, i) => [it.json, i]));\nconst rows = input.map((i) => i.json).filter((r) => r.lead_id);\nreturn dueFollowUps(rows, new Date().toISOString(), Number(s.followUpDays), Number(s.maxFollowUps)).map((row) => {\n  const n = Number(row.follow_ups || 0) + 1;\n  return { json: { ...row, follow_up_number: n, request: buildFollowUpRequest(row, n, s) }, pairedItem: { item: index.get(row) } };\n});"
+      },
+      "id": "node-002c",
+      "name": "Leads due a follow-up",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        380,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Settings').first().json.openAiBaseUrl }}/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.request) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "node-002d",
+      "name": "Write follow-up with AI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        600,
+        420
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "function readAiJson(response) {\n  const content = response && response.choices && response.choices[0] && response.choices[0].message && response.choices[0].message.content;\n  if (!content) throw new Error(\"OpenAI returned no answer: \" + JSON.stringify(response).slice(0, 300));\n  try {\n    return JSON.parse(content);\n  } catch {\n    throw new Error(\"OpenAI answer was not valid JSON: \" + content.slice(0, 300));\n  }\n}\n\nconst rows = $('Leads due a follow-up').all();\nreturn $input.all().map((item, i) => {\n  const row = rows[i].json;\n  const ai = readAiJson(item.json);\n  return { json: { lead_id: row.lead_id, email: row.email, follow_ups: row.follow_up_number, last_contact_at: new Date().toISOString(),\n    subject: ai.subject || 'Following up', body: ai.reply || '' }, pairedItem: { item: i } };\n});"
+      },
+      "id": "node-002e",
+      "name": "Follow-up email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        820,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-002f",
+              "leftValue": "={{ $('Settings').first().json.autoSendReplies }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "node-0030",
+      "name": "Send follow-up automatically?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1040,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.body }}",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "={{ $('Settings').first().json.senderName }}"
+        }
+      },
+      "id": "node-0031",
+      "name": "Send follow-up",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1260,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "={{ $json.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.body }}",
+        "options": {
+          "sendTo": "={{ $json.email }}"
+        }
+      },
+      "id": "node-0032",
+      "name": "Draft follow-up",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1260,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((_, i) => {\n  const r = $('Follow-up email').all()[i].json;\n  return { json: { lead_id: r.lead_id, follow_ups: r.follow_ups, last_contact_at: r.last_contact_at }, pairedItem: { item: i } };\n});"
+      },
+      "id": "node-0033",
+      "name": "Follow-up update",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1480,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Settings').first().json.googleSheetUrl }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Leads"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "lead_id"
+          ],
+          "schema": []
+        },
+        "options": {
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "node-0034",
+      "name": "Record follow-up",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1700,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Settings').first().json.googleSheetUrl }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Leads"
+        },
+        "options": {}
+      },
+      "id": "node-0035",
+      "name": "Read leads (replies)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        160,
+        680
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "function emailAddress(from) {\n  const text = String(from || \"\");\n  const m = text.match(/<([^>]+)>/) || text.match(/([^\\s<>\"]+@[^\\s<>\"]+)/);\n  return m ? m[1].trim().toLowerCase() : \"\";\n}\n\nconst senders = new Set($('Lead replied by email').all().map((m) => emailAddress(m.json.From || m.json.from)));\nconst now = new Date().toISOString();\nreturn $input.all()\n  .map((item, i) => ({ row: item.json, i }))\n  .filter(({ row }) => row.lead_id && row.email && senders.has(String(row.email).toLowerCase()) && String(row.status).toLowerCase() === 'contacted')\n  .map(({ row, i }) => ({ json: { lead_id: row.lead_id, status: 'replied', replied_at: now, name: row.name, email: row.email }, pairedItem: { item: i } }));"
+      },
+      "id": "node-0036",
+      "name": "Match replies to leads",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        380,
+        680
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Settings').first().json.googleSheetUrl }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Leads"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "lead_id"
+          ],
+          "schema": []
+        },
+        "options": {
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "node-0037",
+      "name": "Mark lead as replied",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        600,
+        680
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Settings').first().json.teamEmail }}",
+        "subject": "=Lead replied: {{ $('Match replies to leads').item.json.name || $('Match replies to leads').item.json.email }}",
+        "emailType": "text",
+        "message": "={{ $('Match replies to leads').item.json.name }} ({{ $('Match replies to leads').item.json.email }}) replied. Follow-ups for this lead have stopped. Check your inbox to continue the conversation.",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "={{ $('Settings').first().json.senderName }}"
+        }
+      },
+      "id": "node-0038",
+      "name": "Tell team about reply",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        820,
+        680
+      ]
+    }
+  ],
+  "connections": {
+    "New lead form": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Website or ads webhook": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Facebook Lead Ads": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every weekday at 9:00": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead replied by email": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Route",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route": {
+      "main": [
+        [
+          {
+            "node": "Normalize lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Read leads",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Read leads (replies)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize lead": {
+      "main": [
+        [
+          {
+            "node": "Has an email?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has an email?": {
+      "main": [
+        [
+          {
+            "node": "Qualify lead with AI",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Lead row (no email)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qualify lead with AI": {
+      "main": [
+        [
+          {
+            "node": "Lead row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead row": {
+      "main": [
+        [
+          {
+            "node": "Save lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save lead": {
+      "main": [
+        [
+          {
+            "node": "Send automatically?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send automatically?": {
+      "main": [
+        [
+          {
+            "node": "Send first reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Draft first reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send first reply": {
+      "main": [
+        [
+          {
+            "node": "Hot lead?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft first reply": {
+      "main": [
+        [
+          {
+            "node": "Hot lead?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hot lead?": {
+      "main": [
+        [
+          {
+            "node": "Alert team about hot lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead row (no email)": {
+      "main": [
+        [
+          {
+            "node": "Save lead (no email)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save lead (no email)": {
+      "main": [
+        [
+          {
+            "node": "Ask team to call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read leads": {
+      "main": [
+        [
+          {
+            "node": "Leads due a follow-up",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leads due a follow-up": {
+      "main": [
+        [
+          {
+            "node": "Write follow-up with AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write follow-up with AI": {
+      "main": [
+        [
+          {
+            "node": "Follow-up email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Follow-up email": {
+      "main": [
+        [
+          {
+            "node": "Send follow-up automatically?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send follow-up automatically?": {
+      "main": [
+        [
+          {
+            "node": "Send follow-up",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Draft follow-up",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send follow-up": {
+      "main": [
+        [
+          {
+            "node": "Follow-up update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft follow-up": {
+      "main": [
+        [
+          {
+            "node": "Follow-up update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Follow-up update": {
+      "main": [
+        [
+          {
+            "node": "Record follow-up",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read leads (replies)": {
+      "main": [
+        [
+          {
+            "node": "Match replies to leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Match replies to leads": {
+      "main": [
+        [
+          {
+            "node": "Mark lead as replied",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark lead as replied": {
+      "main": [
+        [
+          {
+            "node": "Tell team about reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
