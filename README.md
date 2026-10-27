@@ -1,48 +1,123 @@
 # Ranime Jemal Agency — AI Automation Marketplace
 
-Website for a marketplace where automation creators sell reusable n8n workflows and businesses personalize them.
+A two-sided marketplace for AI automations and n8n workflows:
 
-The pages are built on an exported Webflow template. Its stylesheet, animations (GSAP, Lenis, Unicorn Studio, Spline) and custom scripts are loaded from their original CDNs, so the site needs an internet connection to look right.
+- **First-party store** — products sold by Ranime Jemal Agency (labelled “Platform product”, no seller commission).
+- **Third-party marketplace** — approved creators sell their own products; the platform keeps a configurable commission (default 20%).
 
-## Pages
+The MVP sells **downloadable n8n workflow templates with guided customization**. Hosted execution is deliberately not built
+(see “Not built yet”).
 
-| File | Content |
+## Stack
+
+| Part | Choice |
 |---|---|
-| `index.html` | Home: hero, product vision, supported apps, categories, popular automations, how it works, contact chatbot |
-| `explore.html` | All automations with category, app, price and difficulty filters (template portfolio page) |
-| `products/<slug>.html` | One page per automation with pricing and FAQ (template service page) |
-| `how-it-works.html`, `sell.html`, `platform.html` | Tabbed FAQ-style pages (template FAQ page) |
-| `product.html` | Redirects old `product.html?p=<slug>` links to `products/<slug>.html` |
+| App | Next.js 15 (App Router, server actions), TypeScript, plain CSS design system (`app/globals.css`) |
+| Auth, database, files | Supabase (project `rja-marketplace`, region eu-west-3 Paris): Auth, Postgres, private storage |
+| Payments | Provider-neutral interface (`lib/payments/types.ts`) with a Stripe adapter (`lib/payments/stripe.ts`) |
+| Tests | Vitest (`tests/`), SQL tests on a throwaway local Postgres (`supabase/tests/`) |
 
-Every page is generated from its matching template page and keeps that page's own scripts and
-Webflow interaction bundle, so the animations behave exactly like the template.
+## How the important rules are enforced
 
-## Products and prices
+Money, publishing and roles are enforced **inside Postgres** (security-definer functions + row-level security), so the browser
+can never set a price, a commission, a role, a payment status or a seller identity.
 
-All products live in `PRODUCTS` in `assets/js/catalog.js`. Each entry sets its four prices in USD:
-`download` and `guided` (one-time), `hosted` (monthly, on top of the download price), and `custom` (starting price).
-The homepage "Popular automations" section shows four products marked `featured: true`.
+- **Prices & commission**: `create_order()` reads prices from `products` and the commission from settings / seller override,
+  and stores price, currency, rate, commission and seller share on each `order_items` row. Historical earnings never use the current setting.
+- **Platform vs third-party**: platform-owned items always get a 0% rate (also enforced by a check constraint).
+- **Payments**: only `finalize_paid_order()` (service role, called by the signed webhook) marks an order paid, creates
+  ledger entries and entitlements. It is idempotent per provider event id; a wrong amount marks the order failed.
+  A browser redirect to the success page grants nothing.
+- **Ledger**: `ledger_entries` is append-only (updates and deletes are rejected). Sales, commission, processing fees,
+  refunds, commission reversals and payouts are separate entry types.
+- **Refunds**: reverse seller share and commission in proportion to the original split and revoke access (`apply_refund()`, idempotent).
+- **Payouts**: manual for now. A payout reaches `paid` only when an admin enters the transfer reference.
+- **Publishing**: `change_product_status()` allows sellers only draft → submitted and approved → published, and only after
+  accepting the current seller agreement, confirming distribution rights and uploading a workflow file. Approval is admin-only.
+- **Files**: private bucket; downloads go through `/api/downloads/[id]`, which checks the entitlement server-side and
+  redirects to a 60-second signed URL. Uploads are type/size/content-checked and n8n JSON is scanned (`lib/workflow-scan.ts`)
+  for hard-coded secrets, embedded credentials, shell commands, risky code, exfiltration hosts and pinned data. Workflows are never executed.
+- **Customization**: buyers can only set the fields declared in the product’s manifest (`lib/manifest.ts`), validated in the
+  browser and again on the server. Unknown keys are rejected.
+- **Audit**: admin, seller-agreement, payment, refund and payout actions are written to the append-only `audit_logs`.
 
-The pages and the product and category images are generated from the catalog. After changing a product, rebuild
-(`TEMPLATE` is the folder of the exported template, the one containing `index.html`, `faq.html` and `services/`):
+## Run locally
 
 ```sh
-node tools/catalog_data.js assets/js/catalog.js > /tmp/catalog.json
-python3 tools/gen_images.py assets/images /tmp/catalog.json
-python3 tools/svgs.py   # run from the folder that contains zip/ — writes svgs.json
-python3 tools/build_site.py "$TEMPLATE/index.html" /tmp/catalog.json svgs.json src .
-python3 tools/build_site2.py "$TEMPLATE" /tmp/catalog.json .
+npm install
+cp .env.example .env.local        # then fill in the server-only values
+npm run dev                       # http://localhost:3000
 ```
 
-Inner-page text lives in `tools/content.py`.
+Checks:
 
-## Brand
+```sh
+npm run typecheck && npm run lint && npm test   # unit tests
+npm run test:db                                 # migrations + 59 SQL tests on a local Postgres 16
+npm run build
+```
 
-- Logo: `assets/images/rja-logo-white.png` / `rja-logo-black.png`, favicon `rja-favicon.png`
-- Styles added on top of the template: `assets/css/rja.css`
+### Environment variables
 
-## Contact
+| Variable | Where | Needed for |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | public | everything (already in `.env.example`) |
+| `NEXT_PUBLIC_SITE_URL` | public | auth email links, Stripe return URLs |
+| `SUPABASE_SERVICE_ROLE_KEY` | **server only** | uploads, downloads, configuration saves, newsletter, refunds, payment webhooks |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | **server only** | paid checkout and webhooks |
 
-Email ranimejmal@gmail.com · +216 97 017 061 · +33 6 24 97 99 41 · [Instagram](https://www.instagram.com/ranimejemalagency/)
+Without the server keys the site still works for browsing, accounts, seller applications, reviews and admin moderation;
+features that need them are disabled with a clear message (nothing is faked).
 
-The homepage chatbot collects the visitor's details and opens their email app with a message addressed to ranimejmal@gmail.com.
+## First-time setup
+
+1. **Supabase Auth**: in the dashboard set *Site URL* to your domain and add `<site>/auth/callback` to the redirect URLs.
+2. **Make yourself admin**: sign up on the site, then run in the Supabase SQL editor:
+   ```sql
+   insert into user_roles (user_id, role)
+   select id, 'admin' from auth.users where email = 'ranimejmal@gmail.com';
+   ```
+3. Open **Admin → Platform store** and click *Manage the platform store*: your account now owns the first-party store
+   (it currently holds demo products).
+4. **Stripe** (France/EU): create the account, add the keys, and point a webhook at `<site>/api/webhooks/stripe` with events
+   `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`,
+   `checkout.session.expired`, `refund.created`, `refund.updated`.
+5. Replace the **draft legal documents** (table `agreements`, all marked `0.1-draft`) with lawyer-reviewed versions:
+   insert a new version and set it as current; sellers are asked to accept the new seller agreement.
+
+## Database
+
+Migrations are in `supabase/migrations/` and are applied to the `rja-marketplace` project. The demo catalog
+(`…_demo_catalog.sql`) inserts 11 products and two demo creators, all flagged `is_demo`: they are labelled
+“Demo data” and cannot be purchased. Delete them before launch:
+
+```sql
+delete from product_versions where product_id in (select id from products where is_demo);
+delete from products where is_demo;
+delete from seller_profiles where is_demo and not is_platform;
+```
+
+## Not built yet / needs a decision
+
+- **Payouts are manual** (admin enters the bank-transfer reference). Automated Stripe Connect payouts need a Connect
+  platform account, seller onboarding (KYC) and a decision on charge type; the `payout_method` field is ready for it.
+- **Invoices/VAT**: receipts are purchase records, not tax invoices. EU VAT on digital products (OSS) needs Stripe Tax or an accountant’s setup.
+- **Hosted automations** (phase 3) are intentionally absent: no workflow is executed and no status claims a workflow is running.
+- **n8n licensing**: selling downloadable workflow files is generally fine, but operating hosted n8n for customers falls
+  under n8n’s Sustainable Use License restrictions — verify with n8n before building hosted features.
+- **Legal documents** are drafts and must be reviewed for France/EU (and any other country you sell to).
+- **Rate limiting** is in-memory per server instance; use a shared store if you run several instances.
+- **Email notifications** (application decisions, sales, payouts) are not sent yet; Supabase Auth sends account emails only.
+- **Design**: the app recreates the template’s visual language (fonts, palette, labels, motion). The exact Webflow stylesheet and
+  animations are not included because their host is blocked in this environment.
+
+## Repository layout
+
+```
+app/                Next.js routes (public pages, /dashboard buyer, /seller, /admin, /api)
+components/         UI components (product card, config form, dialogs, …)
+lib/                domain logic: catalog, manifest, workflow scan, files, money, payments, auth
+supabase/           migrations and SQL tests
+tests/              unit tests
+static-site/        previous static website (reference only)
+```

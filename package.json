@@ -1,28 +1,31 @@
 {
-  "name": "rja",
-  "version": "1.0.0",
-  "description": "Website for a marketplace where automation creators sell reusable n8n workflows and businesses personalize them.",
-  "main": "index.js",
+  "name": "rja-marketplace",
+  "version": "0.1.0",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:db": "sh supabase/tests/run.sh"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ranimejemal/rja.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "bugs": {
     "url": "https://github.com/ranimejemal/rja/issues"
   },
   "homepage": "https://github.com/ranimejemal/rja#readme",
   "dependencies": {
+    "@eslint/eslintrc": "^3.3.7",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.118.0",
     "next": "^15.5.28",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "server-only": "^0.0.1",
     "stripe": "^23.0.1",
     "zod": "^4.6.7"
   },
@@ -34,5 +37,6 @@
     "eslint-config-next": "^15.5.28",
     "typescript": "^6.0.3",
     "vitest": "^5.0.5"
-  }
+  },
+  "private": true
 }
