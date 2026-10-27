@@ -236,14 +236,15 @@ function escapeHtml(s) {
   });
 }
 
+// Tiles are generated per product into assets/images/product-<slug>.jpg.
+function productImage(p) { return "assets/images/product-" + p.slug + ".jpg"; }
+
 function productCard(p) {
   var a = document.createElement("a");
   a.className = "product-card";
   a.href = "product.html?p=" + p.slug;
   a.innerHTML =
-    '<div class="product-card__visual"><div class="flow">' +
-    p.flow.slice(0, 3).map(function (n) { return '<span class="flow__node">' + escapeHtml(n) + "</span>"; }).join('<span class="flow__arrow">→</span>') +
-    "</div></div>" +
+    '<div class="product-card__visual"><img src="' + productImage(p) + '" alt="" loading="lazy"></div>' +
     '<div class="product-card__body">' +
     '<div class="tags"><span class="tag">' + escapeHtml(p.category) + '</span><span class="tag">' + escapeHtml(p.difficulty) + "</span></div>" +
     '<h3 class="h-s">' + escapeHtml(p.name) + "</h3>" +
@@ -253,20 +254,6 @@ function productCard(p) {
     "</div>";
   return a;
 }
-
-// Homepage listings
-(function () {
-  var popular = document.querySelector("[data-popular]");
-  if (popular) PRODUCTS.filter(function (p) { return p.featured; }).slice(0, 3).forEach(function (p) { popular.appendChild(productCard(p)); });
-  var recent = document.querySelector("[data-recent]");
-  if (recent) PRODUCTS.slice(-3).reverse().forEach(function (p) { recent.appendChild(productCard(p)); });
-  document.querySelectorAll("[data-category-count]").forEach(function (el) {
-    var cat = el.getAttribute("data-category-count");
-    var n = PRODUCTS.filter(function (p) { return p.category === cat; }).length;
-    el.textContent = n + (n === 1 ? " automation" : " automations") + " →";
-  });
-  document.querySelectorAll("[data-product-count]").forEach(function (el) { el.textContent = PRODUCTS.length; });
-})();
 
 // Product detail page
 (function () {
@@ -302,11 +289,12 @@ function productCard(p) {
   list("doesNot", p.doesNot);
   tags("integrations", p.integrations);
 
+  var image = root.querySelector("[data-image]");
+  if (image) { image.src = productImage(p); image.alt = p.name; }
+
   var crumb = root.querySelector("[data-category-link]");
   if (crumb) crumb.href = "explore.html?category=" + encodeURIComponent(p.category);
 
-  var flow = root.querySelector("[data-flow]");
-  if (flow) flow.innerHTML = p.flow.map(function (n) { return '<span class="flow__node">' + escapeHtml(n) + "</span>"; }).join('<span class="flow__arrow">→</span>');
 
   var priceLabels = {
     download: formatPrice(p.prices.download) + " one-time",
