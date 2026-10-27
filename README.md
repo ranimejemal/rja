@@ -7,15 +7,21 @@ Static website for a marketplace where automation creators sell reusable n8n wor
 | File | Content |
 |---|---|
 | `index.html` | Home: hero + search, product vision, categories, popular automations, how it works, seller recruitment, trust |
-| `explore.html` | Search and filters (price, delivery type, supported apps, difficulty, rating) |
-| `product.html` | Example product: AI Lead Management Assistant, with purchase options |
+| `explore.html` | Search and filters (price, supported apps, difficulty) |
+| `product.html` | Product detail template, filled from the catalog via `product.html?p=<slug>` |
 | `how-it-works.html` | Buyer journey, checkout flow, My Automations statuses, configuration wizard |
 | `sell.html` | Seller journey, Customization Builder, pre-publish testing, seller dashboard |
 | `platform.html` | Roles, administration, information architecture, product rules, launch plan |
 
-## Adding products
+## Products and prices
 
-Add entries to `PRODUCTS` in `assets/js/catalog.js`. They appear on the Explore page and are searchable by name, category, use case, and integration.
+All products live in `PRODUCTS` in `assets/js/catalog.js`. Each entry sets its four prices in USD:
+`download` and `guided` (one-time), `hosted` (monthly, on top of the download price), and `custom` (starting price).
+Products marked `featured: true` show under Popular automations on the homepage; the last three entries show as Recently published.
+
+## Contact
+
+Email ranimejmal@gmail.com · +216 97 017 061 · +33 6 24 97 99 41 · [Instagram](https://www.instagram.com/ranimejemalagency/)
 
 ## Running locally
 

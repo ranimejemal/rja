@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Explore Automations | Ranime Jemal Agency</title>
-<meta name="description" content="Search automations by product name, category, use case, or supported integration. Filter by price, delivery type, supported apps, difficulty, and rating.">
+<meta name="description" content="Search automations by product name, category, use case, or supported integration. Filter by price, supported apps, and difficulty.">
 <meta property="og:title" content="Explore Automations | Ranime Jemal Agency">
-<meta property="og:description" content="Search automations by product name, category, use case, or supported integration. Filter by price, delivery type, supported apps, difficulty, and rating.">
+<meta property="og:description" content="Search automations by product name, category, use case, or supported integration. Filter by price, supported apps, and difficulty.">
 <meta property="og:type" content="website">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -25,6 +25,7 @@
       <div class="header-btn__group">
         <a href="explore.html" class="link-block is--hide-mobile">Explore</a>
         <a href="sell.html" class="link-block is--hide-mobile">Sell an automation</a>
+        <a href="index.html#contact" class="link-block">Contact</a>
         <button class="menu-button" data-menu-toggle aria-label="Open menu" aria-expanded="false">
           <span class="menu-button-line"></span><span class="menu-button-line"></span><span class="menu-button-line"></span>
         </button>
@@ -40,6 +41,7 @@
       <li class="menu-list__item"><a class="menu-list__link" href="how-it-works.html">How It Works <small>03</small></a></li>
       <li class="menu-list__item"><a class="menu-list__link" href="sell.html">Become a Seller <small>04</small></a></li>
       <li class="menu-list__item"><a class="menu-list__link" href="platform.html">Platform &amp; Trust <small>05</small></a></li>
+      <li class="menu-list__item"><a class="menu-list__link" href="index.html#contact">Contact <small>06</small></a></li>
     </ul>
   </nav>
 </div>
@@ -65,25 +67,13 @@
           <span class="heading-tag">(Price)</span>
           <select data-filter="price" aria-label="Price">
             <option value="">Any price</option>
-            <option value="free">Free</option>
-            <option value="under-50">Under 50</option>
-            <option value="50-200">50 – 200</option>
-            <option value="over-200">Over 200</option>
+            <option value="100-150">$100 – $150</option>
+            <option value="150-250">$150 – $250</option>
+            <option value="over-250">Over $250</option>
           </select>
         </div>
-        <div class="filter-group">
-          <span class="heading-tag">(Delivery type)</span>
-          <label class="check"><input type="checkbox" data-filter="delivery" value="Download"> Download</label>
-          <label class="check"><input type="checkbox" data-filter="delivery" value="Guided setup"> Guided setup</label>
-          <label class="check"><input type="checkbox" data-filter="delivery" value="Hosted automation"> Hosted automation</label>
-          <label class="check"><input type="checkbox" data-filter="delivery" value="Custom implementation"> Custom implementation</label>
-        </div>
-        <div class="filter-group">
+        <div class="filter-group" data-apps>
           <span class="heading-tag">(Supported apps)</span>
-          <label class="check"><input type="checkbox" data-filter="apps" value="Email"> Email</label>
-          <label class="check"><input type="checkbox" data-filter="apps" value="Website forms"> Website forms</label>
-          <label class="check"><input type="checkbox" data-filter="apps" value="Google Sheets"> Google Sheets</label>
-          <label class="check"><input type="checkbox" data-filter="apps" value="CRM"> CRM</label>
         </div>
         <div class="filter-group">
           <span class="heading-tag">(Difficulty)</span>
@@ -94,19 +84,11 @@
             <option value="Advanced">Advanced</option>
           </select>
         </div>
-        <div class="filter-group">
-          <span class="heading-tag">(Customer rating)</span>
-          <select data-filter="rating" aria-label="Customer rating">
-            <option value="">Any rating</option>
-            <option value="4">4 stars &amp; up</option>
-            <option value="3">3 stars &amp; up</option>
-          </select>
-        </div>
       </aside>
       <div>
         <div class="results-meta">
           <span class="heading-tag" data-results-count>—</span>
-          <span class="p-tiny muted">Every listing states what it does, what it does not do, and its n8n compatibility.</span>
+          <span class="p-tiny muted">Every automation is available as download, guided setup, hosted, or custom implementation.</span>
         </div>
         <div class="grid-2" data-results></div>
       </div>
@@ -142,6 +124,13 @@
         <a href="platform.html#roles">Roles</a>
         <a href="platform.html#architecture">Dashboards</a>
         <a href="platform.html#roadmap">Roadmap</a>
+      </div>
+      <div class="footer__col">
+        <span class="heading-tag">Contact</span>
+        <a href="mailto:ranimejmal@gmail.com">ranimejmal@gmail.com</a>
+        <a href="tel:+21697017061">+216 97 017 061</a>
+        <a href="tel:+33624979941">+33 6 24 97 99 41</a>
+        <a href="https://www.instagram.com/ranimejemalagency/" target="_blank" rel="noopener">Instagram</a>
       </div>
     </div>
     <div class="footer__bottom">

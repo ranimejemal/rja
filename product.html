@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AI Lead Management Assistant | Ranime Jemal Agency</title>
-<meta name="description" content="Receives customer enquiries, categorizes leads, drafts follow-up messages, and records information in a CRM.">
-<meta property="og:title" content="AI Lead Management Assistant | Ranime Jemal Agency">
-<meta property="og:description" content="Receives customer enquiries, categorizes leads, drafts follow-up messages, and records information in a CRM.">
+<title>Automation | Ranime Jemal Agency</title>
+<meta name="description" content="Product details, requirements, customization options, and purchase options for an n8n automation by Ranime Jemal Agency.">
+<meta property="og:title" content="Automation | Ranime Jemal Agency">
+<meta property="og:description" content="Product details, requirements, customization options, and purchase options for an n8n automation by Ranime Jemal Agency.">
 <meta property="og:type" content="website">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -25,6 +25,7 @@
       <div class="header-btn__group">
         <a href="explore.html" class="link-block is--hide-mobile">Explore</a>
         <a href="sell.html" class="link-block is--hide-mobile">Sell an automation</a>
+        <a href="index.html#contact" class="link-block">Contact</a>
         <button class="menu-button" data-menu-toggle aria-label="Open menu" aria-expanded="false">
           <span class="menu-button-line"></span><span class="menu-button-line"></span><span class="menu-button-line"></span>
         </button>
@@ -40,16 +41,18 @@
       <li class="menu-list__item"><a class="menu-list__link" href="how-it-works.html">How It Works <small>03</small></a></li>
       <li class="menu-list__item"><a class="menu-list__link" href="sell.html">Become a Seller <small>04</small></a></li>
       <li class="menu-list__item"><a class="menu-list__link" href="platform.html">Platform &amp; Trust <small>05</small></a></li>
+      <li class="menu-list__item"><a class="menu-list__link" href="index.html#contact">Contact <small>06</small></a></li>
     </ul>
   </nav>
 </div>
 <main>
+<div data-product>
 <section class="product-hero">
   <div class="container">
-    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="explore.html">Explore</a><span>/</span><a href="explore.html?category=Sales+and+lead+generation">Sales and lead generation</a><span>/</span><span>AI Lead Management Assistant</span></nav>
-    <div class="tags" style="margin-bottom:1.5em"><span class="tag is--accent">Example product</span><span class="tag">Sales and lead generation</span></div>
-    <h1 class="h-display" style="max-width:11em">AI Lead Management <span class="serif">Assistant</span></h1>
-    <p class="p-large muted max-60 u-mt">Receives customer enquiries, categorizes leads, drafts follow-up messages, and records information in a CRM.</p>
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="explore.html">Explore</a><span>/</span><a href="explore.html" data-category-link data-field="category"></a><span>/</span><span data-field="name"></span></nav>
+    <div class="tags" style="margin-bottom:1.5em"><span class="tag is--accent">By Ranime Jemal Agency</span><span class="tag" data-field="category"></span><span class="tag" data-field="difficulty"></span></div>
+    <h1 class="h-display" style="max-width:11em" data-field="name"></h1>
+    <p class="p-large muted max-60 u-mt" data-field="summary"></p>
   </div>
 </section>
 
@@ -58,64 +61,62 @@
     <div class="product-layout">
       <div class="stack" style="gap:4em">
         <div class="product-card__visual" style="border-radius:1.25em;border:1px solid var(--line)">
-          <div class="flow" style="font-size:0.85em;flex-wrap:wrap;justify-content:center;padding:1em">
-            <span class="flow__node">Enquiry</span><span class="flow__arrow">→</span>
-            <span class="flow__node">Categorize lead</span><span class="flow__arrow">→</span>
-            <span class="flow__node">Draft follow-up</span><span class="flow__arrow">→</span>
-            <span class="flow__node">Record in CRM</span>
-          </div>
+          <div class="flow" data-flow style="font-size:0.85em;flex-wrap:wrap;justify-content:center;padding:1em"></div>
         </div>
 
         <div class="stack">
           <span class="heading-tag">(Business problem solved)</span>
-          <p class="p-large">Customer enquiries need to be sorted, answered, and recorded. This automation categorizes each lead, drafts a follow-up message, and records the information in a CRM.</p>
+          <p class="p-large" data-field="problem"></p>
         </div>
 
         <div class="stack">
           <span class="heading-tag">(Product details)</span>
           <ul class="spec-list">
-            <li><span>Seller</span><span>Seller profile</span></li>
-            <li><span>Demonstration</span><span>Live or recorded demonstration provided by the seller.</span></li>
-            <li><span>Example input / output</span><span>A customer enquiry in; a categorized lead, a drafted follow-up message, and a CRM record out.</span></li>
-            <li><span>Workflow overview</span><span>Receive enquiry → categorize lead → draft follow-up → record in CRM → notify team.</span></li>
-            <li><span>Supported integrations</span><span><span class="tags"><span class="tag">Email</span><span class="tag">Website forms</span><span class="tag">Google Sheets</span><span class="tag">CRM</span></span><span class="p-tiny muted" style="display:block;margin-top:0.6em">Only integrations that have been implemented and tested are listed.</span></span></li>
-            <li><span>Required accounts</span><span>Accounts and subscriptions for each connected application.</span></li>
-            <li><span>Technical requirements</span><span>Supported n8n version and minimum technical requirements, as stated by the seller.</span></li>
-            <li><span>Customization options</span><span>Business name, response language, brand voice, CRM integration, lead qualification threshold.</span></li>
-            <li><span>License &amp; usage rights</span><span>Explicit license and entitlement granted with every purchase.</span></li>
-            <li><span>Installation difficulty</span><span>Stated by the seller.</span></li>
-            <li><span>Update policy</span><span>Product updates do not silently break existing installations.</span></li>
-            <li><span>Support policy</span><span>Defined by the seller, including support boundaries.</span></li>
+            <li><span>Seller</span><span>Ranime Jemal Agency</span></li>
+            <li><span>Demonstration</span><span>Recorded demonstration available on request — <a href="mailto:ranimejmal@gmail.com" style="text-decoration:underline">ask for a demo</a>.</span></li>
+            <li><span>Example input</span><span data-field="input"></span></li>
+            <li><span>Example output</span><span data-field="output"></span></li>
+            <li><span>Workflow overview</span><span data-field="workflow"></span></li>
+            <li><span>Supported integrations</span><span><span class="tags" data-tags="integrations"></span><span class="p-tiny muted" style="display:block;margin-top:0.6em">Only integrations that have been implemented and tested are listed.</span></span></li>
+            <li><span>Required accounts</span><span data-field="accounts"></span></li>
+            <li><span>Technical requirements</span><span>n8n 1.x (self-hosted or n8n Cloud). Not needed with the hosted option.</span></li>
+            <li><span>Customization options</span><span data-field="customization"></span></li>
+            <li><span>Installation difficulty</span><span data-field="difficulty"></span></li>
+            <li><span>License &amp; usage rights</span><span>Single-business license. Use in your own business; no resale or redistribution of the workflow.</span></li>
+            <li><span>Update policy</span><span>Updates included. Product updates do not silently break existing installations.</span></li>
+            <li><span>Support policy</span><span>Email support for installation questions. Guided setup includes configuration assistance.</span></li>
           </ul>
         </div>
 
         <div class="stack">
           <span class="heading-tag">(Capabilities)</span>
           <div class="grid-2">
-            <div class="card"><h3 class="h-s">What it does</h3><ul><li>Categorizes enquiries</li><li>Summarizes customer messages</li><li>Drafts responses</li><li>Creates CRM records</li><li>Notifies team members</li></ul></div>
-            <div class="card"><h3 class="h-s">What it does not do</h3><ul><li>Claim support for integrations that have not been implemented and tested</li><li>Send consequential messages without the approval controls you configure</li></ul></div>
+            <div class="card"><h3 class="h-s">What it does</h3><ul data-list="does"></ul></div>
+            <div class="card"><h3 class="h-s">What it does not do</h3><ul data-list="doesNot"></ul></div>
           </div>
         </div>
 
         <div class="stack">
           <span class="heading-tag">(Reviews from verified buyers)</span>
-          <div class="empty-state"><p>Only buyers who purchased this automation can leave a review.</p></div>
+          <div class="empty-state"><p>No reviews yet. Only buyers who purchased this automation can leave a review.</p></div>
         </div>
       </div>
 
       <aside class="buy-box" aria-label="Purchase options">
         <span class="heading-tag">(Choose a purchase option)</span>
-        <label class="option"><input type="radio" name="delivery" checked><div><strong>Download</strong><span>Workflow template and setup guide.</span></div></label>
-        <label class="option"><input type="radio" name="delivery"><div><strong>Guided setup</strong><span>The template plus configuration assistance.</span></div></label>
-        <label class="option"><input type="radio" name="delivery"><div><strong>Hosted automation</strong><span>Run the workflow on the platform, if the seller offers a hosted version.</span></div></label>
-        <label class="option"><input type="radio" name="delivery"><div><strong>Custom implementation</strong><span>Request additional development from the seller.</span></div></label>
-        <div class="note">You see the complete price before checkout, with one-time and recurring fees clearly separated, plus required third-party accounts and possible usage charges.</div>
-        <a href="how-it-works.html#checkout" class="button is--accent" style="justify-content:center">Continue to checkout</a>
-        <p class="p-tiny muted">License and refund conditions are available before payment. Access is granted only after server-side payment confirmation.</p>
+        <label class="option"><input type="radio" name="delivery" value="download" checked><div><strong>Download</strong><span>Workflow template and setup guide.</span><em data-field="price-download"></em></div></label>
+        <label class="option"><input type="radio" name="delivery" value="guided"><div><strong>Guided setup</strong><span>The template plus configuration assistance.</span><em data-field="price-guided"></em></div></label>
+        <label class="option"><input type="radio" name="delivery" value="hosted"><div><strong>Hosted automation</strong><span>We run the workflow for you.</span><em data-field="price-hosted"></em></div></label>
+        <label class="option"><input type="radio" name="delivery" value="custom"><div><strong>Custom implementation</strong><span>Additional development tailored to your business.</span><em data-field="price-custom"></em></div></label>
+        <div class="buy-box__total"><span class="heading-tag">Total</span><strong data-total></strong></div>
+        <div class="note">One-time and monthly fees are shown separately. Third-party accounts (and any usage charges they carry) are billed by those providers.</div>
+        <a href="mailto:ranimejmal@gmail.com" data-buy class="button is--accent" style="justify-content:center">Order by email</a>
+        <p class="p-tiny muted">Or call <a href="tel:+21697017061">+216 97 017 061</a> · <a href="tel:+33624979941">+33 6 24 97 99 41</a>. Access is granted once payment is confirmed.</p>
       </aside>
     </div>
   </div>
 </section>
+</div>
 </main>
 <footer class="footer">
   <div class="container">
@@ -145,6 +146,13 @@
         <a href="platform.html#architecture">Dashboards</a>
         <a href="platform.html#roadmap">Roadmap</a>
       </div>
+      <div class="footer__col">
+        <span class="heading-tag">Contact</span>
+        <a href="mailto:ranimejmal@gmail.com">ranimejmal@gmail.com</a>
+        <a href="tel:+21697017061">+216 97 017 061</a>
+        <a href="tel:+33624979941">+33 6 24 97 99 41</a>
+        <a href="https://www.instagram.com/ranimejemalagency/" target="_blank" rel="noopener">Instagram</a>
+      </div>
     </div>
     <div class="footer__bottom">
       <p class="p-small">© <span data-year>2026</span> Ranime Jemal Agency. AI Automation Marketplace.</p>
@@ -153,5 +161,6 @@
   </div>
 </footer>
 <script src="assets/js/main.js" defer></script>
+<script src="assets/js/catalog.js" defer></script>
 </body>
 </html>
