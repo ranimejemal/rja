@@ -22,8 +22,8 @@ export default async function PricingPage() {
     <section className="section">
       <div className="container stack" style={{ "--gap": "3.5rem" } as React.CSSProperties}>
         <div className="stack">
-          <span className="tag">(Pricing &amp; licensing)</span>
-          <h1 className="h1">Clear prices, <span className="serif">clear rights.</span></h1>
+          <span className="tag" data-scramble-loop="">(Pricing &amp; licensing)</span>
+          <h1 className="h1" data-split="rolling">Clear prices, <span className="serif">clear rights.</span></h1>
           <p className="lead">Every product page shows the full price, the license you get and the third-party costs to expect — before you pay.</p>
         </div>
 

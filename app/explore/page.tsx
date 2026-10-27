@@ -3,6 +3,9 @@ import Link from "next/link";
 import { listCategories, listIntegrations, listProducts, parseFilters } from "@/lib/catalog";
 import { createClient } from "@/lib/supabase/server";
 import { ProductGrid } from "@/components/ProductCard";
+import { PreviewList } from "@/components/PreviewList";
+import { formatMoney } from "@/lib/money";
+import { thumbnailUrl } from "@/lib/catalog";
 import { EmptyState } from "@/components/ui";
 
 export const metadata: Metadata = { title: "Explore automations" };
@@ -17,19 +20,22 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
     listIntegrations(),
     supabase.from("seller_profiles").select("slug, display_name").eq("status", "approved").order("display_name"),
   ]);
+  const view = sp.view === "list" ? "list" : "grid";
+  const viewHref = (v: string) => { const q = new URLSearchParams(Object.entries(sp).filter(([k, val]) => k !== "view" && typeof val === "string") as [string, string][]); if (v === "list") q.set("view", "list"); return `/explore${q.size ? `?${q}` : ""}`; };
   const active = Object.entries(f).filter(([k, v]) => v && !(k === "sort" && v === "popular")).length;
 
   return (
     <>
       <section className="hero" style={{ paddingBottom: "2.5rem" }}>
         <div className="container stack">
-          <span className="tag">(Explore automations)</span>
-          <h1 className="h1">What do you want to <span className="serif accent">automate?</span></h1>
+          <span className="tag" data-scramble-loop="">(Explore automations)</span>
+          <h1 className="h1" data-split="rolling">What do you want to <span className="serif accent">automate?</span></h1>
         </div>
       </section>
       <section className="section tight">
         <div className="container split sidebar">
           <form className="stack" action="/explore" aria-label="Filters" style={{ "--gap": "1.1rem" } as React.CSSProperties}>
+            {view === "list" && <input type="hidden" name="view" value="list" />}
             <div className="field">
               <label htmlFor="q">Search</label>
               <input id="q" name="q" defaultValue={f.q} placeholder="Name, use case or app" />
@@ -116,9 +122,21 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
             </div>
           </form>
           <div className="stack" style={{ "--gap": "1.25rem" } as React.CSSProperties}>
-            <p className="tag" aria-live="polite">{products.length} {products.length === 1 ? "automation" : "automations"}</p>
+            <div className="row between">
+              <p className="tag" aria-live="polite">{products.length} {products.length === 1 ? "automation" : "automations"}</p>
+              <nav className="view-toggle" aria-label="Layout">
+                <Link href={viewHref("grid")} aria-current={view === "grid"}>Grid</Link>
+                <Link href={viewHref("list")} aria-current={view === "list"}>List</Link>
+              </nav>
+            </div>
             {products.length ? (
-              <ProductGrid products={products} cols={2} />
+              view === "list" ? (
+                <PreviewList rows={products.map((p) => ({
+                  href: `/products/${p.slug}`, name: p.name, seller: p.seller?.display_name ?? "", category: p.category?.name ?? "",
+                  price: p.price_minor ? formatMoney(p.price_minor, p.currency) : "Free", level: p.difficulty,
+                  image: thumbnailUrl(p.thumbnail_path), platform: p.ownership === "platform",
+                }))} />
+              ) : <ProductGrid products={products} cols={2} />
             ) : (
               <EmptyState title="No results" action={<Link className="btn ghost small" href="/explore">Clear filters</Link>}>
                 No automation matches these filters yet.

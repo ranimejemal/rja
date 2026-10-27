@@ -1,35 +1,40 @@
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { Logo } from "./Logo";
-import { MobileNav } from "./client";
+import { SiteMenu } from "./SiteMenu";
 
 export async function SiteHeader() {
   const session = await getSession();
+  const primary = [
+    { href: "/explore", label: "Explore" },
+    { href: "/categories", label: "Categories" },
+    { href: "/sell", label: "Sell" },
+    { href: "/pricing", label: "Pricing" },
+    { href: "/help", label: "Help" },
+  ];
+  const secondary = session
+    ? [
+        { href: "/dashboard", label: "My automations" },
+        ...(session.roles.includes("seller") ? [{ href: "/seller", label: "Seller dashboard" }] : []),
+        ...(session.roles.includes("admin") ? [{ href: "/admin", label: "Admin" }] : []),
+      ]
+    : [{ href: "/login", label: "Log in" }, { href: "/signup", label: "Sign up" }];
   return (
     <header className="site-header">
-      <div className="container" style={{ position: "relative" }}>
+      <div className="container">
         <Link href="/" className="logo" aria-label="Ranime Jemal Agency — home"><Logo /></Link>
-        <MobileNav>
-          <Link href="/explore">Explore</Link>
-          <Link href="/categories">Categories</Link>
-          <Link href="/pricing">Pricing &amp; licensing</Link>
-          <Link href="/sell">Sell</Link>
+        <div className="header-actions">
+          <Link href="/explore" className="link-block hide-sm" data-scramble-hover=""><span data-scramble-target="">explore</span></Link>
           {session ? (
             <>
-              <Link href="/dashboard">My automations</Link>
-              {session.roles.includes("seller") && <Link href="/seller">Seller</Link>}
-              {session.roles.includes("admin") && <Link href="/admin">Admin</Link>}
-              <form action="/auth/signout" method="post">
-                <button className="btn ghost small" type="submit">Sign out</button>
-              </form>
+              <Link href="/dashboard" className="link-block hide-sm" data-scramble-hover=""><span data-scramble-target="">my automations</span></Link>
+              <form action="/auth/signout" method="post" className="hide-sm"><button className="link-block" type="submit">sign out</button></form>
             </>
           ) : (
-            <>
-              <Link href="/login">Log in</Link>
-              <Link href="/signup" className="btn accent small" style={{ color: "var(--accent-ink)" }}>Sign up</Link>
-            </>
+            <Link href="/login" className="link-block" data-scramble-hover=""><span data-scramble-target="">log in</span></Link>
           )}
-        </MobileNav>
+          <SiteMenu primary={primary} secondary={secondary} />
+        </div>
       </div>
     </header>
   );

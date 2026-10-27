@@ -56,9 +56,9 @@ export function EmptyState({ title, children, action }: { title: string; childre
 export function SectionHead({ tag, title, children }: { tag: string; title: ReactNode; children?: ReactNode }) {
   return (
     <div className="section-head">
-      <span className="tag">({tag})</span>
+      <span className="tag" data-scramble-loop="">({tag})</span>
       <div className="stack">
-        <h2 className="h2">{title}</h2>
+        <h2 className="h2" data-split="rolling">{title}</h2>
         {children}
       </div>
     </div>

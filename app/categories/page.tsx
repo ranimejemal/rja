@@ -10,8 +10,8 @@ export default async function CategoriesPage() {
     <section className="section">
       <div className="container stack" style={{ "--gap": "2.5rem" } as React.CSSProperties}>
         <div className="stack">
-          <span className="tag">(Categories)</span>
-          <h1 className="h1">Every part of your <span className="serif">business.</span></h1>
+          <span className="tag" data-scramble-loop="">(Categories)</span>
+          <h1 className="h1" data-split="rolling">Every part of your <span className="serif">business.</span></h1>
         </div>
         <div>
           {categories.map((c) => (

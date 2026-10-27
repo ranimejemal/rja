@@ -62,7 +62,7 @@ export default async function ProductPage({ params }: Params) {
             {p.is_demo && <Badge kind="demo">Demo data — not for sale</Badge>}
             {!published && <Badge kind="demo">Not published ({p.status.replaceAll("_", " ")})</Badge>}
           </div>
-          <h1 className="h1">{p.name}</h1>
+          <h1 className="h1" data-split="rolling">{p.name}</h1>
           <p className="lead">{p.short_description}</p>
           <div className="row small">
             <span>by {seller ? <Link className="link" href={`/sellers/${seller.slug}`}>{seller.display_name}</Link> : "Unknown"}</span>
@@ -79,7 +79,7 @@ export default async function ProductPage({ params }: Params) {
             {p.demo_video_url && <p><a className="link" href={p.demo_video_url} rel="noopener nofollow" target="_blank">Watch the demo video ↗</a></p>}
 
             <div className="stack">
-              <span className="tag">(About this automation)</span>
+              <span className="tag" data-scramble-loop="">(About this automation)</span>
               <div className="prose" style={{ whiteSpace: "pre-line" }}>{p.description}</div>
             </div>
 

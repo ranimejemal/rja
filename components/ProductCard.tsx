@@ -7,7 +7,7 @@ import { Badge, CUSTOMIZATION_LABEL, Price, Rating, SellerBadge } from "./ui";
 export function ProductCard({ p }: { p: ProductCardData }) {
   const isPlatform = p.ownership === "platform";
   return (
-    <Link href={`/products/${p.slug}`} className="product-card">
+    <Link href={`/products/${p.slug}`} className="product-card" data-reveal="">
       <Image className="thumb" src={thumbnailUrl(p.thumbnail_path)} alt="" width={600} height={400} />
       <div className="body">
         <div className="badges">

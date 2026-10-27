@@ -108,8 +108,11 @@ delete from seller_profiles where is_demo and not is_platform;
 - **Legal documents** are drafts and must be reviewed for France/EU (and any other country you sell to).
 - **Rate limiting** is in-memory per server instance; use a shared store if you run several instances.
 - **Email notifications** (application decisions, sales, payouts) are not sent yet; Supabase Auth sends account emails only.
-- **Design**: the app recreates the template’s visual language (fonts, palette, labels, motion). The exact Webflow stylesheet and
-  animations are not included because their host is blocked in this environment.
+- **Design**: the app recreates the template’s visual language and interactions with the same libraries the template uses
+  (GSAP SplitText/ScrambleText/ScrollTrigger and Lenis, installed from npm): rolling headings, scrambled labels, the full-screen
+  menu, the cursor-follow list preview and the home intro (`components/Motion.tsx`, `SiteMenu.tsx`, `PreviewList.tsx`,
+  `HomeIntro.tsx`). All motion is off for reduced-motion users. The original Webflow stylesheet itself is not included because its
+  CDN host was blocked in the build environment.
 
 ## Repository layout
 

@@ -80,17 +80,3 @@ export function Toast() {
   if (!visible || (!notice && !error)) return null;
   return <div className={`notice toast ${error ? "danger" : "ok"}`} role={error ? "alert" : "status"}>{error ?? notice}</div>;
 }
-
-export function MobileNav({ children }: { children: ReactNode }) {
-  const [open, setOpen] = useState(false);
-  const pathname = usePathname();
-  useEffect(() => setOpen(false), [pathname]);
-  return (
-    <>
-      <button type="button" className="btn ghost small menu-toggle" aria-expanded={open} aria-controls="site-nav" onClick={() => setOpen(!open)}>
-        Menu
-      </button>
-      <nav id="site-nav" className="nav" data-open={open} aria-label="Main">{children}</nav>
-    </>
-  );
-}

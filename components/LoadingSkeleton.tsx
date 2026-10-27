@@ -1,4 +1,4 @@
-export default function Loading() {
+export function LoadingSkeleton() {
   return (
     <section className="section" aria-busy="true" aria-label="Loading">
       <div className="container stack" style={{ "--gap": "1.25rem" } as React.CSSProperties}>

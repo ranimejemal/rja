@@ -28,8 +28,8 @@ export default function HelpPage() {
     <section className="section">
       <div className="container stack" style={{ "--gap": "3rem", maxWidth: "56rem" } as React.CSSProperties}>
         <div className="stack">
-          <span className="tag">(Help center)</span>
-          <h1 className="h1">How can we <span className="serif">help?</span></h1>
+          <span className="tag" data-scramble-loop="">(Help center)</span>
+          <h1 className="h1" data-split="rolling">How can we <span className="serif">help?</span></h1>
           <p className="lead">Still stuck? Email <a className="link" href="mailto:ranimejmal@gmail.com">ranimejmal@gmail.com</a> or call +216 97 017 061 / +33 6 24 97 99 41.</p>
         </div>
         {FAQ.map(([group, items]) => (

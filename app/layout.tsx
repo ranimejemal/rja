@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import "./globals.css";
 import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
 import { Toast } from "@/components/client";
+import { Motion } from "@/components/Motion";
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
@@ -30,6 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <main id="main">{children}</main>
         <SiteFooter />
         <Suspense><Toast /></Suspense>
+        <Motion />
       </body>
     </html>
   );

@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { ProductGrid } from "@/components/ProductCard";
 import { EmptyState, SectionHead, SellerBadge } from "@/components/ui";
 import { NewsletterForm } from "@/components/NewsletterForm";
+import { HomeIntro } from "@/components/HomeIntro";
+import { thumbnailUrl } from "@/lib/catalog";
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -19,10 +21,11 @@ export default async function HomePage() {
 
   return (
     <>
+      <HomeIntro images={[...featured, ...best, ...recent].map((p) => thumbnailUrl(p.thumbnail_path)).filter((v, i, a) => a.indexOf(v) === i)} />
       <section className="hero">
         <div className="container stack" style={{ "--gap": "1.75rem" } as React.CSSProperties}>
-          <span className="tag">(AI automation marketplace)</span>
-          <h1 className="display">Automate more. <span className="serif accent">Build less.</span> Grow faster.</h1>
+          <span className="tag" data-scramble-loop="">(AI automation marketplace)</span>
+          <h1 className="display" data-split="rolling">Automate more. <span className="serif accent">Build less.</span> Grow faster.</h1>
           <p className="lead">
             Discover ready-to-use AI automations and workflows built by creators to help businesses save time,
             streamline operations, and work smarter.
@@ -77,7 +80,7 @@ export default async function HomePage() {
           </SectionHead>
           <div>
             {popularCategories.map((c) => (
-              <Link key={c.id} className="category-card" href={`/explore?category=${c.slug}`}>
+              <Link key={c.id} className="category-card" data-scramble-hover="" href={`/explore?category=${c.slug}`}>
                 <span>{c.name}</span><span className="count">{c.count} {c.count === 1 ? "automation" : "automations"} →</span>
               </Link>
             ))}
@@ -106,7 +109,7 @@ export default async function HomePage() {
         <div className="container split">
           <div className="stack">
             <span className="tag">(How buying works)</span>
-            <h2 className="h2">From search to a <span className="serif">working automation.</span></h2>
+            <h2 className="h2" data-split="rolling">From search to a <span className="serif">working automation.</span></h2>
             <ol className="step-list">
               <li><strong>Find it</strong><span className="muted">Search by problem, category or app. Every listing shows what it does, what it doesn’t, and what it needs.</span></li>
               <li><strong>Check the terms</strong><span className="muted">See the full price, the license, required accounts and third-party costs before you pay.</span></li>
@@ -117,7 +120,7 @@ export default async function HomePage() {
           </div>
           <div className="stack">
             <span className="tag">(How selling works)</span>
-            <h2 className="h2">Build once, <span className="serif">sell repeatedly.</span></h2>
+            <h2 className="h2" data-split="rolling">Build once, <span className="serif">sell repeatedly.</span></h2>
             <ol className="step-list">
               <li><strong>Apply</strong><span className="muted">Tell us about your experience and the automations you build.</span></li>
               <li><strong>Accept the agreement</strong><span className="muted">Commission, payouts, ownership and support rules — clearly written.</span></li>
@@ -132,7 +135,7 @@ export default async function HomePage() {
       <section className="section">
         <div className="container card stack" style={{ background: "var(--accent)", color: "var(--accent-ink)", borderColor: "var(--accent)", padding: "clamp(2rem, 5vw, 4rem)", "--gap": "1.25rem" } as React.CSSProperties}>
           <span className="tag" style={{ color: "rgba(29,29,27,0.65)" }}>(For creators)</span>
-          <h2 className="h1">Sell your <span className="serif">automations.</span></h2>
+          <h2 className="h1" data-split="rolling">Sell your <span className="serif">automations.</span></h2>
           <p style={{ maxWidth: "38rem" }}>Publish your n8n workflows, set your price, define what buyers can customize, and earn from every sale. The platform takes a transparent commission per successful sale.</p>
           <div className="row">
             <Link className="btn" href="/sell">Become a seller</Link>
@@ -145,7 +148,7 @@ export default async function HomePage() {
         <div className="container split">
           <div className="stack">
             <span className="tag">(Newsletter)</span>
-            <h2 className="h2">New automations, <span className="serif">once a month.</span></h2>
+            <h2 className="h2" data-split="rolling">New automations, <span className="serif">once a month.</span></h2>
             <p className="muted">No spam. Unsubscribe any time.</p>
           </div>
           <NewsletterForm />

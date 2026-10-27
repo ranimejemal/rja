@@ -28,9 +28,9 @@ export default async function SellerPage({ params }: Params) {
     <>
       <section className="hero" style={{ paddingBottom: "2.5rem" }}>
         <div className="container stack">
-          <span className="tag">(Creator)</span>
+          <span className="tag" data-scramble-loop="">(Creator)</span>
           <div className="badges"><SellerBadge isPlatform={s.is_platform} />{s.is_demo && <Badge kind="demo">Demo data</Badge>}</div>
-          <h1 className="h1">{s.display_name}</h1>
+          <h1 className="h1" data-split="rolling">{s.display_name}</h1>
           {s.bio && <p className="lead">{s.bio}</p>}
           <div className="row small muted">
             <span>Member since {new Date(s.created_at).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</span>

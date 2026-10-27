@@ -29,8 +29,8 @@ export default async function SellPage() {
     <>
       <section className="hero">
         <div className="container stack" style={{ "--gap": "1.4rem" } as React.CSSProperties}>
-          <span className="tag">(Become a seller)</span>
-          <h1 className="display">Build once, <span className="serif accent">sell repeatedly.</span></h1>
+          <span className="tag" data-scramble-loop="">(Become a seller)</span>
+          <h1 className="display" data-split="rolling">Build once, <span className="serif accent">sell repeatedly.</span></h1>
           <p className="lead">Publish your AI automations and n8n workflows, set your own price, and earn from every sale. Keep ownership of your work.</p>
         </div>
       </section>
