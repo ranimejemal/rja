@@ -45,10 +45,12 @@ export function SiteFooter() {
             <p className="muted small" style={{ maxWidth: "22rem" }}>
               The marketplace for AI automations and n8n workflows, by Ranime Jemal Agency and independent creators.
             </p>
-            <p className="small">
-              <a className="link" href="mailto:ranimejmal@gmail.com">ranimejmal@gmail.com</a> ·{" "}
-              <a className="link" href="https://www.instagram.com/ranimejemalagency/" rel="noopener" target="_blank">Instagram</a>
-            </p>
+            <div className="small">
+              <a href="mailto:ranimejmal@gmail.com">ranimejmal@gmail.com</a>
+              <a href="tel:+21697017061">+216 97 017 061</a>
+              <a href="tel:+33624979941">+33 6 24 97 99 41</a>
+              <a href="https://www.instagram.com/ranimejemalagency/" rel="noopener" target="_blank">Instagram</a>
+            </div>
           </div>
           <div><span className="tag">Marketplace</span><Link href="/explore">Explore</Link><Link href="/categories">Categories</Link><Link href="/pricing">Pricing &amp; licensing</Link><Link href="/help">Help center</Link></div>
           <div><span className="tag">Creators</span><Link href="/sell">Become a seller</Link><Link href="/seller">Seller dashboard</Link><Link href="/legal/seller-agreement">Seller agreement</Link></div>

@@ -28,7 +28,7 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
         </div>
       </section>
       <section className="section tight">
-        <div className="container split" style={{ gridTemplateColumns: "minmax(0, 17rem) minmax(0, 1fr)" }}>
+        <div className="container split sidebar">
           <form className="stack" action="/explore" aria-label="Filters" style={{ "--gap": "1.1rem" } as React.CSSProperties}>
             <div className="field">
               <label htmlFor="q">Search</label>
