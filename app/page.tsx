@@ -54,7 +54,7 @@ export default async function HomePage() {
               heads={["Who buys it", "Category", "Setup"]}
               rows={top.map((p) => ({
                 href: `/products/${p.slug}`, name: p.name, image: thumbnailUrl(p.thumbnail_path),
-                rank: ["🥇", "🥈", "🥉"][(p.top_rank ?? 0) - 1] ?? String(p.top_rank).padStart(2, "0"),
+                rank: String(p.top_rank).padStart(2, "0"),
                 cells: [p.audience, p.category?.name ?? "", "Done for you"],
                 price: p.price_label ?? "",
               }))}
