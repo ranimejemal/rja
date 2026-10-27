@@ -139,6 +139,9 @@ body[data-menu-status="open"] .menu-list__item:nth-child(4) .menu-list__link { t
 body[data-menu-status="open"] .menu-list__item:nth-child(5) .menu-list__link { transition-delay: 0.5s; }
 .menu-secondary { display: flex; flex-wrap: wrap; gap: 1.5rem; }
 .split-line { padding-bottom: 0.06em; }
+/* Hidden from the first paint until Motion animates them in, so nothing flashes before the animation. */
+html.motion [data-split="rolling"]:not([data-animated]),
+html.motion [data-reveal]:not([data-animated]) { visibility: hidden; }
 
 /* Explore list view with cursor-following preview (template portfolio) */
 .preview { position: relative; }
@@ -164,9 +167,13 @@ body[data-menu-status="open"] .menu-list__item:nth-child(5) .menu-list__link { t
 .view-toggle a[aria-current="true"] { background: var(--text); color: var(--surface); }
 
 /* Home intro */
-.intro { position: fixed; inset: 0; z-index: 100; background: var(--bg); display: grid; place-items: center; clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%); }
+.intro { display: none; }
+html.intro-pending .intro { display: grid; }
+html.intro-pending body { overflow: hidden; }
+.intro { position: fixed; inset: 0; z-index: 100; background: var(--bg); place-items: center; clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%); }
 .intro-stack { position: absolute; width: min(26rem, 70vw); aspect-ratio: 3 / 2; }
 .intro-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: var(--radius-s); border: 1px solid var(--line); }
+.intro-img, .intro-logo { visibility: hidden; } /* until the intro timeline shows them */
 .intro-logo { position: relative; z-index: 20; width: min(14rem, 45vw); color: var(--accent); filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.6)); }
 .site-footer { border-top: 1px solid var(--line); padding: 3.5rem 0 2rem; background: #090908; }
 .footer-grid { display: grid; grid-template-columns: 2fr repeat(4, 1fr); gap: 2rem; }

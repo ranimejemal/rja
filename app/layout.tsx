@@ -14,10 +14,13 @@ export const metadata: Metadata = {
   openGraph: { images: ["/images/rja-opengraph.jpg"] },
 };
 
+const MOTION_BOOT = `try{var d=document.documentElement;if(!matchMedia("(prefers-reduced-motion: reduce)").matches){d.classList.add("motion");if(location.pathname==="/"&&sessionStorage.getItem("rja-intro")!=="1")d.classList.add("intro-pending");setTimeout(function(){if(!d.classList.contains("motion-live"))d.classList.remove("motion","intro-pending")},4000)}}catch(e){}`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: MOTION_BOOT }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
@@ -32,7 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <main id="main">{children}</main>
         <SiteFooter />
         <Suspense><Toast /></Suspense>
-        <Motion />
+        <Suspense><Motion /></Suspense>
       </body>
     </html>
   );

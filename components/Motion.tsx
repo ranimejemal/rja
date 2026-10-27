@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { SplitText } from "gsap/SplitText";
 import { ScrambleTextPlugin } from "gsap/ScrambleTextPlugin";
 import Lenis from "lenis";
+import { INTRO_DONE } from "./HomeIntro";
 
 gsap.registerPlugin(ScrollTrigger, SplitText, ScrambleTextPlugin);
 
@@ -18,14 +19,17 @@ const SCRAMBLE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
  *  data-scramble-loop     mono labels scramble when they enter the viewport
  *  data-scramble-hover    text scrambles on hover
  *  data-reveal            fades and rises into view
- * Everything is skipped for users who prefer reduced motion.
+ * Everything is skipped for users who prefer reduced motion. The layout's boot script hides [data-split] and
+ * [data-reveal] from the first paint (until `data-animated` is set here), so nothing flashes before it animates.
  */
 export function Motion() {
   const pathname = usePathname();
+  const search = useSearchParams().toString();
 
   // Smooth scrolling, once.
   useEffect(() => {
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    document.documentElement.classList.add("motion-live");
     const lenis = new Lenis({ lerp: 0.1 });
     lenis.on("scroll", ScrollTrigger.update);
     const tick = (time: number) => lenis.raf(time * 1000);
@@ -35,12 +39,21 @@ export function Motion() {
   }, []);
 
   // Per-page effects, rebuilt on every navigation. They start two frames later so React has finished
-  // hydrating the page before any text is split or scrambled.
+  // hydrating the page before any text is split or scrambled. On the first home visit they wait for the intro.
   useEffect(() => {
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const cleanups: (() => void)[] = [];
     let ctx: gsap.Context | null = null;
-    let raf = requestAnimationFrame(() => { raf = requestAnimationFrame(() => setup()); });
+    let raf = 0;
+    const start = () => { raf = requestAnimationFrame(() => { raf = requestAnimationFrame(() => setup()); }); };
+    const html = document.documentElement;
+    if (html.classList.contains("intro-pending") && document.querySelector(".intro")) {
+      window.addEventListener(INTRO_DONE, start, { once: true });
+      cleanups.push(() => window.removeEventListener(INTRO_DONE, start));
+    } else {
+      html.classList.remove("intro-pending");
+      start();
+    }
     const setup = () => ctx = gsap.context(() => {
       document.querySelectorAll<HTMLElement>("[data-split='rolling']").forEach((el) => {
         const split = SplitText.create(el, { type: "lines", mask: "lines", linesClass: "split-line" });
@@ -48,6 +61,7 @@ export function Motion() {
           yPercent: 110, duration: 1.1, ease: "expo.out", stagger: 0.08,
           scrollTrigger: { trigger: el, start: "top 88%", once: true },
         });
+        el.dataset.animated = "";
         cleanups.push(() => split.revert());
       });
 
@@ -61,6 +75,7 @@ export function Motion() {
 
       document.querySelectorAll<HTMLElement>("[data-reveal]").forEach((el) => {
         gsap.from(el, { y: 40, autoAlpha: 0, duration: 1, ease: "power3.out", scrollTrigger: { trigger: el, start: "top 90%", once: true } });
+        el.dataset.animated = "";
       });
     });
 
@@ -79,7 +94,7 @@ export function Motion() {
 
     const refresh = setTimeout(() => ScrollTrigger.refresh(), 300);
     return () => { cancelAnimationFrame(raf); clearTimeout(refresh); cleanups.forEach((c) => c()); ctx?.revert(); };
-  }, [pathname]);
+  }, [pathname, search]);
 
   return null;
 }
