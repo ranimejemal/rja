@@ -12,7 +12,7 @@ import { env } from "@/lib/env";
 const LICENSES = ["personal", "single_business", "commercial", "extended_commercial"] as const;
 
 function back(slug: string, error: string): never {
-  redirect(`/products/${slug}?error=${encodeURIComponent(error)}#buy`);
+  redirect(`/products/${slug}?error=${encodeURIComponent(error)}`);
 }
 
 /**
@@ -76,7 +76,7 @@ export async function reportProduct(form: FormData) {
   const session = await requireUser(`/products/${slug}`);
   if (!rateLimit(`report:${session.userId}`, 5, 60 * 60_000).ok) redirect(`/products/${slug}?error=Too+many+reports.`);
   const parsed = reportSchema.safeParse({ reason: form.get("reason"), details: form.get("details") });
-  if (!parsed.success) redirect(`/products/${slug}?error=${encodeURIComponent(parsed.error.issues[0].message)}#report`);
+  if (!parsed.success) redirect(`/products/${slug}?error=${encodeURIComponent(parsed.error.issues[0].message)}`);
   const supabase = await createClient();
   const { data: product } = await supabase.from("products").select("id").eq("slug", slug).maybeSingle();
   if (!product) redirect("/explore");

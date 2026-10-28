@@ -28,7 +28,7 @@ export async function applyToSell(form: FormData) {
     categories: form.getAll("categories").map(String),
     portfolio_url: form.get("portfolio_url") ?? "",
   });
-  if (!parsed.success) redirect(`/sell?error=${encodeURIComponent(parsed.error.issues[0].message)}#apply`);
+  if (!parsed.success) redirect(`/sell?error=${encodeURIComponent(parsed.error.issues[0].message)}`);
   const supabase = await createClient();
   const { error } = await supabase.from("seller_applications").insert({
     user_id: session.userId,
@@ -37,7 +37,7 @@ export async function applyToSell(form: FormData) {
   });
   if (error) {
     const msg = error.code === "23505" ? "You already have an application in review." : "Could not submit your application.";
-    redirect(`/sell?error=${encodeURIComponent(msg)}#apply`);
+    redirect(`/sell?error=${encodeURIComponent(msg)}`);
   }
-  redirect("/sell?notice=Application+received.+We+will+email+you+after+review.#status");
+  redirect("/sell?notice=Application+received.+We+will+email+you+after+review.");
 }
