@@ -83,7 +83,9 @@ export function Motion() {
     const onEnter = (e: Event) => {
       const host = (e.target as HTMLElement).closest<HTMLElement>("[data-scramble-hover]");
       if (!host || host.dataset.scrambling) return;
-      const target = host.querySelector<HTMLElement>("[data-scramble-target]") ?? host;
+      // Scramble only plain text: scrambling an element with children would flatten its layout.
+      const target = host.querySelector<HTMLElement>("[data-scramble-target]") ?? (host.childElementCount === 0 ? host : null);
+      if (!target) return;
       const text = target.dataset.text ?? target.textContent ?? "";
       target.dataset.text = text;
       host.dataset.scrambling = "1";

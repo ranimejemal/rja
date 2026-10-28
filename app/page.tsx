@@ -105,7 +105,7 @@ export default async function HomePage() {
           <div>
             {popularCategories.map((c) => (
               <Link key={c.id} className="category-card" data-scramble-hover="" href={`/explore?category=${c.slug}`}>
-                <span>{c.name}</span><span className="count">{c.count} {c.count === 1 ? "automation" : "automations"} →</span>
+                <span data-scramble-target="">{c.name}</span><span className="count">{c.count} {c.count === 1 ? "automation" : "automations"} →</span>
               </Link>
             ))}
           </div>
