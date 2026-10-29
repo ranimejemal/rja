@@ -101,7 +101,7 @@ export default async function ProductPage({ params }: Params) {
                   </tbody>
                 </table>
               </div>
-              <Notice tone="warn">You need your own accounts for the apps above. Their subscriptions and API usage costs are not included and are billed by those providers.</Notice>
+              <p className="small"><strong>You need your own accounts for the apps above. Their subscriptions and API usage costs are not included and are billed by those providers.</strong></p>
             </div>
 
             {!p.quote_only && <div className="stack">
