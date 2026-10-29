@@ -7,7 +7,7 @@ import { getSession } from "@/lib/auth";
 import { thumbnailUrl } from "@/lib/catalog";
 import { parseManifest } from "@/lib/manifest";
 import { features } from "@/lib/env";
-import { Badge, CUSTOMIZATION_LABEL, LICENSE_LABEL, Notice, Price, Rating, SellerBadge } from "@/components/ui";
+import { Badge, CUSTOMIZATION_LABEL, LICENSE_LABEL, Price, Rating, SellerBadge } from "@/components/ui";
 import { SubmitButton } from "@/components/client";
 import { reportProduct, startCheckout } from "./actions";
 
