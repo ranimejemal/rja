@@ -147,8 +147,12 @@ select test.fails('buyer must accept the current license',
   $q$select create_order(('[{"product_id":"' || test.id('p1') || '","license_type":"commercial"}]')::jsonb, gen_random_uuid(), 'stripe')$q$, 'license agreement');
 select test.fails('license type must be offered',
   $q$select create_order(('[{"product_id":"' || test.id('p2') || '","license_type":"commercial"}]')::jsonb, current_agreement('buyer_license'), 'stripe')$q$, 'not offered');
+select test.act_as(null);
+insert into products (seller_id, slug, name, price_minor, status, is_demo, license_types)
+values ((select id from seller_profiles where is_platform), 'demo-only-item', 'Demo only item', 5000, 'published', true, '{single_business}');
+select test.act_as('buyer');
 select test.fails('demo products cannot be bought',
-  $q$select create_order(('[{"product_id":"' || (select id from products where is_demo and status = 'published' limit 1) || '","license_type":"single_business"}]')::jsonb, current_agreement('buyer_license'), 'stripe')$q$, 'demo');
+  $q$select create_order(('[{"product_id":"' || (select id from products where slug = 'demo-only-item') || '","license_type":"single_business"}]')::jsonb, current_agreement('buyer_license'), 'stripe')$q$, 'demo');
 select test.fails('quote-only products cannot be checked out',
   $q$select create_order(('[{"product_id":"' || (select id from products where quote_only limit 1) || '","license_type":"single_business"}]')::jsonb, current_agreement('buyer_license'), 'stripe')$q$, 'sold by quote');
 create temp table o1 as select create_order(
@@ -278,6 +282,12 @@ select test.act_as('seller');
 select test.fails('sellers cannot set quote-only or ranking fields',
   $q$update products set top_rank = 9 where id = test.id('p2')$q$, 'permission denied');
 select test.act_as(null);
+
+-- ---------------------------------------------------------------- real catalog
+select test.act_as(null);
+select test.ok('catalog has no sample listings left', not exists (select 1 from products where is_demo and status = 'published' and slug <> 'demo-only-item'));
+select test.ok('security suite listed', (select count(*) from products where slug in ('phishing-email-analyzer','website-security-ssl-scanner','vulnerability-watch-cve-kev','data-breach-monitor','lookalike-domain-monitor') and status = 'published' and quote_only) = 5);
+select test.ok('sample creators removed', not exists (select 1 from seller_profiles where is_demo and not is_platform));
 
 -- ---------------------------------------------------------------- quote requests
 select test.act_as(null);
