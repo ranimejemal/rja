@@ -7,6 +7,12 @@ const answers = [
   [/write follow-up emails/, { subject: 'Quick follow-up', reply: 'Hi again, just checking in...' }],
   [/social media writer/, { instagram: 'IG text', facebook: 'FB text', linkedin: 'LI text', x: 'X text', hashtags: '#ai #automation' }],
   [/extract data from invoices/, { document_type: 'invoice', supplier_name: 'Acme Ltd', invoice_number: 'INV-7', invoice_date: '2026-03-01', currency: 'EUR', subtotal: 100, vat_amount: 20, total: 120, line_items: [{ description: 'Service', amount: 100 }], confidence: 'high' }],
+  [/sort incoming enquiries/, { category: 'quote request', priority: 'high', summary: 'Wants a quote for 3 workflows', is_spam: false, reply: 'Thanks for your message, we will send a quote today.' }],
+  [/qualify B2B leads/, { company_name: 'Acme Homes', industry: 'Real estate agency', company_size: 'small', what_they_do: 'Sells homes in Lyon', fit_score: 82, fit_reason: 'Agency with lead volume', confidence: 'high' }],
+  [/manage online reviews/, { sentiment: 'negative', summary: 'Slow service', topics: ['service', 'waiting time'], reply: 'We are sorry about the wait.' }],
+  [/triage customer support emails/, { category: 'refund or return', urgency: 'urgent', sentiment: 'negative', language: 'en', summary: 'Wants a refund for a broken item', suggested_reply: 'Sorry about this, we are on it.' }],
+  [/write cart reminder emails/, { subject: 'Your cart is waiting', body: 'Hi Ana, your mug is still in your cart.' }],
+  [/write meeting notes/, { summary: 'Kickoff done.', decisions: ['Start in March'], action_items: [{ task: 'Send the quote', owner: 'ana@example.com', due_date: '2026-03-12' }, { task: 'Book the venue', owner: '', due_date: '' }], open_questions: [] }],
   [/security analyst/, { severity: 'high', summary: 'Brute force from a known bad IP', likely_cause: 'Automated SSH attack', false_positive_likelihood: 'low', recommended_actions: ['Block the IP', 'Check auth logs'] }],
 ];
 http.createServer((req, res) => {

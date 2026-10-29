@@ -1,0 +1,272 @@
+{
+  "name": "Website Uptime & Incident Notifier | Ranime Jemal Agency",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Website Uptime & Incident Notifier\nEvery 5 minutes checks each site (optionally that a word appears on the page). After `confirmFailures` failed checks in a row it emails a DOWN alert and logs an incident; when the site is back it emails a RECOVERED notice with the downtime.\n1. Fill in **Settings** (one site per line, `https://site.com | text that must appear` is optional). 2. Make a sheet with an **Incidents** tab (`uptime-incidents-sheet.csv`). 3. Connect Google Sheets and Gmail. 4. Activate.",
+        "height": 280,
+        "width": 560,
+        "color": 4
+      },
+      "id": "node-01b7",
+      "name": "Note 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -440
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "*/5 * * * *"
+            }
+          ]
+        }
+      },
+      "id": "node-01b8",
+      "name": "Every 5 minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -560,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-01b9",
+              "name": "sites",
+              "value": "https://www.example.com\nhttps://shop.example.com | Add to cart",
+              "type": "string"
+            },
+            {
+              "id": "set-01ba",
+              "name": "confirmFailures",
+              "value": 2,
+              "type": "number"
+            },
+            {
+              "id": "set-01bb",
+              "name": "alertEmail",
+              "value": "you@yourbusiness.com",
+              "type": "string"
+            },
+            {
+              "id": "set-01bc",
+              "name": "senderName",
+              "value": "Uptime monitor",
+              "type": "string"
+            },
+            {
+              "id": "set-01bd",
+              "name": "googleSheetUrl",
+              "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "node-01be",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -320,
+        100
+      ],
+      "notes": "Fill in these values before activating.",
+      "color": "#FFD233"
+    },
+    {
+      "parameters": {
+        "jsCode": "function parseSites(text) {\n  return String(text || \"\").split(\"\\n\").map((l) => l.trim()).filter((l) => l && !l.startsWith(\"#\")).map((l) => {\n    const [url, keyword] = l.split(\"|\").map((x) => x.trim());\n    return { url, keyword: keyword || \"\" };\n  }).filter((s) => /^https?:\\/\\//i.test(s.url));\n}\n\nreturn parseSites($('Settings').first().json.sites).map((s) => ({ json: s, pairedItem: { item: 0 } }));"
+      },
+      "id": "node-01bf",
+      "name": "Sites to check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -100,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "id": "node-01c0",
+      "name": "Check site",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        120,
+        100
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "function siteStatus(site, response) {\n  const code = Number(response && response.statusCode);\n  if (!code) return { ...site, up: false, detail: (response && (response.error && (response.error.message || response.error))) || \"no response (timeout or connection error)\" };\n  if (code >= 400) return { ...site, up: false, detail: `HTTP ${code}` };\n  if (site.keyword && !String(response.body || \"\").includes(site.keyword)) return { ...site, up: false, detail: `HTTP ${code} but \"${site.keyword}\" not found` };\n  return { ...site, up: true, detail: `HTTP ${code}` };\n}\n\nfunction uptimeEvents(results, store, nowIso, confirm) {\n  store.sites = store.sites || {};\n  const events = [];\n  for (const r of results) {\n    const st = store.sites[r.url] || { down: false, fails: 0, since: \"\" };\n    if (!r.up) {\n      st.fails += 1;\n      if (!st.down && st.fails >= confirm) {\n        st.down = true; st.since = nowIso;\n        events.push({ url: r.url, event: \"down\", at: nowIso, detail: r.detail, duration_minutes: \"\" });\n      }\n    } else {\n      if (st.down) {\n        const minutes = Math.round((Date.parse(nowIso) - Date.parse(st.since)) / 60000);\n        events.push({ url: r.url, event: \"recovered\", at: nowIso, detail: r.detail, duration_minutes: minutes });\n      }\n      st.down = false; st.fails = 0; st.since = \"\";\n    }\n    store.sites[r.url] = st;\n  }\n  return events;\n}\n\nconst s = $('Settings').first().json;\nconst sitesToCheck = $('Sites to check').all();\nconst results = $input.all().map((item, i) => siteStatus(sitesToCheck[i].json, item.json));\nreturn uptimeEvents(results, $getWorkflowStaticData('global'), new Date().toISOString(), Number(s.confirmFailures))\n  .map((e) => ({ json: e, pairedItem: { item: results.findIndex((r) => r.url === e.url) } }));"
+      },
+      "id": "node-01c1",
+      "name": "Status changes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        340,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Settings').first().json.googleSheetUrl }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Incidents"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "node-01c2",
+      "name": "Log incident",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        560,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Settings').first().json.alertEmail }}",
+        "subject": "={{ $('Status changes').item.json.event === 'down' ? 'DOWN' : 'RECOVERED' }}: {{ $('Status changes').item.json.url }}",
+        "emailType": "text",
+        "message": "={{ $('Status changes').item.json.event === 'down' ? 'The site is not responding correctly.' : 'The site is back up after ' + $('Status changes').item.json.duration_minutes + ' minutes.' }}\n\nSite: {{ $('Status changes').item.json.url }}\nCheck result: {{ $('Status changes').item.json.detail }}\nTime: {{ $('Status changes').item.json.at }}",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "={{ $('Settings').first().json.senderName }}"
+        }
+      },
+      "id": "node-01c3",
+      "name": "Email the alert",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        780,
+        100
+      ]
+    }
+  ],
+  "connections": {
+    "Every 5 minutes": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Sites to check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sites to check": {
+      "main": [
+        [
+          {
+            "node": "Check site",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check site": {
+      "main": [
+        [
+          {
+            "node": "Status changes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status changes": {
+      "main": [
+        [
+          {
+            "node": "Log incident",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log incident": {
+      "main": [
+        [
+          {
+            "node": "Email the alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

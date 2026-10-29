@@ -1,0 +1,447 @@
+{
+  "name": "AI Lead Management Assistant | Ranime Jemal Agency",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## AI Lead Management Assistant\nSorts every enquiry that reaches your inbox or website form: category, priority and a one-line summary, logged in Google Sheets, with a reply drafted in Gmail (in the same thread) for you to check and send. High-priority enquiries are emailed to the team.\n1. Fill in **Settings**. 2. Make a sheet with an **Enquiries** tab (`enquiries-sheet.csv`). 3. Connect Gmail, Google Sheets and OpenAI. 4. Activate.",
+        "height": 280,
+        "width": 540,
+        "color": 4
+      },
+      "id": "node-00ef",
+      "name": "Note 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -440
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "value": 5,
+              "unit": "minutes"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "q": "in:inbox -from:me -category:promotions -category:social -category:updates"
+        },
+        "options": {}
+      },
+      "id": "node-00f0",
+      "name": "New enquiry email",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -560,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "enquiry",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "node-00f2",
+      "name": "Website form webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        160
+      ],
+      "webhookId": "hook-00f1"
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-00f3",
+              "name": "businessName",
+              "value": "Your business name",
+              "type": "string"
+            },
+            {
+              "id": "set-00f4",
+              "name": "businessDescription",
+              "value": "What you sell, in one or two sentences.",
+              "type": "string"
+            },
+            {
+              "id": "set-00f5",
+              "name": "categories",
+              "value": "quote request, product question, partnership, support, job application, other",
+              "type": "string"
+            },
+            {
+              "id": "set-00f6",
+              "name": "senderName",
+              "value": "Your name, Your business",
+              "type": "string"
+            },
+            {
+              "id": "set-00f7",
+              "name": "teamEmail",
+              "value": "you@yourbusiness.com",
+              "type": "string"
+            },
+            {
+              "id": "set-00f8",
+              "name": "googleSheetUrl",
+              "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
+              "type": "string"
+            },
+            {
+              "id": "set-00f9",
+              "name": "openAiModel",
+              "value": "gpt-4.1-mini",
+              "type": "string"
+            },
+            {
+              "id": "set-00fa",
+              "name": "openAiBaseUrl",
+              "value": "https://api.openai.com/v1",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "node-00fb",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -320,
+        50
+      ],
+      "notes": "Fill in these values before activating.",
+      "color": "#FFD233"
+    },
+    {
+      "parameters": {
+        "jsCode": "function emailEnquiry(msg) {\n  const from = (msg.from && msg.from.value && msg.from.value[0]) || {};\n  const text = String(msg.text || msg.textPlain || msg.snippet || \"\")\n    .split(/\\n-{2,}\\s*\\n|\\nOn .{5,80} wrote:\\n/)[0]\n    .replace(/\\n{3,}/g, \"\\n\\n\").trim().slice(0, 4000);\n  return {\n    message_id: msg.id || \"\", thread_id: msg.threadId || \"\", email: String(from.address || \"\").toLowerCase(), name: from.name || \"\",\n    subject: msg.subject || \"\", message: text, received_at: msg.date ? new Date(msg.date).toISOString() : new Date().toISOString(),\n  };\n}\n\nfunction normalizeLead(input, source, nowIso) {\n  const flat = {};\n  const add = (obj) => {\n    for (const [k, v] of Object.entries(obj || {})) {\n      if (v && typeof v === \"object\" && !Array.isArray(v)) continue;\n      flat[k.toLowerCase().replace(/[^a-z0-9]+/g, \"_\").replace(/^_|_$/g, \"\")] = Array.isArray(v) ? v.join(\", \") : v;\n    }\n  };\n  add(input);\n  add(input && input.body);\n  add(input && input.data);\n  const pick = (...keys) => {\n    for (const k of keys) if (flat[k] != null && String(flat[k]).trim() !== \"\") return String(flat[k]).trim();\n    return \"\";\n  };\n  const first = pick(\"first_name\", \"firstname\");\n  const last = pick(\"last_name\", \"lastname\");\n  const name = pick(\"name\", \"full_name\", \"fullname\", \"your_name\") || [first, last].filter(Boolean).join(\" \");\n  const email = pick(\"email\", \"email_address\", \"your_email\", \"e_mail\").toLowerCase();\n  const lead = {\n    lead_id: \"L\" + Date.parse(nowIso).toString(36).toUpperCase() + Math.random().toString(36).slice(2, 6).toUpperCase(),\n    received_at: nowIso,\n    source,\n    name,\n    email,\n    phone: pick(\"phone\", \"phone_number\", \"mobile\", \"telephone\", \"whatsapp\"),\n    company: pick(\"company\", \"company_name\", \"business\", \"organisation\", \"organization\"),\n    message: pick(\"message\", \"notes\", \"how_can_we_help\", \"comments\", \"enquiry\", \"inquiry\", \"details\").slice(0, 4000),\n    budget: pick(\"budget\", \"budget_range\"),\n  };\n  const valid = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email);\n  return { ...lead, valid, problem: valid ? \"\" : \"missing or invalid email\" };\n}\n\nfunction buildEnquiryRequest(enquiry, s) {\n  const system = [\n    `You sort incoming enquiries for ${s.businessName}. ${s.businessDescription}`,\n    `Categories: ${s.categories}. Priority: high (ready to buy, urgent, or large deal), normal, low (spam, unrelated, newsletters).`,\n    `Draft a reply in the sender's language, signed \"${s.senderName}\". Answer only what you can from this context; otherwise say the team will follow up. Never promise prices or dates.`,\n    'Answer with JSON only: {\"category\":\"...\",\"priority\":\"high|normal|low\",\"summary\":\"one line\",\"is_spam\":false,\"reply\":\"plain text email body\"}',\n  ].join(\"\\n\");\n  return {\n    model: s.openAiModel, temperature: 0.3, response_format: { type: \"json_object\" },\n    messages: [{ role: \"system\", content: system }, { role: \"user\", content: JSON.stringify({ from: enquiry.name || enquiry.email, subject: enquiry.subject, message: enquiry.message }) }],\n  };\n}\n\nconst s = $('Settings').first().json;\nconst fromEmail = $('New enquiry email').isExecuted;\nreturn $input.all().map((item, i) => {\n  let e;\n  if (fromEmail) e = { ...emailEnquiry(item.json), source: 'email' };\n  else {\n    const l = normalizeLead(item.json, 'website form', new Date().toISOString());\n    e = { message_id: '', thread_id: '', email: l.email, name: l.name, subject: 'Website enquiry' + (l.company ? ' from ' + l.company : ''),\n      message: l.message, received_at: l.received_at, source: 'website form' };\n  }\n  return { json: { ...e, request: buildEnquiryRequest(e, s) }, pairedItem: { item: i } };\n}).filter((i) => i.json.email);"
+      },
+      "id": "node-00fc",
+      "name": "Read enquiry",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -100,
+        50
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Settings').first().json.openAiBaseUrl }}/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.request) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "node-00fd",
+      "name": "Sort with AI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        120,
+        50
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "function readAiJson(response) {\n  const content = response && response.choices && response.choices[0] && response.choices[0].message && response.choices[0].message.content;\n  if (!content) throw new Error(\"OpenAI returned no answer: \" + JSON.stringify(response).slice(0, 300));\n  try {\n    return JSON.parse(content);\n  } catch {\n    throw new Error(\"OpenAI answer was not valid JSON: \" + content.slice(0, 300));\n  }\n}\n\nconst src = $('Read enquiry').all();\nreturn $input.all().map((item, i) => {\n  const e = src[i].json;\n  const ai = readAiJson(item.json);\n  return { json: {\n    received_at: e.received_at, source: e.source, name: e.name, email: e.email, subject: e.subject, message: e.message,\n    category: ai.category || 'other', priority: ['high', 'normal', 'low'].includes(ai.priority) ? ai.priority : 'normal',\n    summary: ai.summary || '', is_spam: ai.is_spam === true, status: ai.is_spam === true ? 'spam' : 'reply drafted',\n    thread_id: e.thread_id, reply: ai.reply || '',\n  }, pairedItem: { item: i } };\n});"
+      },
+      "id": "node-00fe",
+      "name": "Enquiry row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        340,
+        50
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Settings').first().json.googleSheetUrl }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Enquiries"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "node-00ff",
+      "name": "Log enquiry",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        560,
+        50
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-0100",
+              "leftValue": "={{ $('Enquiry row').item.json.is_spam }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "node-0101",
+      "name": "Not spam?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        780,
+        50
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "=Re: {{ $('Enquiry row').item.json.subject }}",
+        "emailType": "text",
+        "message": "={{ $('Enquiry row').item.json.reply }}",
+        "options": {
+          "sendTo": "={{ $('Enquiry row').item.json.email }}",
+          "threadId": "={{ $('Enquiry row').item.json.thread_id }}"
+        }
+      },
+      "id": "node-0102",
+      "name": "Draft the reply",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1000,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-0103",
+              "leftValue": "={{ $('Enquiry row').item.json.priority }}",
+              "rightValue": "high",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "node-0104",
+      "name": "High priority?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1220,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Settings').first().json.teamEmail }}",
+        "subject": "=High priority enquiry: {{ $('Enquiry row').item.json.summary }}",
+        "emailType": "text",
+        "message": "=From: {{ $('Enquiry row').item.json.name }} <{{ $('Enquiry row').item.json.email }}>\nCategory: {{ $('Enquiry row').item.json.category }}\nSubject: {{ $('Enquiry row').item.json.subject }}\n\n{{ $('Enquiry row').item.json.message }}\n\nA reply is waiting in Gmail drafts.",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "={{ $('Settings').first().json.senderName }}"
+        }
+      },
+      "id": "node-0105",
+      "name": "Alert the team",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1440,
+        -100
+      ]
+    }
+  ],
+  "connections": {
+    "New enquiry email": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Website form webhook": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Read enquiry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read enquiry": {
+      "main": [
+        [
+          {
+            "node": "Sort with AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sort with AI": {
+      "main": [
+        [
+          {
+            "node": "Enquiry row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enquiry row": {
+      "main": [
+        [
+          {
+            "node": "Log enquiry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log enquiry": {
+      "main": [
+        [
+          {
+            "node": "Not spam?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Not spam?": {
+      "main": [
+        [
+          {
+            "node": "Draft the reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft the reply": {
+      "main": [
+        [
+          {
+            "node": "High priority?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "High priority?": {
+      "main": [
+        [
+          {
+            "node": "Alert the team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

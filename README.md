@@ -116,7 +116,7 @@ delete from seller_profiles where is_demo and not is_platform;
 
 ## Automation workflows
 
-The seven "Top AI automations for 2026" listings are delivered as n8n workflows in [`automations/`](automations/README.md),
+Every automation in the catalog (the seven "Top AI automations for 2026" and the other listings) is delivered as an n8n workflow in [`automations/`](automations/README.md),
 with setup guides, Google Sheet templates and tests (`npm run build:workflows`, `npm run test:workflows`).
 
 ## Repository layout
@@ -126,7 +126,7 @@ app/                Next.js routes (public pages, /dashboard buyer, /seller, /ad
 components/         UI components (product card, config form, dialogs, …)
 lib/                domain logic: catalog, manifest, workflow scan, files, money, payments, auth
 supabase/           migrations and SQL tests
-automations/        the 7 n8n workflows sold as setup services, with sheet templates, guides and tests
+automations/        the n8n workflows for every catalog automation, with sheet templates, guides and tests
 tests/              unit tests
 static-site/        previous static website (reference only)
 ```

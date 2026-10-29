@@ -147,9 +147,9 @@ export function buildCaptionRequest(row, s) {
 }
 
 /** Approved posts whose publish time has passed. */
-export function duePosts(rows, nowIso) {
+export function duePosts(rows, nowIso, status = "approved") {
   const now = Date.parse(nowIso);
-  return rows.filter((r) => String(r.status).toLowerCase() === "approved" && Date.parse(r.publish_at) <= now);
+  return rows.filter((r) => String(r.status).toLowerCase() === status && Date.parse(r.publish_at) <= now);
 }
 
 /** Collects the outcome of each publishing node for one post. */
@@ -380,4 +380,271 @@ export function weeklyStats(rows, nowIso) {
     open_critical: recent.filter((r) => ["critical", "high"].includes(r.severity) && String(r.status).toLowerCase() !== "closed")
       .map((r) => `${r.received_at.slice(0, 10)} ${r.title} on ${r.host || "?"}`).slice(0, 20),
   };
+}
+
+// ------------------------------------------------------------------------------- catalog automations (8 to 18)
+
+/** An email (Gmail trigger, full message) as an enquiry: sender, subject, plain text, thread. */
+export function emailEnquiry(msg) {
+  const from = (msg.from && msg.from.value && msg.from.value[0]) || {};
+  const text = String(msg.text || msg.textPlain || msg.snippet || "")
+    .split(/\n-{2,}\s*\n|\nOn .{5,80} wrote:\n/)[0]
+    .replace(/\n{3,}/g, "\n\n").trim().slice(0, 4000);
+  return {
+    message_id: msg.id || "", thread_id: msg.threadId || "", email: String(from.address || "").toLowerCase(), name: from.name || "",
+    subject: msg.subject || "", message: text, received_at: msg.date ? new Date(msg.date).toISOString() : new Date().toISOString(),
+  };
+}
+
+/** OpenAI request that categorizes an enquiry and drafts a reply. */
+export function buildEnquiryRequest(enquiry, s) {
+  const system = [
+    `You sort incoming enquiries for ${s.businessName}. ${s.businessDescription}`,
+    `Categories: ${s.categories}. Priority: high (ready to buy, urgent, or large deal), normal, low (spam, unrelated, newsletters).`,
+    `Draft a reply in the sender's language, signed "${s.senderName}". Answer only what you can from this context; otherwise say the team will follow up. Never promise prices or dates.`,
+    'Answer with JSON only: {"category":"...","priority":"high|normal|low","summary":"one line","is_spam":false,"reply":"plain text email body"}',
+  ].join("\n");
+  return {
+    model: s.openAiModel, temperature: 0.3, response_format: { type: "json_object" },
+    messages: [{ role: "system", content: system }, { role: "user", content: JSON.stringify({ from: enquiry.name || enquiry.email, subject: enquiry.subject, message: enquiry.message }) }],
+  };
+}
+
+
+/** The company website to look at: the website field, or the email domain unless it is a free mail provider. */
+export function companyDomain(email, website) {
+  const free = ["gmail.com", "googlemail.com", "yahoo.com", "yahoo.fr", "hotmail.com", "hotmail.fr", "outlook.com", "outlook.fr", "live.com", "icloud.com", "me.com", "aol.com", "proton.me", "protonmail.com", "gmx.com", "gmx.fr", "orange.fr", "free.fr", "laposte.net", "sfr.fr", "wanadoo.fr"];
+  const fromSite = String(website || "").trim().replace(/^https?:\/\//i, "").replace(/^www\./i, "").split(/[/?#]/)[0].toLowerCase();
+  if (/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(fromSite)) return fromSite;
+  const domain = String(email || "").split("@")[1];
+  if (!domain || free.includes(domain.toLowerCase())) return "";
+  return domain.toLowerCase();
+}
+
+/** Visible text of an HTML page, without scripts, styles or tags. */
+export function htmlToText(html, max = 6000) {
+  return String(html || "")
+    .replace(/<(script|style|noscript|svg)[\s\S]*?<\/\1>/gi, " ")
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&#39;|&apos;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/\s+/g, " ").trim().slice(0, max);
+}
+
+/** OpenAI request that enriches and scores a lead from its message and its company website. */
+export function buildEnrichRequest(lead, siteText, s) {
+  const system = [
+    `You qualify B2B leads for ${s.businessName}. Ideal customer: ${s.idealCustomer}`,
+    "Use only the lead's message and the website text given. If the website text is empty, say so and lower confidence.",
+    "fit_score: 0 to 100, how well the company matches the ideal customer.",
+    'Answer with JSON only: {"company_name":"","industry":"","company_size":"solo|small|medium|large|unknown","what_they_do":"one sentence","fit_score":0,"fit_reason":"one sentence","confidence":"high|medium|low"}',
+  ].join("\n");
+  return {
+    model: s.openAiModel, temperature: 0.2, response_format: { type: "json_object" },
+    messages: [{ role: "system", content: system }, { role: "user", content: JSON.stringify({ lead: { name: lead.name, email: lead.email, company: lead.company, message: lead.message }, website: siteText }) }],
+  };
+}
+
+/** Picks the salesperson: the first rule whose keyword appears in the industry or description, else the default. */
+export function routeLead(enriched, rulesText, defaultOwner) {
+  const haystack = `${enriched.industry || ""} ${enriched.what_they_do || ""} ${enriched.company_name || ""}`.toLowerCase();
+  for (const line of String(rulesText || "").split(/\n|;/)) {
+    const [keyword, owner] = line.split("=").map((x) => (x || "").trim());
+    if (keyword && owner && haystack.includes(keyword.toLowerCase())) return owner;
+  }
+  return defaultOwner;
+}
+
+/** Reviews not seen before (by review name/id). store is the workflow's static data. */
+export function newReviews(reviews, store) {
+  store.seen = store.seen || {};
+  const fresh = [];
+  for (const r of reviews || []) {
+    const id = r.name || `${r.authorAttribution && r.authorAttribution.displayName}|${r.publishTime}`;
+    if (store.seen[id]) continue;
+    store.seen[id] = r.publishTime || true;
+    fresh.push({
+      review_id: id, rating: Number(r.rating) || 0, author: (r.authorAttribution && r.authorAttribution.displayName) || "",
+      text: String((r.originalText && r.originalText.text) || (r.text && r.text.text) || "").slice(0, 3000),
+      published_at: r.publishTime || "", when: r.relativePublishTimeDescription || "",
+    });
+  }
+  return fresh;
+}
+
+/** OpenAI request that analyses one review and drafts a public reply. */
+export function buildReviewRequest(review, s) {
+  const system = [
+    `You manage online reviews for ${s.businessName}. Tone for replies: ${s.replyTone}.`,
+    "Draft a short public reply in the reviewer's language: thank them, address specific points, never argue, never offer compensation or admit legal fault, invite unhappy customers to contact " + s.contactEmail + ".",
+    'Answer with JSON only: {"sentiment":"positive|neutral|negative","summary":"one line","topics":["..."],"reply":"..."}',
+  ].join("\n");
+  return {
+    model: s.openAiModel, temperature: 0.4, response_format: { type: "json_object" },
+    messages: [{ role: "system", content: system }, { role: "user", content: JSON.stringify({ rating: review.rating, author: review.author, text: review.text }) }],
+  };
+}
+
+/** OpenAI request that triages a support ticket. */
+export function buildTicketRequest(ticket, s) {
+  const system = [
+    `You triage customer support emails for ${s.businessName}. ${s.businessDescription}`,
+    `Categories: ${s.categories}. Urgency: urgent (service down, payment problem, angry customer, legal), high, normal, low.`,
+    `Suggest a reply in the customer's language, signed "${s.senderName}", using only these policies: ${s.policies}. If unsure, say the team is looking into it.`,
+    'Answer with JSON only: {"category":"...","urgency":"urgent|high|normal|low","sentiment":"positive|neutral|negative","language":"en","summary":"one line","suggested_reply":"plain text"}',
+  ].join("\n");
+  return {
+    model: s.openAiModel, temperature: 0.2, response_format: { type: "json_object" },
+    messages: [{ role: "system", content: system }, { role: "user", content: JSON.stringify({ from: ticket.name || ticket.email, subject: ticket.subject, message: ticket.message }) }],
+  };
+}
+
+/** Line items from a Shopify or WooCommerce order. */
+export function orderLines(order) {
+  return (order.line_items || []).map((l) => ({ sku: String(l.sku || "").trim(), name: l.title || l.name || "", qty: Number(l.quantity) || 0 })).filter((l) => l.qty > 0);
+}
+
+/** Order summary for the log, from Shopify or WooCommerce. */
+export function orderSummary(order, source) {
+  const lines = orderLines(order);
+  return {
+    order_id: String(order.name || order.number || order.id || ""), source,
+    created_at: order.created_at || order.date_created_gmt || order.date_created || new Date().toISOString(),
+    customer_email: order.email || (order.billing && order.billing.email) || "",
+    total: order.total_price || order.total || "", currency: order.currency || "",
+    items: lines.map((l) => `${l.qty} x ${l.sku || l.name}`).join(", "),
+  };
+}
+
+/** New stock levels after an order, plus SKUs that hit their low-stock threshold and SKUs not in the sheet. */
+export function applyOrder(inventory, lines, nowIso) {
+  const bySku = new Map(inventory.filter((r) => r.sku).map((r) => [String(r.sku).trim(), r]));
+  const updates = new Map();
+  const unknown = [];
+  for (const l of lines) {
+    const row = bySku.get(l.sku);
+    if (!l.sku || !row) { unknown.push(l.sku || l.name); continue; }
+    const current = updates.has(l.sku) ? updates.get(l.sku).stock : Number(row.stock) || 0;
+    updates.set(l.sku, { sku: l.sku, stock: current - l.qty, last_order_at: nowIso, product: row.product, threshold: Number(row.low_stock_threshold) || 0 });
+  }
+  const rows = [...updates.values()];
+  return {
+    updates: rows.map(({ sku, stock, last_order_at }) => ({ sku, stock, last_order_at })),
+    low: rows.filter((r) => r.stock <= r.threshold).map((r) => ({ sku: r.sku, product: r.product, stock: r.stock, threshold: r.threshold })),
+    unknown,
+  };
+}
+
+/** A Shopify checkout as a cart row. */
+export function checkoutRow(c) {
+  const items = (c.line_items || []).map((l) => `${l.quantity} x ${l.title}`).join(", ");
+  return {
+    checkout_id: String(c.token || c.id || ""), email: c.email || (c.customer && c.customer.email) || "",
+    first_name: (c.customer && c.customer.first_name) || (c.billing_address && c.billing_address.first_name) || "",
+    items, total: c.total_price || "", currency: c.currency || c.presentment_currency || "",
+    recovery_url: c.abandoned_checkout_url || "", created_at: c.created_at || new Date().toISOString(),
+  };
+}
+
+/** Open carts due a reminder: first after firstDelayHours, then every repeatHours, up to max. */
+export function dueCartReminders(rows, nowIso, firstDelayHours, repeatHours, max) {
+  const now = Date.parse(nowIso);
+  return rows.filter((r) => {
+    // Rows saved from Shopify have no status until a reminder or an order changes it: empty means open.
+    if (String(r.status || "open").toLowerCase() !== "open" || !r.email || !r.recovery_url) return false;
+    const sent = Number(r.reminders || 0);
+    if (sent >= max) return false;
+    const since = sent === 0 ? Date.parse(r.created_at) : Date.parse(r.last_reminder_at);
+    const wait = (sent === 0 ? firstDelayHours : repeatHours) * 3600000;
+    return Number.isFinite(since) && now - since >= wait;
+  });
+}
+
+/** OpenAI request for a cart reminder email. */
+export function buildCartReminderRequest(cart, n, s) {
+  const system = [
+    `You write cart reminder emails for ${s.storeName}. Brand voice: ${s.brandVoice}. Language: ${s.language}.`,
+    `This is reminder ${n}. Under 90 words. Mention the items. Friendly, no pressure, no false urgency, no made-up stock levels.`,
+    s.discountCode && n >= 2 ? `Mention the discount code ${s.discountCode} (${s.discountText}).` : "Do not mention any discount.",
+    'Answer with JSON only: {"subject":"...","body":"plain text, without the link (it is added after)"}',
+  ].join("\n");
+  return {
+    model: s.openAiModel, temperature: 0.6, response_format: { type: "json_object" },
+    messages: [{ role: "system", content: system }, { role: "user", content: JSON.stringify({ first_name: cart.first_name, items: cart.items, total: `${cart.total} ${cart.currency}` }) }],
+  };
+}
+
+/** A meeting from the form or a webhook. */
+export function normalizeMeeting(input) {
+  const b = input.body || input;
+  const pick = (...keys) => { for (const k of keys) if (b[k] != null && String(b[k]).trim()) return String(b[k]).trim(); return ""; };
+  const attendees = (Array.isArray(b.attendees) ? b.attendees.join(",") : pick("attendees", "Attendees (emails, comma separated)", "Attendees"))
+    .split(/[,;\s]+/).map((e) => e.trim().toLowerCase()).filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+  return {
+    title: pick("title", "Meeting title", "meeting_title") || "Meeting",
+    date: pick("date", "Meeting date", "meeting_date") || new Date().toISOString().slice(0, 10),
+    attendees: [...new Set(attendees)],
+    transcript: pick("transcript", "Transcript or notes", "notes", "text").slice(0, 60000),
+  };
+}
+
+/** OpenAI request that summarizes a meeting and extracts action items. */
+export function buildMeetingRequest(meeting, s) {
+  const system = [
+    `You write meeting notes for ${s.teamName}. Language: same as the transcript.`,
+    "Be factual: only what was said. Action items need a clear task; owner is a person's name or email when stated, else empty; due_date as YYYY-MM-DD only when a date was stated.",
+    'Answer with JSON only: {"summary":"3-6 sentences","decisions":["..."],"action_items":[{"task":"","owner":"","due_date":""}],"open_questions":["..."]}',
+  ].join("\n");
+  return {
+    model: s.openAiModel, temperature: 0.2, response_format: { type: "json_object" },
+    messages: [{ role: "system", content: system }, { role: "user", content: `Meeting: ${meeting.title} (${meeting.date})\nAttendees: ${meeting.attendees.join(", ")}\n\nTranscript:\n${meeting.transcript}` }],
+  };
+}
+
+/** Meeting notes as a plain-text email body. */
+export function meetingEmail(meeting, notes) {
+  const list = (items) => (items && items.length ? items.map((x) => `- ${x}`).join("\n") : "- none");
+  const actions = (notes.action_items || []).map((a) => `- ${a.task}${a.owner ? ` (${a.owner})` : ""}${a.due_date ? `, due ${a.due_date}` : ""}`).join("\n") || "- none";
+  return `${meeting.title} (${meeting.date})\n\nSummary\n${notes.summary || ""}\n\nDecisions\n${list(notes.decisions)}\n\nAction items\n${actions}\n\nOpen questions\n${list(notes.open_questions)}`;
+}
+
+/** Sites to check, one per line: "https://example.com" or "https://example.com | text that must appear". */
+export function parseSites(text) {
+  return String(text || "").split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#")).map((l) => {
+    const [url, keyword] = l.split("|").map((x) => x.trim());
+    return { url, keyword: keyword || "" };
+  }).filter((s) => /^https?:\/\//i.test(s.url));
+}
+
+/** Up or down for one check. response: the HTTP node output (full response) or an error passthrough. */
+export function siteStatus(site, response) {
+  const code = Number(response && response.statusCode);
+  if (!code) return { ...site, up: false, detail: (response && (response.error && (response.error.message || response.error))) || "no response (timeout or connection error)" };
+  if (code >= 400) return { ...site, up: false, detail: `HTTP ${code}` };
+  if (site.keyword && !String(response.body || "").includes(site.keyword)) return { ...site, up: false, detail: `HTTP ${code} but "${site.keyword}" not found` };
+  return { ...site, up: true, detail: `HTTP ${code}` };
+}
+
+/** Down and recovery events. A site is down after `confirm` failed checks in a row. store is static data. */
+export function uptimeEvents(results, store, nowIso, confirm) {
+  store.sites = store.sites || {};
+  const events = [];
+  for (const r of results) {
+    const st = store.sites[r.url] || { down: false, fails: 0, since: "" };
+    if (!r.up) {
+      st.fails += 1;
+      if (!st.down && st.fails >= confirm) {
+        st.down = true; st.since = nowIso;
+        events.push({ url: r.url, event: "down", at: nowIso, detail: r.detail, duration_minutes: "" });
+      }
+    } else {
+      if (st.down) {
+        const minutes = Math.round((Date.parse(nowIso) - Date.parse(st.since)) / 60000);
+        events.push({ url: r.url, event: "recovered", at: nowIso, detail: r.detail, duration_minutes: minutes });
+      }
+      st.down = false; st.fails = 0; st.since = "";
+    }
+    store.sites[r.url] = st;
+  }
+  return events;
 }

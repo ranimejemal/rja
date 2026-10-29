@@ -141,6 +141,85 @@ describe("security logic", () => {
   });
 });
 
+describe("catalog automation logic", () => {
+  it("reads an email enquiry without quoted history", () => {
+    const e = L.emailEnquiry({ id: "m1", threadId: "t1", subject: "Quote", from: { value: [{ address: "Ana@Shop.com", name: "Ana" }] },
+      text: "Hello, we need a quote.\n\nOn Mon, 1 Jan 2026 at 10:00 Bob <b@x.io> wrote:\n> old stuff", date: "2026-03-10T09:00:00Z" });
+    expect(e).toMatchObject({ email: "ana@shop.com", name: "Ana", thread_id: "t1", message: "Hello, we need a quote." });
+  });
+
+  it("finds the company domain unless it is free mail", () => {
+    expect(L.companyDomain("jo@acme.io", "")).toBe("acme.io");
+    expect(L.companyDomain("jo@gmail.com", "")).toBe("");
+    expect(L.companyDomain("jo@gmail.com", "https://www.Acme.com/about")).toBe("acme.com");
+  });
+
+  it("strips HTML to visible text", () => {
+    expect(L.htmlToText("<html><style>x{}</style><script>bad()</script><h1>Acme &amp; Co</h1><p>We  build\nrobots</p></html>")).toBe("Acme & Co We build robots");
+  });
+
+  it("routes leads by keyword rules", () => {
+    const rules = "real estate = anna@x.io\nretail = tom@x.io";
+    expect(L.routeLead({ industry: "Real Estate agency" }, rules, "sales@x.io")).toBe("anna@x.io");
+    expect(L.routeLead({ industry: "Banking" }, rules, "sales@x.io")).toBe("sales@x.io");
+  });
+
+  it("returns only unseen reviews", () => {
+    const store: Record<string, unknown> = {};
+    const reviews = [{ name: "r1", rating: 2, text: { text: "Slow" }, authorAttribution: { displayName: "Ann" }, publishTime: "2026-03-01T00:00:00Z" }];
+    expect(L.newReviews(reviews, store)).toEqual([expect.objectContaining({ review_id: "r1", rating: 2, author: "Ann", text: "Slow" })]);
+    expect(L.newReviews(reviews, store)).toEqual([]);
+  });
+
+  it("applies an order to stock and flags low stock and unknown SKUs", () => {
+    const inventory = [{ sku: "A1", product: "Mug", stock: 10, low_stock_threshold: 5 }, { sku: "B2", product: "Tee", stock: 50, low_stock_threshold: 5 }];
+    const lines = L.orderLines({ line_items: [{ sku: "A1", quantity: 3, title: "Mug" }, { sku: "A1", quantity: 2 }, { sku: "Z9", quantity: 1, title: "Gift" }] });
+    const r = L.applyOrder(inventory, lines, NOW);
+    expect(r.updates).toEqual([{ sku: "A1", stock: 5, last_order_at: NOW }]);
+    expect(r.low).toEqual([{ sku: "A1", product: "Mug", stock: 5, threshold: 5 }]);
+    expect(r.unknown).toEqual(["Z9"]);
+    expect(L.orderSummary({ number: "1001", billing: { email: "c@x.io" }, total: "12.00", currency: "EUR", line_items: [{ sku: "A1", quantity: 1 }] }, "woocommerce"))
+      .toMatchObject({ order_id: "1001", customer_email: "c@x.io", items: "1 x A1" });
+  });
+
+  it("schedules cart reminders", () => {
+    const base = { status: "open", email: "c@x.io", recovery_url: "https://shop/r", created_at: "2026-03-10T07:30:00Z", reminders: 0, last_reminder_at: "" };
+    expect(L.dueCartReminders([base], NOW, 1, 24, 3)).toHaveLength(1);
+    expect(L.dueCartReminders([{ ...base, created_at: "2026-03-10T08:30:00Z" }], NOW, 1, 24, 3)).toHaveLength(0);
+    expect(L.dueCartReminders([{ ...base, reminders: 1, last_reminder_at: "2026-03-09T08:00:00Z" }], NOW, 1, 24, 3)).toHaveLength(1);
+    expect(L.dueCartReminders([{ ...base, status: "recovered" }], NOW, 1, 24, 3)).toHaveLength(0);
+    expect(L.dueCartReminders([{ ...base, status: "", reminders: "" }], NOW, 1, 24, 3)).toHaveLength(1);
+    expect(L.checkoutRow({ token: "tok", email: "c@x.io", line_items: [{ quantity: 2, title: "Mug" }], total_price: "20.00", currency: "EUR", abandoned_checkout_url: "https://shop/r" }))
+      .toMatchObject({ checkout_id: "tok", items: "2 x Mug" });
+  });
+
+  it("normalizes meetings and formats notes", () => {
+    const m = L.normalizeMeeting({ "Meeting title": "Kickoff", "Attendees (emails, comma separated)": "a@x.io, B@x.io; bad", "Transcript or notes": "We agreed..." });
+    expect(m).toMatchObject({ title: "Kickoff", attendees: ["a@x.io", "b@x.io"], transcript: "We agreed..." });
+    const text = L.meetingEmail(m, { summary: "S", decisions: ["Go"], action_items: [{ task: "Send quote", owner: "Ana", due_date: "2026-03-12" }], open_questions: [] });
+    expect(text).toContain("- Send quote (Ana), due 2026-03-12");
+    expect(text).toContain("Open questions\n- none");
+  });
+
+  it("detects downtime after confirmed failures and reports recovery", () => {
+    expect(L.parseSites("https://a.com\n# comment\nhttps://b.com | Welcome\nnot a url")).toEqual([{ url: "https://a.com", keyword: "" }, { url: "https://b.com", keyword: "Welcome" }]);
+    expect(L.siteStatus({ url: "u", keyword: "Welcome" }, { statusCode: 200, body: "<h1>Welcome</h1>" }).up).toBe(true);
+    expect(L.siteStatus({ url: "u", keyword: "Welcome" }, { statusCode: 200, body: "Maintenance" }).detail).toMatch(/not found/);
+    expect(L.siteStatus({ url: "u" }, { statusCode: 503 }).up).toBe(false);
+    expect(L.siteStatus({ url: "u" }, { url: "u" }).detail).toMatch(/no response/);
+    const store: Record<string, unknown> = {};
+    const down = { url: "u", up: false, detail: "HTTP 503" };
+    expect(L.uptimeEvents([down], store, "2026-03-10T09:00:00Z", 2)).toEqual([]);
+    expect(L.uptimeEvents([down], store, "2026-03-10T09:05:00Z", 2)).toEqual([expect.objectContaining({ event: "down" })]);
+    expect(L.uptimeEvents([down], store, "2026-03-10T09:10:00Z", 2)).toEqual([]);
+    expect(L.uptimeEvents([{ url: "u", up: true, detail: "HTTP 200" }], store, "2026-03-10T09:35:00Z", 2)).toEqual([expect.objectContaining({ event: "recovered", duration_minutes: 30 })]);
+  });
+
+  it("filters due posts by status", () => {
+    expect(L.duePosts([{ status: "scheduled", publish_at: "2026-03-10T08:00:00Z" }], NOW, "scheduled")).toHaveLength(1);
+  });
+});
+
 // The generated workflows: each one must pass the marketplace upload scan and reference only existing nodes.
 const dir = join(__dirname, "..", "automations");
 const workflows = existsSync(dir)
@@ -148,7 +227,7 @@ const workflows = existsSync(dir)
   : [];
 
 describe("workflow files", () => {
-  it("there are seven", () => expect(workflows).toHaveLength(7));
+  it("all workflows are present", () => expect(workflows.length).toBeGreaterThanOrEqual(17));
   it.each(workflows)("$name passes the marketplace upload scan", ({ raw }) => {
     const report = scanWorkflow(raw);
     expect(report.findings.filter((f) => f.severity === "error")).toEqual([]);

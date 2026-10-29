@@ -1,0 +1,723 @@
+{
+  "name": "Abandoned Cart Recovery | Ranime Jemal Agency",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Abandoned Cart Recovery (Shopify)\nSaves every checkout, marks it recovered when the order is placed, and every hour emails customers who left items behind: a first reminder after `firstDelayHours`, then every `repeatHours`, up to `maxReminders`. The AI writes each email from the cart contents; the discount code (optional) is only offered from the second reminder.\nOnly email customers who agreed to marketing emails where the law requires it.\n1. Fill in **Settings**. 2. Make a sheet with a **Carts** tab (`carts-sheet.csv`). 3. Connect Shopify (access token), Google Sheets, Gmail and OpenAI. 4. Activate.",
+        "height": 320,
+        "width": 580,
+        "color": 4
+      },
+      "id": "node-016c",
+      "name": "Note 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -500
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "accessToken",
+        "topic": "checkouts/create"
+      },
+      "id": "node-016e",
+      "name": "Checkout created",
+      "type": "n8n-nodes-base.shopifyTrigger",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -40
+      ],
+      "webhookId": "hook-016d"
+    },
+    {
+      "parameters": {
+        "authentication": "accessToken",
+        "topic": "checkouts/update"
+      },
+      "id": "node-0170",
+      "name": "Checkout updated",
+      "type": "n8n-nodes-base.shopifyTrigger",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        140
+      ],
+      "webhookId": "hook-016f"
+    },
+    {
+      "parameters": {
+        "authentication": "accessToken",
+        "topic": "orders/create"
+      },
+      "id": "node-0172",
+      "name": "Order placed",
+      "type": "n8n-nodes-base.shopifyTrigger",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        320
+      ],
+      "webhookId": "hook-0171"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "20 * * * *"
+            }
+          ]
+        }
+      },
+      "id": "node-0173",
+      "name": "Every hour",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -560,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-0174",
+              "name": "storeName",
+              "value": "Your store",
+              "type": "string"
+            },
+            {
+              "id": "set-0175",
+              "name": "brandVoice",
+              "value": "friendly and simple",
+              "type": "string"
+            },
+            {
+              "id": "set-0176",
+              "name": "language",
+              "value": "English",
+              "type": "string"
+            },
+            {
+              "id": "set-0177",
+              "name": "firstDelayHours",
+              "value": 1,
+              "type": "number"
+            },
+            {
+              "id": "set-0178",
+              "name": "repeatHours",
+              "value": 24,
+              "type": "number"
+            },
+            {
+              "id": "set-0179",
+              "name": "maxReminders",
+              "value": 2,
+              "type": "number"
+            },
+            {
+              "id": "set-017a",
+              "name": "discountCode",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "set-017b",
+              "name": "discountText",
+              "value": "10% off your order",
+              "type": "string"
+            },
+            {
+              "id": "set-017c",
+              "name": "senderName",
+              "value": "Your store",
+              "type": "string"
+            },
+            {
+              "id": "set-017d",
+              "name": "googleSheetUrl",
+              "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
+              "type": "string"
+            },
+            {
+              "id": "set-017e",
+              "name": "openAiModel",
+              "value": "gpt-4.1-mini",
+              "type": "string"
+            },
+            {
+              "id": "set-017f",
+              "name": "openAiBaseUrl",
+              "value": "https://api.openai.com/v1",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "node-0180",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -320,
+        240
+      ],
+      "notes": "Fill in these values before activating.",
+      "color": "#FFD233"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "cond-0181",
+                    "leftValue": "={{ $('Checkout created').isExecuted || $('Checkout updated').isExecuted }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Checkout"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "cond-0182",
+                    "leftValue": "={{ $('Order placed').isExecuted }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Order"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "cond-0183",
+                    "leftValue": "={{ $('Every hour').isExecuted }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Reminders"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-0184",
+      "name": "Route",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -100,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function checkoutRow(c) {\n  const items = (c.line_items || []).map((l) => `${l.quantity} x ${l.title}`).join(\", \");\n  return {\n    checkout_id: String(c.token || c.id || \"\"), email: c.email || (c.customer && c.customer.email) || \"\",\n    first_name: (c.customer && c.customer.first_name) || (c.billing_address && c.billing_address.first_name) || \"\",\n    items, total: c.total_price || \"\", currency: c.currency || c.presentment_currency || \"\",\n    recovery_url: c.abandoned_checkout_url || \"\", created_at: c.created_at || new Date().toISOString(),\n  };\n}\n\nreturn $input.all().map((item, i) => ({ json: checkoutRow(item.json), pairedItem: { item: i } })).filter((i) => i.json.checkout_id);"
+      },
+      "id": "node-0185",
+      "name": "Cart row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        160,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Settings').first().json.googleSheetUrl }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Carts"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "checkout_id"
+          ],
+          "schema": []
+        },
+        "options": {
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "node-0186",
+      "name": "Save cart",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        380,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Settings').first().json.googleSheetUrl }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Carts"
+        },
+        "options": {}
+      },
+      "id": "node-0187",
+      "name": "Read carts (order)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        160,
+        240
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const orders = $('Order placed').all().map((o) => o.json);\nreturn $input.all()\n  .map((item, i) => ({ row: item.json, i }))\n  .filter(({ row }) => row.checkout_id && String(row.status || 'open').toLowerCase() === 'open')\n  .map(({ row, i }) => {\n    const order = orders.find((o) => (o.checkout_token && String(o.checkout_token) === String(row.checkout_id)) || (o.email && row.email && o.email.toLowerCase() === String(row.email).toLowerCase()));\n    return order ? { json: { checkout_id: row.checkout_id, status: 'recovered', recovered_order: String(order.name || order.id) }, pairedItem: { item: i } } : null;\n  })\n  .filter(Boolean);"
+      },
+      "id": "node-0188",
+      "name": "Recovered carts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        380,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Settings').first().json.googleSheetUrl }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Carts"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "checkout_id"
+          ],
+          "schema": []
+        },
+        "options": {
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "node-0189",
+      "name": "Mark recovered",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        600,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Settings').first().json.googleSheetUrl }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Carts"
+        },
+        "options": {}
+      },
+      "id": "node-018a",
+      "name": "Read carts",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        160,
+        480
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "function dueCartReminders(rows, nowIso, firstDelayHours, repeatHours, max) {\n  const now = Date.parse(nowIso);\n  return rows.filter((r) => {\n    // Rows saved from Shopify have no status until a reminder or an order changes it: empty means open.\n    if (String(r.status || \"open\").toLowerCase() !== \"open\" || !r.email || !r.recovery_url) return false;\n    const sent = Number(r.reminders || 0);\n    if (sent >= max) return false;\n    const since = sent === 0 ? Date.parse(r.created_at) : Date.parse(r.last_reminder_at);\n    const wait = (sent === 0 ? firstDelayHours : repeatHours) * 3600000;\n    return Number.isFinite(since) && now - since >= wait;\n  });\n}\n\nfunction buildCartReminderRequest(cart, n, s) {\n  const system = [\n    `You write cart reminder emails for ${s.storeName}. Brand voice: ${s.brandVoice}. Language: ${s.language}.`,\n    `This is reminder ${n}. Under 90 words. Mention the items. Friendly, no pressure, no false urgency, no made-up stock levels.`,\n    s.discountCode && n >= 2 ? `Mention the discount code ${s.discountCode} (${s.discountText}).` : \"Do not mention any discount.\",\n    'Answer with JSON only: {\"subject\":\"...\",\"body\":\"plain text, without the link (it is added after)\"}',\n  ].join(\"\\n\");\n  return {\n    model: s.openAiModel, temperature: 0.6, response_format: { type: \"json_object\" },\n    messages: [{ role: \"system\", content: system }, { role: \"user\", content: JSON.stringify({ first_name: cart.first_name, items: cart.items, total: `${cart.total} ${cart.currency}` }) }],\n  };\n}\n\nconst s = $('Settings').first().json;\nconst input = $input.all();\nconst index = new Map(input.map((it, i) => [it.json, i]));\nconst rows = input.map((i) => i.json).filter((r) => r.checkout_id);\nreturn dueCartReminders(rows, new Date().toISOString(), Number(s.firstDelayHours), Number(s.repeatHours), Number(s.maxReminders)).map((row) => {\n  const n = Number(row.reminders || 0) + 1;\n  return { json: { ...row, reminder_number: n, request: buildCartReminderRequest(row, n, s) }, pairedItem: { item: index.get(row) } };\n});"
+      },
+      "id": "node-018b",
+      "name": "Carts to remind",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        380,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Settings').first().json.openAiBaseUrl }}/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.request) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "node-018c",
+      "name": "Write reminder with AI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        600,
+        480
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "function readAiJson(response) {\n  const content = response && response.choices && response.choices[0] && response.choices[0].message && response.choices[0].message.content;\n  if (!content) throw new Error(\"OpenAI returned no answer: \" + JSON.stringify(response).slice(0, 300));\n  try {\n    return JSON.parse(content);\n  } catch {\n    throw new Error(\"OpenAI answer was not valid JSON: \" + content.slice(0, 300));\n  }\n}\n\nconst src = $('Carts to remind').all();\nreturn $input.all().map((item, i) => {\n  const c = src[i].json;\n  const ai = readAiJson(item.json);\n  return { json: { checkout_id: c.checkout_id, email: c.email, reminder_number: c.reminder_number, subject: ai.subject || 'You left something in your cart',\n    body: (ai.body || '') + '\\n\\nComplete your order: ' + c.recovery_url }, pairedItem: { item: i } };\n});"
+      },
+      "id": "node-018d",
+      "name": "Reminder email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        820,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.body }}",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "={{ $('Settings').first().json.senderName }}"
+        }
+      },
+      "id": "node-018e",
+      "name": "Send reminder",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1040,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((_, i) => {\n  const m = $('Reminder email').all()[i].json;\n  return { json: { checkout_id: m.checkout_id, status: 'open', reminders: m.reminder_number, last_reminder_at: new Date().toISOString() }, pairedItem: { item: i } };\n});"
+      },
+      "id": "node-018f",
+      "name": "Reminder sent",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1260,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Settings').first().json.googleSheetUrl }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Carts"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "checkout_id"
+          ],
+          "schema": []
+        },
+        "options": {
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "node-0190",
+      "name": "Record reminder",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1480,
+        480
+      ]
+    }
+  ],
+  "connections": {
+    "Checkout created": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Checkout updated": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Order placed": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every hour": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Route",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route": {
+      "main": [
+        [
+          {
+            "node": "Cart row",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Read carts (order)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Read carts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cart row": {
+      "main": [
+        [
+          {
+            "node": "Save cart",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read carts (order)": {
+      "main": [
+        [
+          {
+            "node": "Recovered carts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recovered carts": {
+      "main": [
+        [
+          {
+            "node": "Mark recovered",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read carts": {
+      "main": [
+        [
+          {
+            "node": "Carts to remind",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Carts to remind": {
+      "main": [
+        [
+          {
+            "node": "Write reminder with AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write reminder with AI": {
+      "main": [
+        [
+          {
+            "node": "Reminder email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reminder email": {
+      "main": [
+        [
+          {
+            "node": "Send reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send reminder": {
+      "main": [
+        [
+          {
+            "node": "Reminder sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reminder sent": {
+      "main": [
+        [
+          {
+            "node": "Record reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

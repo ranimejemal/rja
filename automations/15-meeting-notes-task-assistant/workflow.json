@@ -1,0 +1,349 @@
+{
+  "name": "Meeting Notes & Task Assistant | Ranime Jemal Agency",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Meeting Notes & Task Assistant\nPaste a transcript or rough notes in the form (or send them to the webhook from your recorder), and the AI writes the summary, decisions, action items with owners and due dates, and open questions. The notes are emailed to the attendees and every action item is added to a **Tasks** sheet.\n1. Fill in **Settings**. 2. Make a sheet with a **Tasks** tab (`tasks-sheet.csv`). 3. Connect OpenAI, Gmail and Google Sheets. 4. Activate and share the form.",
+        "height": 300,
+        "width": 560,
+        "color": 4
+      },
+      "id": "node-0191",
+      "name": "Note 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -460
+      ]
+    },
+    {
+      "parameters": {
+        "formTitle": "Meeting notes",
+        "formDescription": "Paste the transcript or your notes. The summary and tasks arrive by email.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Meeting title",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Meeting date",
+              "fieldType": "date"
+            },
+            {
+              "fieldLabel": "Attendees (emails, comma separated)"
+            },
+            {
+              "fieldLabel": "Transcript or notes",
+              "fieldType": "textarea",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {
+          "appendAttribution": false,
+          "respondWithOptions": {
+            "values": {
+              "respondWith": "text",
+              "formSubmittedText": "Thanks! The notes will arrive by email in a minute."
+            }
+          }
+        }
+      },
+      "id": "node-0193",
+      "name": "Meeting notes form",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        -560,
+        0
+      ],
+      "webhookId": "hook-0192"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "meeting-transcript",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "node-0195",
+      "name": "Transcript webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        200
+      ],
+      "webhookId": "hook-0194"
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-0196",
+              "name": "teamName",
+              "value": "Your team",
+              "type": "string"
+            },
+            {
+              "id": "set-0197",
+              "name": "notesEmail",
+              "value": "you@yourbusiness.com",
+              "type": "string"
+            },
+            {
+              "id": "set-0198",
+              "name": "senderName",
+              "value": "Meeting assistant",
+              "type": "string"
+            },
+            {
+              "id": "set-0199",
+              "name": "googleSheetUrl",
+              "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
+              "type": "string"
+            },
+            {
+              "id": "set-019a",
+              "name": "openAiModel",
+              "value": "gpt-4.1-mini",
+              "type": "string"
+            },
+            {
+              "id": "set-019b",
+              "name": "openAiBaseUrl",
+              "value": "https://api.openai.com/v1",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "node-019c",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -320,
+        100
+      ],
+      "notes": "Fill in these values before activating.",
+      "color": "#FFD233"
+    },
+    {
+      "parameters": {
+        "jsCode": "function normalizeMeeting(input) {\n  const b = input.body || input;\n  const pick = (...keys) => { for (const k of keys) if (b[k] != null && String(b[k]).trim()) return String(b[k]).trim(); return \"\"; };\n  const attendees = (Array.isArray(b.attendees) ? b.attendees.join(\",\") : pick(\"attendees\", \"Attendees (emails, comma separated)\", \"Attendees\"))\n    .split(/[,;\\s]+/).map((e) => e.trim().toLowerCase()).filter((e) => /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(e));\n  return {\n    title: pick(\"title\", \"Meeting title\", \"meeting_title\") || \"Meeting\",\n    date: pick(\"date\", \"Meeting date\", \"meeting_date\") || new Date().toISOString().slice(0, 10),\n    attendees: [...new Set(attendees)],\n    transcript: pick(\"transcript\", \"Transcript or notes\", \"notes\", \"text\").slice(0, 60000),\n  };\n}\n\nfunction buildMeetingRequest(meeting, s) {\n  const system = [\n    `You write meeting notes for ${s.teamName}. Language: same as the transcript.`,\n    \"Be factual: only what was said. Action items need a clear task; owner is a person's name or email when stated, else empty; due_date as YYYY-MM-DD only when a date was stated.\",\n    'Answer with JSON only: {\"summary\":\"3-6 sentences\",\"decisions\":[\"...\"],\"action_items\":[{\"task\":\"\",\"owner\":\"\",\"due_date\":\"\"}],\"open_questions\":[\"...\"]}',\n  ].join(\"\\n\");\n  return {\n    model: s.openAiModel, temperature: 0.2, response_format: { type: \"json_object\" },\n    messages: [{ role: \"system\", content: system }, { role: \"user\", content: `Meeting: ${meeting.title} (${meeting.date})\\nAttendees: ${meeting.attendees.join(\", \")}\\n\\nTranscript:\\n${meeting.transcript}` }],\n  };\n}\n\nconst s = $('Settings').first().json;\nreturn $input.all().map((item, i) => {\n  const m = normalizeMeeting(item.json);\n  return { json: { ...m, request: buildMeetingRequest(m, s) }, pairedItem: { item: i } };\n}).filter((i) => i.json.transcript);"
+      },
+      "id": "node-019d",
+      "name": "Meeting",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -100,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Settings').first().json.openAiBaseUrl }}/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.request) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "node-019e",
+      "name": "Write notes with AI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        120,
+        100
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "function readAiJson(response) {\n  const content = response && response.choices && response.choices[0] && response.choices[0].message && response.choices[0].message.content;\n  if (!content) throw new Error(\"OpenAI returned no answer: \" + JSON.stringify(response).slice(0, 300));\n  try {\n    return JSON.parse(content);\n  } catch {\n    throw new Error(\"OpenAI answer was not valid JSON: \" + content.slice(0, 300));\n  }\n}\n\nfunction meetingEmail(meeting, notes) {\n  const list = (items) => (items && items.length ? items.map((x) => `- ${x}`).join(\"\\n\") : \"- none\");\n  const actions = (notes.action_items || []).map((a) => `- ${a.task}${a.owner ? ` (${a.owner})` : \"\"}${a.due_date ? `, due ${a.due_date}` : \"\"}`).join(\"\\n\") || \"- none\";\n  return `${meeting.title} (${meeting.date})\\n\\nSummary\\n${notes.summary || \"\"}\\n\\nDecisions\\n${list(notes.decisions)}\\n\\nAction items\\n${actions}\\n\\nOpen questions\\n${list(notes.open_questions)}`;\n}\n\nconst s = $('Settings').first().json;\nconst src = $('Meeting').all();\nreturn $input.all().map((item, i) => {\n  const m = src[i].json;\n  const n = readAiJson(item.json);\n  const recipients = [...new Set([...m.attendees, s.notesEmail].filter(Boolean))];\n  return { json: { title: m.title, date: m.date, recipients: recipients.join(','), body: meetingEmail(m, n), action_items: n.action_items || [] }, pairedItem: { item: i } };\n});"
+      },
+      "id": "node-019f",
+      "name": "Notes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        340,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.recipients }}",
+        "subject": "=Notes: {{ $json.title }} ({{ $json.date }})",
+        "emailType": "text",
+        "message": "={{ $json.body }}",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "={{ $('Settings').first().json.senderName }}"
+        }
+      },
+      "id": "node-01a0",
+      "name": "Email the notes",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        560,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date().toISOString();\nreturn $input.all().flatMap((item, i) => (item.json.action_items || []).filter((a) => a.task).map((a) => ({ json: {\n  meeting: item.json.title, meeting_date: item.json.date, task: a.task, owner: a.owner || '', due_date: a.due_date || '', status: 'open', created_at: now,\n}, pairedItem: { item: i } })));"
+      },
+      "id": "node-01a1",
+      "name": "Task rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Settings').first().json.googleSheetUrl }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Tasks"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "node-01a2",
+      "name": "Add tasks",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        780,
+        220
+      ]
+    }
+  ],
+  "connections": {
+    "Meeting notes form": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcript webhook": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Meeting",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Meeting": {
+      "main": [
+        [
+          {
+            "node": "Write notes with AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write notes with AI": {
+      "main": [
+        [
+          {
+            "node": "Notes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notes": {
+      "main": [
+        [
+          {
+            "node": "Email the notes",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Task rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Task rows": {
+      "main": [
+        [
+          {
+            "node": "Add tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

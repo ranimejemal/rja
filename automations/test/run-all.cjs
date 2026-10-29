@@ -386,6 +386,212 @@ scenario(7, W7, {
   check('weekly summary counts last 7 days only', /2 alerts/.test(m.subject) && /Alerts in the last 7 days: 2 \(high: 1, low: 1\)/.test(m.message) && /SSH brute force on web-1/.test(m.message) && !/Old/.test(m.message), m);
 });
 
+// --------------------------------------------------------------------------------------------- 8
+const W8 = '08-ai-lead-management-assistant';
+const gmailFull = (from, name, subject, text, extra = {}) => `{ json: { id: 'msg-${Math.random().toString(36).slice(2, 7)}', threadId: 'thr-1', subject: ${JSON.stringify(subject)}, from: { value: [{ address: ${JSON.stringify(from)}, name: ${JSON.stringify(name)} }], text: ${JSON.stringify(from)} }, text: ${JSON.stringify(text)}, date: new Date().toISOString(), ...${JSON.stringify(extra)} } }`;
+scenario(8, W8, {
+  id: 'w8email000000001', trigger: 'New enquiry email',
+  triggerCode: `return [${gmailFull('ana@acme.io', 'Ana', 'Quote for automations', 'Hello, we need a quote for 3 workflows.\n\nOn Mon, 1 Jan 2026 Bob wrote:\n> old')}];`,
+}, (r) => {
+  const row = r.outputOf('Log enquiry')[0];
+  check('enquiry logged with AI category and priority', row.email === 'ana@acme.io' && row.category === 'quote request' && row.priority === 'high' && row.message === 'Hello, we need a quote for 3 workflows.' && row.source === 'email', row);
+  const d = r.outputOf('Draft the reply')[0].__params;
+  check('reply drafted in the same thread', d.options.threadId === 'thr-1' && d.options.sendTo === 'ana@acme.io' && d.subject === 'Re: Quote for automations' && /quote today/.test(d.message), d);
+  check('team alerted for high priority', /High priority enquiry/.test(r.outputOf('Alert the team')[0].__params.subject));
+});
+scenario(8, W8, {
+  id: 'w8form0000000001', trigger: 'Website form webhook',
+  triggerCode: `return [{ json: { headers: {}, body: { name: 'Leo', email: 'leo@shop.fr', company: 'Shop', message: 'Do you do chatbots?' } } }];`,
+}, (r) => {
+  const row = r.outputOf('Log enquiry')[0];
+  check('form enquiry logged', row.source === 'website form' && row.subject === 'Website enquiry from Shop' && row.thread_id === '', row);
+  check('draft without thread for form enquiries', r.outputOf('Draft the reply')[0].__params.options.sendTo === 'leo@shop.fr');
+});
+
+// --------------------------------------------------------------------------------------------- 9
+const W9 = '09-lead-enrichment-qualification';
+scenario(9, W9, {
+  id: 'w9withSite000001', trigger: 'New lead webhook',
+  triggerCode: `return [{ json: { headers: {}, body: { name: 'Ana', email: 'ana@acmehomes.fr', company: 'Acme', message: 'Need more leads' } } }];`,
+  code: { 'Read company website': `return $input.all().map((it, i) => ({ json: { data: '<html><script>x()</script><h1>Acme Homes</h1><p>Real estate in Lyon</p></html>' }, pairedItem: { item: i } }));` },
+}, (r) => {
+  const prep = r.outputOf('Prepare enrichment')[0];
+  check('website text read from the email domain', prep.domain === 'acmehomes.fr' && prep.website_read === 'yes' && /Acme Homes Real estate in Lyon/.test(JSON.stringify(prep.request)), prep.website_read);
+  const row = r.outputOf('Log lead')[0];
+  check('scored, qualified and routed by industry rule', row.fit_score === 82 && row.qualified === 'yes' && row.owner === 'alice@yourbusiness.com', row);
+  check('salesperson emailed', r.outputOf('Send to salesperson')[0].__params.sendTo === 'alice@yourbusiness.com');
+});
+scenario(9, W9, {
+  id: 'w9freeMail000001', trigger: 'Lead form',
+  triggerCode: `return [{ json: { Name: 'Sam', Email: 'sam@gmail.com', Company: '', Website: '', 'How can we help?': 'Hi' } }];`,
+}, (r) => {
+  check('no website fetch for free mail', !r.outputOf('Read company website'));
+  check('still enriched (from message only)', r.outputOf('Prepare enrichment')[0].website_read === 'no' && r.outputOf('Log lead').length === 1);
+});
+
+// --------------------------------------------------------------------------------------------- 10
+const W10 = '10-social-media-content-scheduler';
+scenario(10, W10, {
+  id: 'w10publish000001', trigger: 'Every hour', triggerCode: `return [{ json: {} }];`,
+  reads: { 'Read schedule': `() => [
+    { post_id: 'P1', publish_at: '${daysAgo(0.01)}', status: 'scheduled', facebook: 'FB', instagram: 'IG', linkedin: 'LI', hashtags: '#x', image_url: 'https://img/1.jpg' },
+    { post_id: 'P2', publish_at: '${daysAgo(0.01)}', status: 'idea', facebook: 'not scheduled' },
+  ]` },
+  stubs: { 'Post to Facebook': { id: '1_2' }, 'Instagram: upload image': { id: '3' }, 'Instagram: publish': { id: '4' }, 'Post to LinkedIn': { urn: 'urn:li:share:9' } },
+}, (r) => {
+  check('only scheduled posts are published', r.outputOf('Posts due now').length === 1 && r.outputOf('Posts due now')[0].post_id === 'P1');
+  const res = r.outputOf('Record publishing')[0];
+  check('published and recorded in the Schedule tab', res.status === 'published' && res.__params.sheetName.value === 'Schedule', res);
+});
+
+// --------------------------------------------------------------------------------------------- 11
+const W11 = '11-review-reputation-monitor';
+const placeReviews = `return [{ json: { rating: 4.3, userRatingCount: 120, reviews: [
+  { name: 'places/x/reviews/R1-${Date.now()}', rating: 2, text: { text: 'Waited 40 minutes.' }, authorAttribution: { displayName: 'Ann' }, publishTime: '2026-03-01T10:00:00Z' },
+  { name: 'places/x/reviews/R2-${Date.now()}', rating: 5, text: { text: 'Great!' }, authorAttribution: { displayName: 'Bo' }, publishTime: '2026-03-02T10:00:00Z' },
+] }, pairedItem: { item: 0 } }];`;
+scenario(11, W11, {
+  id: 'w11reviews000001', trigger: 'Every morning', triggerCode: `return [{ json: {} }];`,
+  code: { 'Get Google reviews': placeReviews },
+}, (r) => {
+  check('two new reviews analysed and logged', r.outputOf('Log review').length === 2 && r.outputOf('Log review')[0].sentiment === 'negative');
+  const low = r.outputOf('Alert about low rating');
+  check('low rating alert only for the 2-star review', low && low.length === 1 && /^2-star review from Ann/.test(low[0].__params.subject) && /sorry about the wait/i.test(low[0].__params.message), low && low.map((x) => x.__params.subject));
+  const d = r.outputOf('Email the digest');
+  check('one digest with both reviews', d.length === 1 && /2 new Google review/.test(d[0].__params.subject) && /Average rating: 4.3/.test(d[0].__params.message), d.map((x) => x.__params));
+});
+scenario(11, W11, {
+  id: 'w11reviews000001', trigger: 'Every morning', triggerCode: `return [{ json: {} }];`,
+  code: { 'Get Google reviews': placeReviews },
+}, (r) => {
+  check('the same reviews on the next run are skipped (static data)', r.outputOf('New reviews').length === 0 && !r.outputOf('Analyse with AI'));
+});
+
+// --------------------------------------------------------------------------------------------- 12
+const W12 = '12-customer-support-ticket-triage';
+scenario(12, W12, {
+  id: 'w12ticket0000001', trigger: 'New support email',
+  triggerCode: `return [${gmailFull('kim@example.com', 'Kim', 'Broken mug', 'My mug arrived broken, I want a refund.')}];`,
+}, (r) => {
+  const row = r.outputOf('Log ticket')[0];
+  check('ticket logged with triage', row.category === 'refund or return' && row.urgency === 'urgent' && row.status === 'new' && row.thread_id === 'thr-1', row);
+  check('reply drafted in thread', r.outputOf('Draft the reply')[0].__params.options.threadId === 'thr-1');
+  const a = r.outputOf('Alert the person on duty');
+  check('urgent ticket alerted', a && /^\[URGENT\] refund or return/.test(a[0].__params.subject), a && a[0].__params.subject);
+});
+
+// --------------------------------------------------------------------------------------------- 13
+const W13 = '13-ecommerce-order-inventory-sync';
+const inventory = `() => [
+  { row_number: 2, sku: 'MUG-1', product: 'Mug', stock: 12, low_stock_threshold: 10 },
+  { row_number: 3, sku: 'TEE-1', product: 'Tee', stock: 100, low_stock_threshold: 10 },
+]`;
+scenario(13, W13, {
+  id: 'w13shopify000001', trigger: 'New Shopify order',
+  triggerCode: `return [{ json: { id: 1, name: '#1001', email: 'c@x.io', total_price: '30.00', currency: 'EUR', created_at: '2026-03-10T09:00:00Z', line_items: [{ sku: 'MUG-1', quantity: 3, title: 'Mug' }, { sku: 'TEE-1', quantity: 1, title: 'Tee' }, { sku: 'GIFT', quantity: 1, title: 'Gift card' }] } }];`,
+  reads: { 'Read inventory': inventory },
+}, (r) => {
+  check('order logged', r.outputOf('Log order')[0].order_id === '#1001' && r.outputOf('Log order')[0].source === 'shopify');
+  const u = r.outputOf('Update stock');
+  check('stock reduced per SKU, matched on sku', u.length === 2 && u.find((x) => x.sku === 'MUG-1').stock === 9 && u.find((x) => x.sku === 'TEE-1').stock === 99 && u[0].__params.columns.matchingColumns[0] === 'sku', u);
+  const a = r.outputOf('Email stock alert');
+  check('alert lists low stock and unknown SKU', a && /MUG-1 Mug: 9 left/.test(a[0].__params.message) && /not in the inventory sheet: GIFT/.test(a[0].__params.message), a && a[0].__params.message);
+});
+scenario(13, W13, {
+  id: 'w13woo0000000001', trigger: 'New WooCommerce order',
+  triggerCode: `return [{ json: { id: 55, number: '55', billing: { email: 'w@x.io' }, total: '20.00', currency: 'EUR', line_items: [{ sku: 'TEE-1', quantity: 2, name: 'Tee' }] } }];`,
+  reads: { 'Read inventory': inventory },
+}, (r) => {
+  check('woocommerce order handled', r.outputOf('Log order')[0].source === 'woocommerce' && r.outputOf('Update stock')[0].stock === 98);
+  check('no alert when stock is fine', !r.outputOf('Email stock alert'));
+});
+
+// --------------------------------------------------------------------------------------------- 14
+const W14 = '14-abandoned-cart-recovery';
+scenario(14, W14, {
+  id: 'w14checkout00001', trigger: 'Checkout updated',
+  triggerCode: `return [{ json: { token: 'tok1', email: 'ana@example.com', customer: { first_name: 'Ana' }, line_items: [{ quantity: 1, title: 'Mug' }], total_price: '12.00', currency: 'EUR', abandoned_checkout_url: 'https://shop/r/tok1', created_at: '2026-03-10T08:00:00Z' } }];`,
+}, (r) => {
+  const c = r.outputOf('Save cart')[0];
+  check('cart upserted by checkout_id without resetting reminders', c.checkout_id === 'tok1' && !('reminders' in c) && !('status' in c) && c.__params.operation === 'appendOrUpdate', c);
+});
+scenario(14, W14, {
+  id: 'w14order00000001', trigger: 'Order placed',
+  triggerCode: `return [{ json: { id: 9, name: '#1009', checkout_token: 'tok1', email: 'ana@example.com' } }];`,
+  reads: { 'Read carts (order)': `() => [{ checkout_id: 'tok1', email: 'ana@example.com', status: '' }, { checkout_id: 'tok2', email: 'other@example.com', status: 'open' }]` },
+}, (r) => {
+  const m = r.outputOf('Mark recovered');
+  check('matching cart marked recovered', m.length === 1 && m[0].checkout_id === 'tok1' && m[0].recovered_order === '#1009', m);
+});
+scenario(14, W14, {
+  id: 'w14remind0000001', trigger: 'Every hour', triggerCode: `return [{ json: {} }];`,
+  reads: { 'Read carts': `() => [
+    { checkout_id: 'tok1', email: 'ana@example.com', first_name: 'Ana', items: '1 x Mug', total: '12', currency: 'EUR', recovery_url: 'https://shop/r/tok1', created_at: '${daysAgo(0.1)}', status: '', reminders: '' },
+    { checkout_id: 'tok2', email: 'b@example.com', recovery_url: 'https://shop/r/tok2', created_at: '${daysAgo(0.01)}', status: '', reminders: '' },
+    { checkout_id: 'tok3', email: 'c@example.com', recovery_url: 'https://shop/r/tok3', created_at: '${daysAgo(3)}', status: 'recovered', reminders: 1 },
+  ]` },
+}, (r) => {
+  const sent = r.outputOf('Send reminder');
+  check('only the cart older than an hour gets a reminder, with the link', sent.length === 1 && sent[0].__params.sendTo === 'ana@example.com' && /https:\/\/shop\/r\/tok1/.test(sent[0].__params.message), sent.map((x) => x.__params));
+  const u = r.outputOf('Record reminder')[0];
+  check('reminder count recorded', u.checkout_id === 'tok1' && u.reminders === 1 && u.status === 'open', u);
+});
+
+// --------------------------------------------------------------------------------------------- 15
+const W15 = '15-meeting-notes-task-assistant';
+scenario(15, W15, {
+  id: 'w15form00000001', trigger: 'Meeting notes form',
+  triggerCode: `return [{ json: { 'Meeting title': 'Kickoff', 'Meeting date': '2026-03-10', 'Attendees (emails, comma separated)': 'ana@example.com, bob@example.com', 'Transcript or notes': 'Ana: we start in March. I will send the quote by the 12th.' } }];`,
+}, (r) => {
+  const mail = r.outputOf('Email the notes')[0].__params;
+  check('notes emailed to attendees and the notes address', mail.sendTo === 'ana@example.com,bob@example.com,you@yourbusiness.com' && /Action items\n- Send the quote \(ana@example.com\), due 2026-03-12/.test(mail.message), mail);
+  const t = r.outputOf('Add tasks');
+  check('one task row per action item', t.length === 2 && t[0].task === 'Send the quote' && t[0].meeting === 'Kickoff' && t[1].owner === '', t);
+});
+
+// --------------------------------------------------------------------------------------------- 16
+const W16 = '16-invoice-receipt-data-extraction';
+scenario(16, W16, {
+  id: 'w16drive00000001', trigger: 'Watch the inbox folder',
+  triggerCode: `return [{ json: { id: 'f1', name: 'facture.pdf' } }, { json: { id: 'f2', name: 'notes.txt' } }];`,
+  code: { 'Download file': `const out = [];
+for (const [i, item] of $input.all().entries()) {
+  const isPdf = item.json.name.endsWith('.pdf');
+  const data = await this.helpers.prepareBinaryData(Buffer.from(isPdf ? '${PDF}' : 'aGVsbG8=', 'base64'), item.json.name, isPdf ? 'application/pdf' : 'text/plain');
+  out.push({ json: item.json, binary: { data }, pairedItem: { item: i } });
+}
+return out;` },
+}, (r) => {
+  check('only the PDF is processed', r.outputOf('Supported files').length === 1);
+  const row = r.outputOf('Log in sheet')[0];
+  check('logged with drive link and source', row.source === 'drive' && row.drive_link === 'https://drive.google.com/file/d/f1/view' && row.status === 'ok' && row.supplier_name === 'Acme Ltd', row);
+  const mv = r.outputOf('Move to processed')[0].__params;
+  check('file moved to the processed folder', mv.fileId.value === 'f1' && mv.folderId.value === 'YOUR_PROCESSED_FOLDER_ID', mv);
+});
+
+// --------------------------------------------------------------------------------------------- 18
+const W18 = '18-website-uptime-incident-notifier';
+const SITE = 'https://site-' + Date.now() + '.example';
+const SHOP = 'https://shop-' + Date.now() + '.example';
+// The three checks run the same workflow, so its static data (failure counts) carries over like in production.
+const uptime = (key, code) => scenario(18, W18, {
+  id: 'w18uptime0000001', trigger: 'Every 5 minutes', triggerCode: `return [{ json: {} }];`,
+  settings: { sites: `${SITE}\n${SHOP} | Add to cart` },
+  code: { 'Check site': code },
+}, (r) => { results[key] = r; });
+const results = {};
+const down = `return $input.all().map((it, i) => ({ json: i === 0 ? { statusCode: 503, body: 'Service Unavailable' } : { statusCode: 200, body: 'Add to cart' }, pairedItem: { item: i } }));`;
+uptime('w18check00000001', down);
+uptime('w18check00000002', down);
+uptime('w18check00000003', `return $input.all().map((it, i) => ({ json: { statusCode: 200, body: i === 0 ? 'ok' : 'Add to cart' }, pairedItem: { item: i } }));`);
+if (results.w18check00000001) {
+  check('first failure is not reported yet', !results.w18check00000001.outputOf('Email the alert'));
+  const a2 = results.w18check00000002.outputOf('Email the alert');
+  check('second failure in a row: DOWN alert and incident', a2 && a2.length === 1 && a2[0].__params.subject === 'DOWN: ' + SITE && /HTTP 503/.test(a2[0].__params.message), a2 && a2.map((x) => x.__params.subject));
+  const a3 = results.w18check00000003.outputOf('Email the alert');
+  check('recovery reported', a3 && a3.length === 1 && a3[0].__params.subject === 'RECOVERED: ' + SITE, a3 && a3.map((x) => x.__params.subject));
+}
+
 console.log(`\n${passed} checks passed, ${failed} failed`);
 mock.kill();
 process.exit(failed ? 1 : 0);

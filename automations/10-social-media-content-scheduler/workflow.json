@@ -1,0 +1,448 @@
+{
+  "name": "Social Media Content Scheduler | Ranime Jemal Agency",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Social Media Content Scheduler\nPublishes the posts you write in a Google Sheet at the time you choose, to Facebook, Instagram and LinkedIn (X optional), and writes the result back.\n1. Fill in **Settings**. 2. Make a sheet with a **Schedule** tab (`schedule-sheet.csv`): one row per post, `status` = scheduled. 3. Connect Google Sheets, Facebook Graph API and LinkedIn; disable networks you do not use. 4. Activate. One post is published per hourly run.",
+        "height": 260,
+        "width": 540,
+        "color": 4
+      },
+      "id": "node-0121",
+      "name": "Note 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -420
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "15 * * * *"
+            }
+          ]
+        }
+      },
+      "id": "node-0122",
+      "name": "Every hour",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -560,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-0123",
+              "name": "facebookPageId",
+              "value": "YOUR_FACEBOOK_PAGE_ID",
+              "type": "string"
+            },
+            {
+              "id": "set-0124",
+              "name": "instagramAccountId",
+              "value": "YOUR_INSTAGRAM_BUSINESS_ACCOUNT_ID",
+              "type": "string"
+            },
+            {
+              "id": "set-0125",
+              "name": "linkedinOrganizationId",
+              "value": "YOUR_LINKEDIN_ORGANIZATION_ID",
+              "type": "string"
+            },
+            {
+              "id": "set-0126",
+              "name": "googleSheetUrl",
+              "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "node-0127",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -320,
+        200
+      ],
+      "notes": "Fill in these values before activating.",
+      "color": "#FFD233"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Settings').first().json.googleSheetUrl }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Schedule"
+        },
+        "options": {}
+      },
+      "id": "node-0128",
+      "name": "Read schedule",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -100,
+        200
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "function duePosts(rows, nowIso, status = \"approved\") {\n  const now = Date.parse(nowIso);\n  return rows.filter((r) => String(r.status).toLowerCase() === status && Date.parse(r.publish_at) <= now);\n}\n\nconst input = $input.all();\nconst index = new Map(input.map((it, i) => [it.json, i]));\nconst rows = input.map((i) => i.json).filter((r) => r.post_id);\n// One post per run (the trigger runs hourly), so each result clearly belongs to one post.\nreturn duePosts(rows, new Date().toISOString(), \"scheduled\").slice(0, 1).map((row) => ({ json: row, pairedItem: { item: index.get(row) } }));"
+      },
+      "id": "node-0129",
+      "name": "Posts due now",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        380,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "httpRequestMethod": "POST",
+        "graphApiVersion": "v22.0",
+        "node": "={{ $('Settings').first().json.facebookPageId }}",
+        "edge": "feed",
+        "options": {
+          "queryParameters": {
+            "parameter": [
+              {
+                "name": "message",
+                "value": "={{ $('Posts due now').first().json.facebook }}\n\n{{ $('Posts due now').first().json.hashtags }}"
+              }
+            ]
+          }
+        }
+      },
+      "id": "node-012a",
+      "name": "Post to Facebook",
+      "type": "n8n-nodes-base.facebookGraphApi",
+      "typeVersion": 1,
+      "position": [
+        600,
+        200
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "httpRequestMethod": "POST",
+        "graphApiVersion": "v22.0",
+        "node": "={{ $('Settings').first().json.instagramAccountId }}",
+        "edge": "media",
+        "options": {
+          "queryParameters": {
+            "parameter": [
+              {
+                "name": "image_url",
+                "value": "={{ $('Posts due now').first().json.image_url }}"
+              },
+              {
+                "name": "caption",
+                "value": "={{ $('Posts due now').first().json.instagram }}\n\n{{ $('Posts due now').first().json.hashtags }}"
+              }
+            ]
+          }
+        }
+      },
+      "id": "node-012b",
+      "name": "Instagram: upload image",
+      "type": "n8n-nodes-base.facebookGraphApi",
+      "typeVersion": 1,
+      "position": [
+        820,
+        200
+      ],
+      "onError": "continueErrorOutput",
+      "notes": "Instagram needs an image: put a public image URL in the image_url column."
+    },
+    {
+      "parameters": {
+        "httpRequestMethod": "POST",
+        "graphApiVersion": "v22.0",
+        "node": "={{ $('Settings').first().json.instagramAccountId }}",
+        "edge": "media_publish",
+        "options": {
+          "queryParameters": {
+            "parameter": [
+              {
+                "name": "creation_id",
+                "value": "={{ $json.id }}"
+              }
+            ]
+          }
+        }
+      },
+      "id": "node-012c",
+      "name": "Instagram: publish",
+      "type": "n8n-nodes-base.facebookGraphApi",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        140
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "postAs": "organization",
+        "organization": "={{ $('Settings').first().json.linkedinOrganizationId }}",
+        "text": "={{ $('Posts due now').first().json.linkedin }}\n\n{{ $('Posts due now').first().json.hashtags }}",
+        "shareMediaCategory": "NONE",
+        "additionalFields": {}
+      },
+      "id": "node-012d",
+      "name": "Post to LinkedIn",
+      "type": "n8n-nodes-base.linkedIn",
+      "typeVersion": 1,
+      "position": [
+        1260,
+        200
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "text": "={{ $('Posts due now').first().json.x }}",
+        "additionalFields": {}
+      },
+      "id": "node-012e",
+      "name": "Post to X",
+      "type": "n8n-nodes-base.twitter",
+      "typeVersion": 2,
+      "position": [
+        1480,
+        200
+      ],
+      "onError": "continueErrorOutput",
+      "disabled": true,
+      "notes": "Enable if you have X API access."
+    },
+    {
+      "parameters": {
+        "jsCode": "function publishOutcome(results) {\n  const failed = results.filter((r) => r.enabled && r.error).map((r) => `${r.network}: ${r.error}`);\n  const done = results.filter((r) => r.enabled && !r.error).map((r) => r.network);\n  return {\n    status: failed.length === 0 ? \"published\" : done.length ? \"partly published\" : \"failed\",\n    published_to: done.join(\", \"),\n    errors: failed.join(\" | \").slice(0, 1000),\n  };\n}\n\n// Each network node sends failures to its error output. A disabled node passes its input through unchanged,\n// so a network only counts as published when its node returned a new response without an error.\nconst post = $('Posts due now').first();\nconst steps = [\n  ['facebook', 'Post to Facebook'], ['instagram', 'Instagram: upload image'], ['instagram', 'Instagram: publish'],\n  ['linkedin', 'Post to LinkedIn'], ['x', 'Post to X'],\n];\nconst emitted = (node) => {\n  try { if (!$(node).isExecuted) return null; } catch { return null; }\n  let failed = [];\n  try { failed = $(node).all(1); } catch { failed = []; }\n  if (failed.length) return { json: failed[0].json, failed: true };\n  const ok = $(node).all(0);\n  return ok.length ? { json: ok[0].json, failed: false } : null;\n};\nconst status = {};\nlet previous = JSON.stringify(post.json);\nfor (const [network, node] of steps) {\n  const out = emitted(node);\n  if (!out) { status[network] = status[network] || { network, enabled: false }; continue; }\n  const now = JSON.stringify(out.json);\n  const passedThrough = !out.failed && now === previous;\n  previous = now;\n  if (status[network] && status[network].error) continue;\n  if (passedThrough) { status[network] = status[network] || { network, enabled: false }; continue; }\n  const e = out.json.error;\n  const message = out.failed ? (e && (e.message || e.description || e)) || 'failed' : out.json.statusCode ? out.json.message || 'HTTP ' + out.json.statusCode : '';\n  status[network] = { network, enabled: true, error: message ? String(message).slice(0, 200) : '' };\n}\nreturn [{ json: { post_id: post.json.post_id, ...publishOutcome(Object.values(status)), published_at: new Date().toISOString() }, pairedItem: { item: 0 } }];"
+      },
+      "id": "node-012f",
+      "name": "Publishing result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1700,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Settings').first().json.googleSheetUrl }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Schedule"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "post_id"
+          ],
+          "schema": []
+        },
+        "options": {
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "node-0130",
+      "name": "Record publishing",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1920,
+        200
+      ]
+    }
+  ],
+  "connections": {
+    "Every hour": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Read schedule",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read schedule": {
+      "main": [
+        [
+          {
+            "node": "Posts due now",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Posts due now": {
+      "main": [
+        [
+          {
+            "node": "Post to Facebook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post to Facebook": {
+      "main": [
+        [
+          {
+            "node": "Instagram: upload image",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Instagram: upload image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Instagram: publish": {
+      "main": [
+        [
+          {
+            "node": "Post to LinkedIn",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Post to LinkedIn",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post to LinkedIn": {
+      "main": [
+        [
+          {
+            "node": "Post to X",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Post to X",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post to X": {
+      "main": [
+        [
+          {
+            "node": "Publishing result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Publishing result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Instagram: upload image": {
+      "main": [
+        [
+          {
+            "node": "Instagram: publish",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Post to LinkedIn",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publishing result": {
+      "main": [
+        [
+          {
+            "node": "Record publishing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

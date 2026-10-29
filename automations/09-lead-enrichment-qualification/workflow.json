@@ -1,0 +1,523 @@
+{
+  "name": "Lead Enrichment & Qualification | Ranime Jemal Agency",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Lead Enrichment & Qualification\nFor each new lead: reads the company website (from the website field or the email domain), has the AI describe the company and score the fit against your ideal customer, logs it, and emails qualified leads to the right salesperson.\n1. Fill in **Settings** (routing rules: one per line, `keyword = owner@email`).\n2. Make a sheet with a **Leads** tab (`enriched-leads-sheet.csv`). 3. Connect OpenAI, Google Sheets and Gmail. 4. Activate; send leads to the webhook or share the form.",
+        "height": 300,
+        "width": 560,
+        "color": 4
+      },
+      "id": "node-0106",
+      "name": "Note 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -460
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "enrich-lead",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "node-0108",
+      "name": "New lead webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        -60
+      ],
+      "webhookId": "hook-0107"
+    },
+    {
+      "parameters": {
+        "formTitle": "Tell us about your company",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Email",
+              "fieldType": "email",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Company"
+            },
+            {
+              "fieldLabel": "Website"
+            },
+            {
+              "fieldLabel": "How can we help?",
+              "fieldType": "textarea"
+            }
+          ]
+        },
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "node-010a",
+      "name": "Lead form",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        -560,
+        140
+      ],
+      "webhookId": "hook-0109"
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-010b",
+              "name": "businessName",
+              "value": "Your business name",
+              "type": "string"
+            },
+            {
+              "id": "set-010c",
+              "name": "idealCustomer",
+              "value": "Industry, company size, region and need of your best customers.",
+              "type": "string"
+            },
+            {
+              "id": "set-010d",
+              "name": "minFitScore",
+              "value": 60,
+              "type": "number"
+            },
+            {
+              "id": "set-010e",
+              "name": "routingRules",
+              "value": "real estate = alice@yourbusiness.com\nretail = bob@yourbusiness.com",
+              "type": "string"
+            },
+            {
+              "id": "set-010f",
+              "name": "defaultOwner",
+              "value": "sales@yourbusiness.com",
+              "type": "string"
+            },
+            {
+              "id": "set-0110",
+              "name": "senderName",
+              "value": "Lead assistant",
+              "type": "string"
+            },
+            {
+              "id": "set-0111",
+              "name": "googleSheetUrl",
+              "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
+              "type": "string"
+            },
+            {
+              "id": "set-0112",
+              "name": "openAiModel",
+              "value": "gpt-4.1-mini",
+              "type": "string"
+            },
+            {
+              "id": "set-0113",
+              "name": "openAiBaseUrl",
+              "value": "https://api.openai.com/v1",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "node-0114",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -320,
+        40
+      ],
+      "notes": "Fill in these values before activating.",
+      "color": "#FFD233"
+    },
+    {
+      "parameters": {
+        "jsCode": "function normalizeLead(input, source, nowIso) {\n  const flat = {};\n  const add = (obj) => {\n    for (const [k, v] of Object.entries(obj || {})) {\n      if (v && typeof v === \"object\" && !Array.isArray(v)) continue;\n      flat[k.toLowerCase().replace(/[^a-z0-9]+/g, \"_\").replace(/^_|_$/g, \"\")] = Array.isArray(v) ? v.join(\", \") : v;\n    }\n  };\n  add(input);\n  add(input && input.body);\n  add(input && input.data);\n  const pick = (...keys) => {\n    for (const k of keys) if (flat[k] != null && String(flat[k]).trim() !== \"\") return String(flat[k]).trim();\n    return \"\";\n  };\n  const first = pick(\"first_name\", \"firstname\");\n  const last = pick(\"last_name\", \"lastname\");\n  const name = pick(\"name\", \"full_name\", \"fullname\", \"your_name\") || [first, last].filter(Boolean).join(\" \");\n  const email = pick(\"email\", \"email_address\", \"your_email\", \"e_mail\").toLowerCase();\n  const lead = {\n    lead_id: \"L\" + Date.parse(nowIso).toString(36).toUpperCase() + Math.random().toString(36).slice(2, 6).toUpperCase(),\n    received_at: nowIso,\n    source,\n    name,\n    email,\n    phone: pick(\"phone\", \"phone_number\", \"mobile\", \"telephone\", \"whatsapp\"),\n    company: pick(\"company\", \"company_name\", \"business\", \"organisation\", \"organization\"),\n    message: pick(\"message\", \"notes\", \"how_can_we_help\", \"comments\", \"enquiry\", \"inquiry\", \"details\").slice(0, 4000),\n    budget: pick(\"budget\", \"budget_range\"),\n  };\n  const valid = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email);\n  return { ...lead, valid, problem: valid ? \"\" : \"missing or invalid email\" };\n}\n\nfunction companyDomain(email, website) {\n  const free = [\"gmail.com\", \"googlemail.com\", \"yahoo.com\", \"yahoo.fr\", \"hotmail.com\", \"hotmail.fr\", \"outlook.com\", \"outlook.fr\", \"live.com\", \"icloud.com\", \"me.com\", \"aol.com\", \"proton.me\", \"protonmail.com\", \"gmx.com\", \"gmx.fr\", \"orange.fr\", \"free.fr\", \"laposte.net\", \"sfr.fr\", \"wanadoo.fr\"];\n  const fromSite = String(website || \"\").trim().replace(/^https?:\\/\\//i, \"\").replace(/^www\\./i, \"\").split(/[/?#]/)[0].toLowerCase();\n  if (/^[a-z0-9-]+(\\.[a-z0-9-]+)+$/.test(fromSite)) return fromSite;\n  const domain = String(email || \"\").split(\"@\")[1];\n  if (!domain || free.includes(domain.toLowerCase())) return \"\";\n  return domain.toLowerCase();\n}\n\nconst source = $('Lead form').isExecuted ? 'form' : 'webhook';\nreturn $input.all().map((item, i) => {\n  const l = normalizeLead(item.json, source, new Date().toISOString());\n  const b = item.json.body || item.json;\n  const website = b.website || b.Website || b.site || b.url || '';\n  return { json: { ...l, domain: companyDomain(l.email, website) }, pairedItem: { item: i } };\n}).filter((i) => i.json.valid);"
+      },
+      "id": "node-0115",
+      "name": "Lead",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -100,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-0116",
+              "leftValue": "={{ $json.domain }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "node-0117",
+      "name": "Has a company website?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        120,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://{{ $json.domain }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "id": "node-0118",
+      "name": "Read company website",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        340,
+        -40
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {},
+      "id": "node-0119",
+      "name": "All leads",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        560,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "function htmlToText(html, max = 6000) {\n  return String(html || \"\")\n    .replace(/<(script|style|noscript|svg)[\\s\\S]*?<\\/\\1>/gi, \" \")\n    .replace(/<!--[\\s\\S]*?-->/g, \" \")\n    .replace(/<[^>]+>/g, \" \")\n    .replace(/&nbsp;/g, \" \").replace(/&amp;/g, \"&\").replace(/&#39;|&apos;/g, \"'\").replace(/&quot;/g, '\"').replace(/&lt;/g, \"<\").replace(/&gt;/g, \">\")\n    .replace(/\\s+/g, \" \").trim().slice(0, max);\n}\n\nfunction buildEnrichRequest(lead, siteText, s) {\n  const system = [\n    `You qualify B2B leads for ${s.businessName}. Ideal customer: ${s.idealCustomer}`,\n    \"Use only the lead's message and the website text given. If the website text is empty, say so and lower confidence.\",\n    \"fit_score: 0 to 100, how well the company matches the ideal customer.\",\n    'Answer with JSON only: {\"company_name\":\"\",\"industry\":\"\",\"company_size\":\"solo|small|medium|large|unknown\",\"what_they_do\":\"one sentence\",\"fit_score\":0,\"fit_reason\":\"one sentence\",\"confidence\":\"high|medium|low\"}',\n  ].join(\"\\n\");\n  return {\n    model: s.openAiModel, temperature: 0.2, response_format: { type: \"json_object\" },\n    messages: [{ role: \"system\", content: system }, { role: \"user\", content: JSON.stringify({ lead: { name: lead.name, email: lead.email, company: lead.company, message: lead.message }, website: siteText }) }],\n  };\n}\n\nconst s = $('Settings').first().json;\nconst lead = $('Lead').item.json;\nconst siteText = typeof $json.data === 'string' ? htmlToText($json.data) : '';\nreturn { json: { ...lead, website_read: siteText ? 'yes' : 'no', request: buildEnrichRequest(lead, siteText, s) } };"
+      },
+      "id": "node-011a",
+      "name": "Prepare enrichment",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Settings').first().json.openAiBaseUrl }}/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.request) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "node-011b",
+      "name": "Enrich and score with AI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1000,
+        40
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "function readAiJson(response) {\n  const content = response && response.choices && response.choices[0] && response.choices[0].message && response.choices[0].message.content;\n  if (!content) throw new Error(\"OpenAI returned no answer: \" + JSON.stringify(response).slice(0, 300));\n  try {\n    return JSON.parse(content);\n  } catch {\n    throw new Error(\"OpenAI answer was not valid JSON: \" + content.slice(0, 300));\n  }\n}\n\nfunction routeLead(enriched, rulesText, defaultOwner) {\n  const haystack = `${enriched.industry || \"\"} ${enriched.what_they_do || \"\"} ${enriched.company_name || \"\"}`.toLowerCase();\n  for (const line of String(rulesText || \"\").split(/\\n|;/)) {\n    const [keyword, owner] = line.split(\"=\").map((x) => (x || \"\").trim());\n    if (keyword && owner && haystack.includes(keyword.toLowerCase())) return owner;\n  }\n  return defaultOwner;\n}\n\nconst s = $('Settings').first().json;\nconst src = $('Prepare enrichment').all();\nreturn $input.all().map((item, i) => {\n  const l = src[i].json;\n  const ai = readAiJson(item.json);\n  const score = Math.max(0, Math.min(100, Number(ai.fit_score) || 0));\n  const qualified = score >= Number(s.minFitScore);\n  return { json: {\n    received_at: l.received_at, source: l.source, name: l.name, email: l.email, phone: l.phone, company: ai.company_name || l.company,\n    domain: l.domain, website_read: l.website_read, industry: ai.industry || '', company_size: ai.company_size || 'unknown',\n    what_they_do: ai.what_they_do || '', fit_score: score, fit_reason: ai.fit_reason || '', confidence: ai.confidence || 'low',\n    qualified: qualified ? 'yes' : 'no', owner: qualified ? routeLead(ai, s.routingRules, s.defaultOwner) : '', message: l.message,\n  }, pairedItem: { item: i } };\n});"
+      },
+      "id": "node-011c",
+      "name": "Enriched lead",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1220,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Settings').first().json.googleSheetUrl }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Leads"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "node-011d",
+      "name": "Log lead",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1440,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-011e",
+              "leftValue": "={{ $('Enriched lead').item.json.qualified }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "node-011f",
+      "name": "Qualified?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1660,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Enriched lead').item.json.owner }}",
+        "subject": "=Qualified lead ({{ $('Enriched lead').item.json.fit_score }}/100): {{ $('Enriched lead').item.json.company || $('Enriched lead').item.json.name }}",
+        "emailType": "text",
+        "message": "={{ $('Enriched lead').item.json.name }} <{{ $('Enriched lead').item.json.email }}> {{ $('Enriched lead').item.json.phone }}\nCompany: {{ $('Enriched lead').item.json.company }} ({{ $('Enriched lead').item.json.domain || 'no website' }})\nIndustry: {{ $('Enriched lead').item.json.industry }}, size: {{ $('Enriched lead').item.json.company_size }}\nWhat they do: {{ $('Enriched lead').item.json.what_they_do }}\n\nFit {{ $('Enriched lead').item.json.fit_score }}/100: {{ $('Enriched lead').item.json.fit_reason }}\n\nTheir message:\n{{ $('Enriched lead').item.json.message }}",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "={{ $('Settings').first().json.senderName }}"
+        }
+      },
+      "id": "node-0120",
+      "name": "Send to salesperson",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1880,
+        -40
+      ]
+    }
+  ],
+  "connections": {
+    "New lead webhook": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead form": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead": {
+      "main": [
+        [
+          {
+            "node": "Has a company website?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has a company website?": {
+      "main": [
+        [
+          {
+            "node": "Read company website",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "All leads",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Read company website": {
+      "main": [
+        [
+          {
+            "node": "All leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "All leads": {
+      "main": [
+        [
+          {
+            "node": "Prepare enrichment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare enrichment": {
+      "main": [
+        [
+          {
+            "node": "Enrich and score with AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrich and score with AI": {
+      "main": [
+        [
+          {
+            "node": "Enriched lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enriched lead": {
+      "main": [
+        [
+          {
+            "node": "Log lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log lead": {
+      "main": [
+        [
+          {
+            "node": "Qualified?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qualified?": {
+      "main": [
+        [
+          {
+            "node": "Send to salesperson",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

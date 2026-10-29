@@ -1,0 +1,380 @@
+{
+  "name": "Customer Support Ticket Triage | Ranime Jemal Agency",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Customer Support Ticket Triage\nEvery support email is categorized (category, urgency, sentiment, language), summarized and logged as a ticket, with a suggested reply drafted in the same Gmail thread. Urgent and high-urgency tickets are emailed to the person on duty.\n1. Fill in **Settings** (your real policies make the drafts better). 2. Make a sheet with a **Tickets** tab (`tickets-sheet.csv`). 3. Connect Gmail (support inbox), Google Sheets and OpenAI. 4. Activate.",
+        "height": 280,
+        "width": 540,
+        "color": 4
+      },
+      "id": "node-0148",
+      "name": "Note 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -420
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "value": 5,
+              "unit": "minutes"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "q": "in:inbox -from:me -category:promotions -category:social"
+        },
+        "options": {}
+      },
+      "id": "node-0149",
+      "name": "New support email",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -560,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-014a",
+              "name": "businessName",
+              "value": "Your business name",
+              "type": "string"
+            },
+            {
+              "id": "set-014b",
+              "name": "businessDescription",
+              "value": "What you sell, in one or two sentences.",
+              "type": "string"
+            },
+            {
+              "id": "set-014c",
+              "name": "categories",
+              "value": "order status, delivery problem, refund or return, billing, technical problem, account, product question, complaint, other",
+              "type": "string"
+            },
+            {
+              "id": "set-014d",
+              "name": "policies",
+              "value": "Returns within 30 days. Refunds in 5 business days. Delivery 2-4 business days.",
+              "type": "string"
+            },
+            {
+              "id": "set-014e",
+              "name": "senderName",
+              "value": "Support team, Your business",
+              "type": "string"
+            },
+            {
+              "id": "set-014f",
+              "name": "urgentEmail",
+              "value": "oncall@yourbusiness.com",
+              "type": "string"
+            },
+            {
+              "id": "set-0150",
+              "name": "googleSheetUrl",
+              "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
+              "type": "string"
+            },
+            {
+              "id": "set-0151",
+              "name": "openAiModel",
+              "value": "gpt-4.1-mini",
+              "type": "string"
+            },
+            {
+              "id": "set-0152",
+              "name": "openAiBaseUrl",
+              "value": "https://api.openai.com/v1",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "node-0153",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -320,
+        60
+      ],
+      "notes": "Fill in these values before activating.",
+      "color": "#FFD233"
+    },
+    {
+      "parameters": {
+        "jsCode": "function emailEnquiry(msg) {\n  const from = (msg.from && msg.from.value && msg.from.value[0]) || {};\n  const text = String(msg.text || msg.textPlain || msg.snippet || \"\")\n    .split(/\\n-{2,}\\s*\\n|\\nOn .{5,80} wrote:\\n/)[0]\n    .replace(/\\n{3,}/g, \"\\n\\n\").trim().slice(0, 4000);\n  return {\n    message_id: msg.id || \"\", thread_id: msg.threadId || \"\", email: String(from.address || \"\").toLowerCase(), name: from.name || \"\",\n    subject: msg.subject || \"\", message: text, received_at: msg.date ? new Date(msg.date).toISOString() : new Date().toISOString(),\n  };\n}\n\nfunction buildTicketRequest(ticket, s) {\n  const system = [\n    `You triage customer support emails for ${s.businessName}. ${s.businessDescription}`,\n    `Categories: ${s.categories}. Urgency: urgent (service down, payment problem, angry customer, legal), high, normal, low.`,\n    `Suggest a reply in the customer's language, signed \"${s.senderName}\", using only these policies: ${s.policies}. If unsure, say the team is looking into it.`,\n    'Answer with JSON only: {\"category\":\"...\",\"urgency\":\"urgent|high|normal|low\",\"sentiment\":\"positive|neutral|negative\",\"language\":\"en\",\"summary\":\"one line\",\"suggested_reply\":\"plain text\"}',\n  ].join(\"\\n\");\n  return {\n    model: s.openAiModel, temperature: 0.2, response_format: { type: \"json_object\" },\n    messages: [{ role: \"system\", content: system }, { role: \"user\", content: JSON.stringify({ from: ticket.name || ticket.email, subject: ticket.subject, message: ticket.message }) }],\n  };\n}\n\nconst s = $('Settings').first().json;\nreturn $input.all().map((item, i) => {\n  const t = emailEnquiry(item.json);\n  return { json: { ...t, request: buildTicketRequest(t, s) }, pairedItem: { item: i } };\n}).filter((i) => i.json.email);"
+      },
+      "id": "node-0154",
+      "name": "Read ticket",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -100,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Settings').first().json.openAiBaseUrl }}/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.request) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "node-0155",
+      "name": "Triage with AI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        120,
+        60
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "function readAiJson(response) {\n  const content = response && response.choices && response.choices[0] && response.choices[0].message && response.choices[0].message.content;\n  if (!content) throw new Error(\"OpenAI returned no answer: \" + JSON.stringify(response).slice(0, 300));\n  try {\n    return JSON.parse(content);\n  } catch {\n    throw new Error(\"OpenAI answer was not valid JSON: \" + content.slice(0, 300));\n  }\n}\n\nconst src = $('Read ticket').all();\nreturn $input.all().map((item, i) => {\n  const t = src[i].json;\n  const ai = readAiJson(item.json);\n  return { json: {\n    ticket_id: t.message_id, received_at: t.received_at, name: t.name, email: t.email, subject: t.subject,\n    category: ai.category || 'other', urgency: ['urgent', 'high', 'normal', 'low'].includes(ai.urgency) ? ai.urgency : 'normal',\n    sentiment: ai.sentiment || '', language: ai.language || '', summary: ai.summary || '', status: 'new', thread_id: t.thread_id,\n    suggested_reply: ai.suggested_reply || '', message: t.message,\n  }, pairedItem: { item: i } };\n});"
+      },
+      "id": "node-0156",
+      "name": "Ticket row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        340,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Settings').first().json.googleSheetUrl }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Tickets"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "node-0157",
+      "name": "Log ticket",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        560,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "=Re: {{ $('Ticket row').item.json.subject }}",
+        "emailType": "text",
+        "message": "={{ $('Ticket row').item.json.suggested_reply }}",
+        "options": {
+          "sendTo": "={{ $('Ticket row').item.json.email }}",
+          "threadId": "={{ $('Ticket row').item.json.thread_id }}"
+        }
+      },
+      "id": "node-0158",
+      "name": "Draft the reply",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        780,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-0159",
+              "leftValue": "={{ ['urgent', 'high'].includes($('Ticket row').item.json.urgency) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "node-015a",
+      "name": "Urgent?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1000,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Settings').first().json.urgentEmail }}",
+        "subject": "=[{{ $('Ticket row').item.json.urgency.toUpperCase() }}] {{ $('Ticket row').item.json.category }}: {{ $('Ticket row').item.json.summary }}",
+        "emailType": "text",
+        "message": "=From: {{ $('Ticket row').item.json.name }} <{{ $('Ticket row').item.json.email }}> ({{ $('Ticket row').item.json.sentiment }})\nSubject: {{ $('Ticket row').item.json.subject }}\n\n{{ $('Ticket row').item.json.message }}\n\nA suggested reply is in Gmail drafts.",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "={{ $('Settings').first().json.senderName }}"
+        }
+      },
+      "id": "node-015b",
+      "name": "Alert the person on duty",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1220,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "New support email": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Read ticket",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read ticket": {
+      "main": [
+        [
+          {
+            "node": "Triage with AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Triage with AI": {
+      "main": [
+        [
+          {
+            "node": "Ticket row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ticket row": {
+      "main": [
+        [
+          {
+            "node": "Log ticket",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log ticket": {
+      "main": [
+        [
+          {
+            "node": "Draft the reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft the reply": {
+      "main": [
+        [
+          {
+            "node": "Urgent?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Urgent?": {
+      "main": [
+        [
+          {
+            "node": "Alert the person on duty",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

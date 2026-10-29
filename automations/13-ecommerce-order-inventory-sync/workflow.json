@@ -1,0 +1,344 @@
+{
+  "name": "E-commerce Order & Inventory Sync | Ranime Jemal Agency",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## E-commerce Order & Inventory Sync\nEach new Shopify or WooCommerce order is logged, the stock of every SKU sold is reduced in your Google Sheet inventory, and you get an email when a product reaches its low-stock threshold or an order contains a SKU that is not in the sheet.\n1. Fill in **Settings**. 2. Make a sheet with **Inventory** and **Orders** tabs (CSV files). 3. Connect Shopify (access token) and/or WooCommerce; disable the trigger you do not use. 4. Connect Google Sheets and Gmail. 5. Activate.",
+        "height": 300,
+        "width": 560,
+        "color": 4
+      },
+      "id": "node-015c",
+      "name": "Note 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -460
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "accessToken",
+        "topic": "orders/create"
+      },
+      "id": "node-015e",
+      "name": "New Shopify order",
+      "type": "n8n-nodes-base.shopifyTrigger",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        0
+      ],
+      "webhookId": "hook-015d"
+    },
+    {
+      "parameters": {
+        "event": "order.created"
+      },
+      "id": "node-0160",
+      "name": "New WooCommerce order",
+      "type": "n8n-nodes-base.wooCommerceTrigger",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        200
+      ],
+      "webhookId": "hook-015f"
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-0161",
+              "name": "alertEmail",
+              "value": "you@yourstore.com",
+              "type": "string"
+            },
+            {
+              "id": "set-0162",
+              "name": "senderName",
+              "value": "Inventory assistant",
+              "type": "string"
+            },
+            {
+              "id": "set-0163",
+              "name": "googleSheetUrl",
+              "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "node-0164",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -320,
+        100
+      ],
+      "notes": "Fill in these values before activating.",
+      "color": "#FFD233"
+    },
+    {
+      "parameters": {
+        "jsCode": "function orderLines(order) {\n  return (order.line_items || []).map((l) => ({ sku: String(l.sku || \"\").trim(), name: l.title || l.name || \"\", qty: Number(l.quantity) || 0 })).filter((l) => l.qty > 0);\n}\n\nfunction orderSummary(order, source) {\n  const lines = orderLines(order);\n  return {\n    order_id: String(order.name || order.number || order.id || \"\"), source,\n    created_at: order.created_at || order.date_created_gmt || order.date_created || new Date().toISOString(),\n    customer_email: order.email || (order.billing && order.billing.email) || \"\",\n    total: order.total_price || order.total || \"\", currency: order.currency || \"\",\n    items: lines.map((l) => `${l.qty} x ${l.sku || l.name}`).join(\", \"),\n  };\n}\n\nconst source = $('New Shopify order').isExecuted ? 'shopify' : 'woocommerce';\nreturn $input.all().map((item, i) => ({ json: { ...orderSummary(item.json, source), lines: orderLines(item.json) }, pairedItem: { item: i } }));"
+      },
+      "id": "node-0165",
+      "name": "Order",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -100,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Settings').first().json.googleSheetUrl }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Orders"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "node-0166",
+      "name": "Log order",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        120,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Settings').first().json.googleSheetUrl }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Inventory"
+        },
+        "options": {}
+      },
+      "id": "node-0167",
+      "name": "Read inventory",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        340,
+        100
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "function applyOrder(inventory, lines, nowIso) {\n  const bySku = new Map(inventory.filter((r) => r.sku).map((r) => [String(r.sku).trim(), r]));\n  const updates = new Map();\n  const unknown = [];\n  for (const l of lines) {\n    const row = bySku.get(l.sku);\n    if (!l.sku || !row) { unknown.push(l.sku || l.name); continue; }\n    const current = updates.has(l.sku) ? updates.get(l.sku).stock : Number(row.stock) || 0;\n    updates.set(l.sku, { sku: l.sku, stock: current - l.qty, last_order_at: nowIso, product: row.product, threshold: Number(row.low_stock_threshold) || 0 });\n  }\n  const rows = [...updates.values()];\n  return {\n    updates: rows.map(({ sku, stock, last_order_at }) => ({ sku, stock, last_order_at })),\n    low: rows.filter((r) => r.stock <= r.threshold).map((r) => ({ sku: r.sku, product: r.product, stock: r.stock, threshold: r.threshold })),\n    unknown,\n  };\n}\n\nconst lines = $('Order').all().flatMap((o) => o.json.lines);\nconst rows = $input.all().map((i) => i.json).filter((r) => r.sku);\nreturn applyOrder(rows, lines, new Date().toISOString()).updates.map((u) => ({ json: u, pairedItem: { item: 0 } }));"
+      },
+      "id": "node-0168",
+      "name": "Stock changes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Settings').first().json.googleSheetUrl }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Inventory"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "sku"
+          ],
+          "schema": []
+        },
+        "options": {
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "node-0169",
+      "name": "Update stock",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        780,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function applyOrder(inventory, lines, nowIso) {\n  const bySku = new Map(inventory.filter((r) => r.sku).map((r) => [String(r.sku).trim(), r]));\n  const updates = new Map();\n  const unknown = [];\n  for (const l of lines) {\n    const row = bySku.get(l.sku);\n    if (!l.sku || !row) { unknown.push(l.sku || l.name); continue; }\n    const current = updates.has(l.sku) ? updates.get(l.sku).stock : Number(row.stock) || 0;\n    updates.set(l.sku, { sku: l.sku, stock: current - l.qty, last_order_at: nowIso, product: row.product, threshold: Number(row.low_stock_threshold) || 0 });\n  }\n  const rows = [...updates.values()];\n  return {\n    updates: rows.map(({ sku, stock, last_order_at }) => ({ sku, stock, last_order_at })),\n    low: rows.filter((r) => r.stock <= r.threshold).map((r) => ({ sku: r.sku, product: r.product, stock: r.stock, threshold: r.threshold })),\n    unknown,\n  };\n}\n\nconst orders = $('Order').all().map((o) => o.json);\nconst lines = orders.flatMap((o) => o.lines);\nconst rows = $input.all().map((i) => i.json).filter((r) => r.sku);\nconst r = applyOrder(rows, lines, new Date().toISOString());\nif (!r.low.length && !r.unknown.length) return [];\nconst text = [\n  r.low.length ? 'Low stock:\\n' + r.low.map((l) => '- ' + l.sku + ' ' + (l.product || '') + ': ' + l.stock + ' left (threshold ' + l.threshold + ')').join('\\n') : '',\n  r.unknown.length ? 'Sold but not in the inventory sheet: ' + r.unknown.join(', ') : '',\n].filter(Boolean).join('\\n\\n');\nreturn [{ json: { order_id: orders.map((o) => o.order_id).join(', '), low_count: r.low.length, unknown_count: r.unknown.length, text }, pairedItem: { item: 0 } }];"
+      },
+      "id": "node-016a",
+      "name": "Low stock or unknown SKUs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Settings').first().json.alertEmail }}",
+        "subject": "=Stock alert after order {{ $json.order_id }}",
+        "emailType": "text",
+        "message": "={{ $json.text }}\n\nInventory: {{ $('Settings').first().json.googleSheetUrl }}",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "={{ $('Settings').first().json.senderName }}"
+        }
+      },
+      "id": "node-016b",
+      "name": "Email stock alert",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        780,
+        220
+      ]
+    }
+  ],
+  "connections": {
+    "New Shopify order": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "New WooCommerce order": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Order",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Order": {
+      "main": [
+        [
+          {
+            "node": "Log order",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log order": {
+      "main": [
+        [
+          {
+            "node": "Read inventory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read inventory": {
+      "main": [
+        [
+          {
+            "node": "Stock changes",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Low stock or unknown SKUs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stock changes": {
+      "main": [
+        [
+          {
+            "node": "Update stock",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Low stock or unknown SKUs": {
+      "main": [
+        [
+          {
+            "node": "Email stock alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

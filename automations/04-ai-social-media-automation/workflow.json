@@ -397,7 +397,7 @@
     },
     {
       "parameters": {
-        "jsCode": "function duePosts(rows, nowIso) {\n  const now = Date.parse(nowIso);\n  return rows.filter((r) => String(r.status).toLowerCase() === \"approved\" && Date.parse(r.publish_at) <= now);\n}\n\nconst input = $input.all();\nconst index = new Map(input.map((it, i) => [it.json, i]));\nconst rows = input.map((i) => i.json).filter((r) => r.post_id);\n// One post per run (the trigger runs hourly), so each result clearly belongs to one post.\nreturn duePosts(rows, new Date().toISOString()).slice(0, 1).map((row) => ({ json: row, pairedItem: { item: index.get(row) } }));"
+        "jsCode": "function duePosts(rows, nowIso, status = \"approved\") {\n  const now = Date.parse(nowIso);\n  return rows.filter((r) => String(r.status).toLowerCase() === status && Date.parse(r.publish_at) <= now);\n}\n\nconst input = $input.all();\nconst index = new Map(input.map((it, i) => [it.json, i]));\nconst rows = input.map((i) => i.json).filter((r) => r.post_id);\n// One post per run (the trigger runs hourly), so each result clearly belongs to one post.\nreturn duePosts(rows, new Date().toISOString(), \"approved\").slice(0, 1).map((row) => ({ json: row, pairedItem: { item: index.get(row) } }));"
       },
       "id": "node-008b",
       "name": "Posts due now",
