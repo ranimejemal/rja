@@ -47,7 +47,7 @@ export default async function HomePage() {
         <section className="section">
           <div className="container">
             <SectionHead tag="Top sellers" title={<>Top {top.length} AI automations <span className="serif">to sell in 2026.</span></>}>
-              <a className="btn ghost small" href="mailto:ranimejmal@gmail.com?subject=Automation%20setup%20quote" style={{ alignSelf: "flex-start" }}>Request a quote</a>
+              <Link className="btn ghost small" href="/quote" style={{ alignSelf: "flex-start" }}>Request a quote</Link>
             </SectionHead>
             <PreviewList
               nameHead="Rank · Automation"

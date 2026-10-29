@@ -279,6 +279,17 @@ select test.fails('sellers cannot set quote-only or ranking fields',
   $q$update products set top_rank = 9 where id = test.id('p2')$q$, 'permission denied');
 select test.act_as(null);
 
+-- ---------------------------------------------------------------- quote requests
+select test.act_as(null);
+select test.ok('anyone can submit a quote request', submit_quote_request((select slug from products where quote_only limit 1), 'Ana Test', 'Ana@Example.com', '+33 6', 'Acme', 'We need a lead follow-up setup.') is not null);
+select test.fails('quote request needs a real message', $q$select submit_quote_request('', 'Ana', 'ana@example.com', '', '', 'short')$q$, 'check');
+select test.fails('quote request rejects unknown products', $q$select submit_quote_request('nope', 'Ana', 'ana@example.com', '', '', 'A long enough message.')$q$, 'unknown product');
+select test.act_as('buyer');
+select test.ok('buyers cannot read quote requests', (select count(*) from quote_requests) = 0);
+select test.act_as('admin');
+select test.ok('admins read quote requests with normalized email', (select email from quote_requests limit 1) = 'ana@example.com');
+select test.act_as(null);
+
 -- ---------------------------------------------------------------- report
 \o
 select name, ok, detail from test.results where not ok;

@@ -9,6 +9,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         label="Admin"
         items={[
           ["/admin", "Overview"],
+          ["/admin/quotes", "Quote requests"],
           ["/admin/applications", "Seller applications"],
           ["/admin/products", "Product moderation"],
           ["/admin/sellers", "Sellers"],

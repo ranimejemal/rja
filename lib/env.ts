@@ -9,6 +9,7 @@ const schema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  QUOTE_WEBHOOK_URL: z.url().optional(),
 });
 
 const parsed = schema.parse({
@@ -18,6 +19,7 @@ const parsed = schema.parse({
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || undefined,
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY || undefined,
   STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET || undefined,
+  QUOTE_WEBHOOK_URL: process.env.QUOTE_WEBHOOK_URL || undefined,
 });
 
 export const env = parsed;

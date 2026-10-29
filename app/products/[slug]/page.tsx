@@ -9,6 +9,8 @@ import { parseManifest } from "@/lib/manifest";
 import { features } from "@/lib/env";
 import { Badge, CUSTOMIZATION_LABEL, LICENSE_LABEL, Price, Rating, SellerBadge } from "@/components/ui";
 import { SubmitButton } from "@/components/client";
+import { QuoteForm } from "@/components/QuoteForm";
+import { ContactLinks } from "@/components/ContactLinks";
 import { reportProduct, startCheckout } from "./actions";
 
 type Params = { params: Promise<{ slug: string }> };
@@ -139,7 +141,7 @@ export default async function ProductPage({ params }: Params) {
           </div>
 
           <aside className="stack" style={{ position: "sticky", top: "5.5rem" }}>
-            {p.quote_only ? <QuoteCard name={p.name} priceLabel={p.price_label} audience={p.audience} /> : (
+            {p.quote_only ? <QuoteCard slug={p.slug} name={p.name} priceLabel={p.price_label} audience={p.audience} defaults={{ name: session?.displayName, email: session?.email }} /> : (
             <form action={startCheckout} className="card stack" id="buy">
               <input type="hidden" name="slug" value={p.slug} />
               <input type="hidden" name="agreement_id" value={license?.id ?? ""} />
@@ -216,22 +218,15 @@ export default async function ProductPage({ params }: Params) {
 }
 
 /** Done-for-you setups are priced by scope, so buyers ask for a quote instead of checking out. */
-function QuoteCard({ name, priceLabel, audience }: { name: string; priceLabel: string | null; audience: string }) {
-  const subject = encodeURIComponent(`Quote request: ${name}`);
-  const body = encodeURIComponent(`Hello Ranime Jemal Agency,\n\nI'm interested in "${name}".\n\nMy business:\nThe tools I use:\nWhat I want to automate:\n`);
+function QuoteCard({ slug, name, priceLabel, audience, defaults }: { slug: string; name: string; priceLabel: string | null; audience: string; defaults: { name?: string; email?: string } }) {
   return (
     <div className="card stack" id="buy">
       <span className="tag">(Done-for-you setup)</span>
       {priceLabel && <span className="price">{priceLabel}</span>}
       {audience && <p className="small muted">Best for: {audience}.</p>}
       <p className="small">We build and connect this automation in your own accounts. Tell us about your business and you get a fixed quote before any work starts.</p>
-      <a className="btn accent" href={`mailto:ranimejmal@gmail.com?subject=${subject}&body=${body}`}>Request a quote</a>
-      <div className="small muted stack" style={{ "--gap": "0.35rem" } as React.CSSProperties}>
-        <span>Or contact us directly:</span>
-        <a className="link" href="https://www.instagram.com/ranimejemalagency/" target="_blank" rel="noopener">Instagram @ranimejemalagency ↗</a>
-        <a className="link" href="tel:+21697017061">+216 97 017 061</a>
-        <a className="link" href="tel:+33624979941">+33 6 24 97 99 41</a>
-      </div>
+      <QuoteForm product={{ slug, name }} defaults={defaults} />
+      <ContactLinks />
       <p className="tiny muted">Third-party app subscriptions and API usage are billed by those providers and are not included.</p>
     </div>
   );

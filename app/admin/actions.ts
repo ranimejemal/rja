@@ -162,3 +162,13 @@ export async function claimPlatformStore() {
   const { error } = await supabase.rpc("ensure_platform_seller");
   go("/admin/platform", error?.message, "You now manage the platform store from the Seller dashboard.");
 }
+
+export async function updateQuote(form: FormData) {
+  await requireRole("admin");
+  const status = z.enum(["new", "contacted", "won", "lost", "spam"]).parse(form.get("status"));
+  const supabase = await createClient();
+  const { error } = await supabase.from("quote_requests")
+    .update({ status, admin_note: text(form, "note").slice(0, 2000), updated_at: new Date().toISOString() })
+    .eq("id", text(form, "id"));
+  go("/admin/quotes", error?.message, "Quote request updated.");
+}

@@ -964,6 +964,59 @@ export type Database = {
           },
         ]
       }
+      quote_requests: {
+        Row: {
+          admin_note: string
+          company: string
+          created_at: string
+          email: string
+          id: string
+          message: string
+          name: string
+          phone: string
+          product_id: string | null
+          status: Database["public"]["Enums"]["quote_status"]
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          admin_note?: string
+          company?: string
+          created_at?: string
+          email: string
+          id?: string
+          message: string
+          name: string
+          phone?: string
+          product_id?: string | null
+          status?: Database["public"]["Enums"]["quote_status"]
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          admin_note?: string
+          company?: string
+          created_at?: string
+          email?: string
+          id?: string
+          message?: string
+          name?: string
+          phone?: string
+          product_id?: string | null
+          status?: Database["public"]["Enums"]["quote_status"]
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_requests_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           category_id: string | null
@@ -1660,6 +1713,10 @@ export type Database = {
         Args: { p_version_id: string }
         Returns: undefined
       }
+      submit_quote_request: {
+        Args: { p_company: string; p_email: string; p_message: string; p_name: string; p_phone: string; p_product_slug: string }
+        Returns: string
+      }
     }
     Enums: {
       agreement_kind:
@@ -1717,6 +1774,7 @@ export type Database = {
         | "failed"
         | "canceled"
       product_ownership: "platform" | "third_party"
+      quote_status: "new" | "contacted" | "won" | "lost" | "spam"
       product_status:
         | "draft"
         | "submitted"
@@ -1933,6 +1991,7 @@ export const Constants = {
         "canceled",
       ],
       product_ownership: ["platform", "third_party"],
+      quote_status: ["new", "contacted", "won", "lost", "spam"],
       product_status: [
         "draft",
         "submitted",
