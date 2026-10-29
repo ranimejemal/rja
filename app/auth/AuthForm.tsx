@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { signIn, signUp, type AuthState } from "./actions";
-import { SubmitButton } from "@/components/client";
+import { PasswordInput, SubmitButton } from "@/components/client";
 
 export function AuthForm({ mode, next }: { mode: "login" | "signup"; next: string }) {
   const [state, action] = useActionState<AuthState, FormData>(mode === "login" ? signIn : signUp, {});
@@ -21,8 +21,11 @@ export function AuthForm({ mode, next }: { mode: "login" | "signup"; next: strin
         <input id="email" name="email" type="email" autoComplete="email" required />
       </div>
       <div className="field">
-        <label htmlFor="password">Password</label>
-        <input id="password" name="password" type="password" autoComplete={mode === "login" ? "current-password" : "new-password"} required minLength={10} />
+        <div className="row between">
+          <label htmlFor="password">Password</label>
+          {mode === "login" && <Link className="link small" href="/forgot-password">Forgot your password?</Link>}
+        </div>
+        <PasswordInput id="password" name="password" autoComplete={mode === "login" ? "current-password" : "new-password"} />
         {mode === "signup" && <span className="hint">At least 10 characters.</span>}
       </div>
       {mode === "signup" && (

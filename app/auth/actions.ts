@@ -20,6 +20,13 @@ async function clientKey(scope: string) {
   return `${scope}:${h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local"}`;
 }
 
+/** The address the user is on (so email links come back to the same domain), else the configured site URL. */
+async function siteOrigin() {
+  const h = await headers();
+  const origin = h.get("origin");
+  return origin && /^https?:\/\/[^/]+$/.test(origin) ? origin : env.NEXT_PUBLIC_SITE_URL;
+}
+
 const credentials = z.object({
   email: z.email("Enter a valid email address").max(254),
   password: z.string().min(10, "Use at least 10 characters").max(128),
@@ -49,10 +56,32 @@ export async function signUp(_: AuthState, form: FormData): Promise<AuthState> {
     password: parsed.data.password,
     options: {
       data: { display_name: parsed.data.displayName },
-      emailRedirectTo: `${env.NEXT_PUBLIC_SITE_URL}/auth/callback?next=${encodeURIComponent(safeNext(form.get("next")))}`,
+      emailRedirectTo: `${await siteOrigin()}/auth/callback?next=${encodeURIComponent(safeNext(form.get("next")))}`,
     },
   });
   if (error) return { error: error.message };
   if (data.session) redirect(safeNext(form.get("next")));
   return { notice: "Check your inbox to confirm your email address, then log in." };
+}
+
+export async function requestPasswordReset(_: AuthState, form: FormData): Promise<AuthState> {
+  if (!rateLimit(await clientKey("reset"), 5, 60 * 60_000).ok) return { error: "Too many requests. Try again later." };
+  const email = z.email().max(254).safeParse(form.get("email"));
+  if (!email.success) return { error: "Enter a valid email address." };
+  const supabase = await createClient();
+  await supabase.auth.resetPasswordForEmail(email.data, { redirectTo: `${await siteOrigin()}/auth/callback?next=/reset-password` });
+  // Same answer whether or not the account exists, so the form cannot be used to find accounts.
+  return { notice: "If an account exists for this email, a link to choose a new password is on its way. Check your inbox (and spam)." };
+}
+
+export async function updatePassword(_: AuthState, form: FormData): Promise<AuthState> {
+  const password = String(form.get("password") ?? "");
+  if (password.length < 10 || password.length > 128) return { error: "Use at least 10 characters." };
+  if (password !== form.get("confirm")) return { error: "The two passwords do not match." };
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) return { error: "This link has expired. Ask for a new one." };
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return { error: error.message.includes("different") ? "Choose a password different from the old one." : "Could not update the password. Try again." };
+  redirect("/dashboard?notice=Your+password+was+updated.");
 }
