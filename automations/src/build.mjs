@@ -1656,6 +1656,359 @@ return uptimeEvents(results, $getWorkflowStaticData('global'), new Date().toISOS
   save("18-website-uptime-incident-notifier", wf);
 }
 
+// ===================================================================== security suite (19 to 23)
+// Ready-made security automations: a company fills in Settings, connects its accounts, and activates.
+
+function httpGet(wf, name, url, position, { query, text = false, full = false, noRedirect = false, timeout = 30000, auth, headers, batch, extra = {} } = {}) {
+  const options = { timeout };
+  if (text || full) options.response = { response: { ...(full ? { fullResponse: true } : {}), neverError: true, ...(text ? { responseFormat: "text" } : {}) } };
+  if (noRedirect) options.redirect = { redirect: { followRedirects: false } };
+  if (batch) options.batching = { batch: { batchSize: 1, batchInterval: batch } };
+  return wf.add(name, "n8n-nodes-base.httpRequest", 4.2, {
+    url,
+    ...(auth === "virusTotal" ? { authentication: "predefinedCredentialType", nodeCredentialType: "virusTotalApi" } : {}),
+    ...(auth === "header" ? { authentication: "genericCredentialType", genericAuthType: "httpHeaderAuth" } : {}),
+    ...(query ? { sendQuery: true, queryParameters: { parameters: query.map(([name, value]) => ({ name, value })) } } : {}),
+    ...(headers ? { sendHeaders: true, headerParameters: { parameters: headers.map(([name, value]) => ({ name, value })) } } : {}),
+    options,
+  }, position, extra);
+}
+
+// ------------------------------------------------------------------------------- 19. phishing email analyzer
+{
+  const wf = new Workflow("Phishing Email Analyzer | Ranime Jemal Agency");
+  wf.note("## Phishing Email Analyzer\nEmployees forward suspicious emails to a reporting mailbox (for example phishing@yourcompany.com). For each report the workflow checks every link on VirusTotal, has the AI judge the email (phishing, suspicious, spam or safe), answers the employee with clear advice, logs the case, and alerts the security team about phishing.\n1. Create the reporting mailbox and connect it as the Gmail account of the trigger. 2. Fill in **Settings**. 3. Make a sheet with a **Phishing reports** tab (`phishing-reports-sheet.csv`). 4. Connect OpenAI, VirusTotal, Google Sheets and Gmail. 5. Activate and tell employees where to forward suspicious emails.", [-560, -480], 600, 320);
+  const mail = gmailInbox(wf, "Reported email", "in:inbox -from:me", [-560, 100]);
+  const set = settings(wf, [
+    ["organisationName", "Your company"],
+    ["securityTeamEmail", "security@yourcompany.com"],
+    ["senderName", "IT security"],
+    ["googleSheetUrl", "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit"],
+    ...COMMON_AI,
+  ], [-320, 100]);
+  wf.connect(mail, set);
+  const read = code(wf, "Read report", [L.extractUrls, L.phishingReport], `
+return $input.all().map((item, i) => ({ json: phishingReport(item.json), pairedItem: { item: i } })).filter((i) => i.json.reporter);`, [-100, 100]);
+  wf.connect(set, read);
+  const links = code(wf, "Links to check", [L.vtUrlId], `
+// One item per link (and one empty item for reports without links, so every report is judged).
+return $input.all().flatMap((item, i) => {
+  const urls = item.json.urls.slice(0, 5);
+  return (urls.length ? urls : ['']).map((url) => ({ json: { report_index: i, url, vt_id: url ? vtUrlId(url) : '' }, pairedItem: { item: i } }));
+});`, [120, 100]);
+  wf.connect(read, links);
+  const hasLink = ifNode(wf, "Has a link?", condition("={{ $json.url }}", "notEmpty"), [340, 100]);
+  wf.connect(links, hasLink);
+  const vt = httpGet(wf, "Link reputation (VirusTotal)", "=https://www.virustotal.com/api/v3/urls/{{ $json.vt_id }}", [560, 0], { auth: "virusTotal", timeout: 20000, extra: { onError: "continueRegularOutput" } });
+  wf.connect(hasLink, vt, { output: 0 });
+  const merge = wf.add("All links", "n8n-nodes-base.merge", 3, {}, [780, 100]);
+  wf.connect(vt, merge, { input: 0 });
+  wf.connect(hasLink, merge, { output: 1, input: 1 });
+  const result = codeEach(wf, "Link result", [L.urlVerdict], `
+const link = $('Links to check').item.json;
+return { json: { report_index: link.report_index, ...(link.url ? urlVerdict(link.url, $json) : { url: '' }) } };`, [1000, 100]);
+  wf.connect(merge, result);
+  const prep = code(wf, "Prepare verdict", [L.buildPhishingRequest], `
+const s = ${S};
+const reports = $('Read report').all();
+const checks = $input.all().map((i) => i.json);
+return reports.map((r, i) => {
+  const links = checks.filter((c) => c.report_index === i && c.url).map(({ report_index, ...c }) => c);
+  return { json: { ...r.json, links, request: buildPhishingRequest(r.json, links, s) }, pairedItem: { item: i } };
+});`, [1220, 100]);
+  wf.connect(result, prep);
+  const ai = openAi(wf, "Judge with AI", [1440, 100]);
+  wf.connect(prep, ai);
+  const row = code(wf, "Verdict", [L.readAiJson], `
+const src = $('Prepare verdict').all();
+return $input.all().map((item, i) => {
+  const r = src[i].json;
+  let v;
+  try { v = readAiJson(item.json); } catch (e) { v = { verdict: 'suspicious', confidence: 'low', reasons: ['Automatic analysis failed: ' + e.message], advice_for_user: 'Do not click links or open attachments in this email. The security team will check it.', actions_for_it: [] }; }
+  const flagged = r.links.filter((l) => l.malicious > 0);
+  // A link flagged as malicious by VirusTotal always makes the report phishing, whatever the AI says.
+  const verdict = flagged.length ? 'phishing' : (['phishing', 'suspicious', 'spam', 'safe'].includes(v.verdict) ? v.verdict : 'suspicious');
+  return { json: {
+    received_at: r.received_at, reporter: r.reporter, subject: r.subject, claimed_sender: r.claimed_sender, verdict, confidence: v.confidence || '',
+    reasons: (v.reasons || []).join(' | '), malicious_links: flagged.map((l) => l.url).join(' '), links_checked: r.links.length,
+    actions_for_it: (v.actions_for_it || []).join(' | '), advice_for_user: v.advice_for_user || '', status: 'open',
+  }, pairedItem: { item: i } };
+});`, [1660, 100]);
+  wf.connect(ai, row);
+  const log = sheetsAppend(wf, "Log report", "Phishing reports", [1880, 100]);
+  wf.connect(row, log);
+  const V = "$('Verdict').item.json";
+  const reply = gmailSend(wf, "Answer the employee", {
+    to: `={{ ${V}.reporter }}`,
+    subject: `=Re: {{ ${V}.subject }} [{{ ${V}.verdict.toUpperCase() }}]`,
+    message: `=Thank you for reporting this email.\n\nOur check says: {{ ${V}.verdict.toUpperCase() }} ({{ ${V}.confidence }} confidence).\n\n{{ ${V}.advice_for_user }}\n\n{{ ${S}.senderName }}`,
+  }, [2100, 100]);
+  wf.connect(log, reply);
+  const danger = ifNode(wf, "Phishing or suspicious?", condition(`={{ ['phishing', 'suspicious'].includes(${V}.verdict) }}`, "true", "", "boolean"), [2320, 100]);
+  wf.connect(reply, danger);
+  wf.connect(danger, gmailSend(wf, "Alert the security team", {
+    to: `={{ ${S}.securityTeamEmail }}`,
+    subject: `=[{{ ${V}.verdict.toUpperCase() }}] reported by {{ ${V}.reporter }}: {{ ${V}.subject }}`,
+    message: `=Claimed sender: {{ ${V}.claimed_sender }}\nWhy: {{ ${V}.reasons }}\nMalicious links (VirusTotal): {{ ${V}.malicious_links || 'none' }}\n\nRecommended actions:\n{{ ${V}.actions_for_it.split(' | ').filter(Boolean).map((a) => '- ' + a).join('\\n') }}\n\nIf the employee clicked a link or entered a password, reset their password and check their sign-ins now.`,
+  }, [2540, 0]), { output: 0 });
+  save("19-phishing-email-analyzer", wf);
+}
+
+// ------------------------------------------------------------------------------- 20. website security scanner
+{
+  const wf = new Workflow("Website Security & SSL Scanner | Ranime Jemal Agency");
+  wf.note("## Website Security & SSL Scanner\nEvery Monday checks each website: HTTPS, HTTP to HTTPS redirect, security headers (HSTS, CSP, clickjacking, nosniff, referrer and permissions policies), version leaks, cookie flags and certificate expiry. Each site gets a grade (A to F) with the exact fixes, logged and emailed. The **Scan a website** form runs the same check on demand and emails the report to whoever asked.\nPassive checks only: it reads public responses like a browser does and never attacks the site.\n1. Fill in **Settings**. 2. Make a sheet with a **Scans** tab (`scans-sheet.csv`). 3. Connect Google Sheets and Gmail. 4. Activate.", [-560, -480], 600, 320);
+  const weekly = schedule(wf, "Every Monday at 7:00", "0 7 * * 1", [-560, 0]);
+  const form = wf.add("Scan a website", "n8n-nodes-base.formTrigger", 2.2, {
+    formTitle: "Free website security check",
+    formDescription: "We check HTTPS, security headers, cookies and the certificate, and email you a graded report with fixes.",
+    formFields: { values: [
+      { fieldLabel: "Website", placeholder: "https://www.example.com", requiredField: true },
+      { fieldLabel: "Email for the report", fieldType: "email", requiredField: true },
+    ] },
+    options: { appendAttribution: false, respondWithOptions: { values: { respondWith: "text", formSubmittedText: "Thanks! The report will be in your inbox in a minute or two." } } },
+  }, [-560, 200], { webhookId: uid("hook") });
+  const set = settings(wf, [
+    ["sites", "https://www.example.com\nhttps://shop.example.com"],
+    ["reportEmail", "it@yourcompany.com"],
+    ["certWarningDays", 21, "number"],
+    ["senderName", "Website security scanner"],
+    ["googleSheetUrl", "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit"],
+  ], [-320, 100]);
+  wf.connect(weekly, set);
+  wf.connect(form, set);
+  const sites = code(wf, "Sites to scan", [L.parseSites], `
+const s = ${S};
+if ($('Scan a website').isExecuted) {
+  const f = $('Scan a website').first().json;
+  let url = String(f['Website'] || '').trim();
+  if (!/^https?:\\/\\//i.test(url)) url = 'https://' + url;
+  url = url.replace(/^http:/i, 'https:');
+  return [{ json: { url, host: url.replace(/^https?:\\/\\//i, '').split(/[\\/:?#]/)[0].toLowerCase(), recipient: f['Email for the report'] }, pairedItem: { item: 0 } }];
+}
+return parseSites(s.sites).map((x) => {
+  const url = x.url.replace(/^http:/i, 'https:');
+  return { json: { url, host: url.replace(/^https?:\\/\\//i, '').split(/[\\/:?#]/)[0].toLowerCase(), recipient: s.reportEmail }, pairedItem: { item: 0 } };
+});`, [-100, 100]);
+  wf.connect(set, sites);
+  const site = "$('Sites to scan').item.json";
+  const https = httpGet(wf, "HTTPS response", `={{ ${site}.url }}`, [120, 100], { full: true, text: true, timeout: 20000, extra: { onError: "continueRegularOutput" } });
+  wf.connect(sites, https);
+  const http = httpGet(wf, "HTTP redirect", `=http://{{ ${site}.host }}`, [340, 100], { full: true, text: true, noRedirect: true, timeout: 20000, extra: { onError: "continueRegularOutput" } });
+  wf.connect(https, http);
+  const certs = httpGet(wf, "Certificates (crt.sh)", "https://crt.sh/", [560, 100], {
+    query: [["q", `={{ ${site}.host }}`], ["output", "json"], ["exclude", "expired"]], text: true, timeout: 60000,
+    extra: { onError: "continueRegularOutput", retryOnFail: true, maxTries: 2, waitBetweenTries: 5000 },
+  });
+  wf.connect(http, certs);
+  const grade = code(wf, "Grade", [L.websiteSecurity], `
+const s = ${S};
+const sites = $('Sites to scan').all();
+const httpsAll = $('HTTPS response').all();
+const httpAll = $('HTTP redirect').all();
+const now = new Date().toISOString();
+return $input.all().map((item, i) => {
+  let certs = [];
+  try { certs = JSON.parse(item.json.data || '[]'); } catch { certs = []; }
+  const r = websiteSecurity(sites[i].json, httpsAll[i].json, httpAll[i].json, certs, now, Number(s.certWarningDays));
+  return { json: { ...r, recipient: sites[i].json.recipient, scanned_at: now }, pairedItem: { item: i } };
+});`, [780, 100]);
+  wf.connect(certs, grade);
+  const rows = code(wf, "Scan rows", [], `
+return $input.all().map((item, i) => ({ json: {
+  scanned_at: item.json.scanned_at, url: item.json.url, grade: item.json.grade, score: item.json.score,
+  cert_days_left: item.json.cert_days_left ?? '', passed: item.json.passed + '/' + item.json.total,
+  issues: item.json.failed.map((f) => f.check).join(' | '), requested_by: $('Scan a website').isExecuted ? item.json.recipient : 'weekly scan',
+}, pairedItem: { item: i } }));`, [1000, 0]);
+  wf.connect(grade, rows);
+  wf.connect(rows, sheetsAppend(wf, "Log scans", "Scans", [1220, 0]));
+  const report = code(wf, "Report", [L.securityReportText], `
+const results = $input.all().map((i) => i.json);
+const worst = results.reduce((w, r) => (r.score < w.score ? r : w), results[0]);
+const certWarnings = results.filter((r) => r.failed.some((f) => f.check.startsWith('Certificate')));
+return [{ json: {
+  recipient: results[0].recipient, count: results.length, worst_grade: worst.grade,
+  subject: (certWarnings.length ? 'Certificate expiring soon: ' : 'Website security report: ') + results.map((r) => r.host + ' ' + r.grade).join(', '),
+  text: securityReportText(results),
+}, pairedItem: results.map((_, i) => ({ item: i })) }];`, [1000, 200]);
+  wf.connect(grade, report);
+  wf.connect(report, gmailSend(wf, "Email the report", {
+    to: "={{ $json.recipient }}",
+    subject: "={{ $json.subject }}",
+    message: "=Website security report ({{ $json.count }} site(s))\n\n{{ $json.text }}\n\nGrades: A 90-100, B 75-89, C 60-74, D 40-59, F below 40. Checks are passive: public responses only.",
+  }, [1220, 200]));
+  save("20-website-security-ssl-scanner", wf);
+}
+
+// ------------------------------------------------------------------------------- 21. vulnerability watch
+{
+  const wf = new Workflow("Vulnerability Watch (CVE + CISA KEV) | Ranime Jemal Agency");
+  wf.note("## Vulnerability Watch\nEvery morning checks the CISA list of vulnerabilities **exploited in the wild** and the new CVEs published in the NVD, keeps those that mention the products you use (your watchlist), has the AI write a short advisory with what to do and how urgently, emails it and logs each CVE. Only new matches are reported.\n1. Fill in **Settings**: your watchlist (one product or vendor per line, for example `fortinet`, `exchange server`, `wordpress`) and a description of your environment. 2. Make a sheet with a **Vulnerabilities** tab (`vulnerabilities-sheet.csv`). 3. Connect OpenAI, Google Sheets and Gmail. 4. Activate.", [-560, -460], 600, 300);
+  const daily = schedule(wf, "Every morning", "35 7 * * *", [-560, 100]);
+  const set = settings(wf, [
+    ["organisationName", "Your company"],
+    ["environment", "Microsoft 365, Windows laptops, a FortiGate firewall, a WordPress website"],
+    ["watchlist", "fortinet\nfortigate\nmicrosoft exchange\nwindows server\nwordpress\nopenssh\ncisco\nvmware"],
+    ["minCvss", 7, "number"],
+    ["alertEmail", "it@yourcompany.com"],
+    ["senderName", "Vulnerability watch"],
+    ["googleSheetUrl", "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit"],
+    ...COMMON_AI,
+  ], [-320, 100]);
+  wf.connect(daily, set);
+  const kev = httpGet(wf, "Exploited vulnerabilities (CISA KEV)", "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json", [-100, 100], {
+    timeout: 60000, extra: { retryOnFail: true, maxTries: 3, waitBetweenTries: 10000 },
+  });
+  wf.connect(set, kev);
+  const nvd = httpGet(wf, "New CVEs (NVD)", "https://services.nvd.nist.gov/rest/json/cves/2.0", [120, 100], {
+    query: [
+      ["pubStartDate", `={{ $now.minus({ days: 2 }).toUTC().toFormat("yyyy-MM-dd'T'HH:mm:ss.SSS") }}`],
+      ["pubEndDate", `={{ $now.toUTC().toFormat("yyyy-MM-dd'T'HH:mm:ss.SSS") }}`],
+      ["resultsPerPage", "2000"],
+    ],
+    timeout: 90000, extra: { onError: "continueRegularOutput", retryOnFail: true, maxTries: 3, waitBetweenTries: 15000 },
+  });
+  wf.connect(kev, nvd);
+  const match = code(wf, "Relevant vulnerabilities", [L.matchVulnerabilities, L.buildAdvisoryRequest], `
+const s = ${S};
+const vulns = matchVulnerabilities($('Exploited vulnerabilities (CISA KEV)').first().json, $input.first().json, s.watchlist, Number(s.minCvss), $getWorkflowStaticData('global'), new Date().toISOString());
+if (!vulns.length) return [];
+// Exploited ones first, then by CVSS.
+vulns.sort((a, b) => (a.severity === 'exploited' ? -1 : 0) - (b.severity === 'exploited' ? -1 : 0) || (Number(b.cvss) || 0) - (Number(a.cvss) || 0));
+return [{ json: { vulns, request: buildAdvisoryRequest(vulns.slice(0, 25), s) }, pairedItem: { item: 0 } }];`, [340, 100]);
+  wf.connect(nvd, match);
+  const ai = openAi(wf, "Write advisory with AI", [560, 100]);
+  wf.connect(match, ai);
+  const advisory = code(wf, "Advisory", [L.readAiJson], `
+const vulns = $('Relevant vulnerabilities').first().json.vulns;
+let a;
+try { a = readAiJson($input.first().json); } catch { a = { headline: vulns.length + ' vulnerabilities match your watchlist', items: [] }; }
+const advice = Object.fromEntries((a.items || []).map((x) => [x.cve, x]));
+const lines = vulns.map((v) => {
+  const x = advice[v.cve] || {};
+  return '- ' + v.cve + ' (' + (v.severity === 'exploited' ? 'EXPLOITED IN THE WILD' : 'CVSS ' + v.cvss) + ', matches "' + v.matched + '")\\n  ' + v.summary.slice(0, 300)
+    + (x.what_to_do ? '\\n  What to do (' + (x.urgency || '') + '): ' + x.what_to_do : '') + (v.due ? '\\n  CISA due date: ' + v.due : '');
+});
+const exploited = vulns.filter((v) => v.severity === 'exploited').length;
+return [{ json: { subject: (exploited ? '[ACTION] ' + exploited + ' exploited vulnerabilities affect your watchlist' : (a.headline || vulns.length + ' new vulnerabilities')), text: lines.join('\\n\\n') }, pairedItem: { item: 0 } }];`, [780, 0]);
+  wf.connect(ai, advisory);
+  wf.connect(advisory, gmailSend(wf, "Email the advisory", {
+    to: `={{ ${S}.alertEmail }}`, subject: "={{ $json.subject }}",
+    message: `={{ $json.text }}\n\nSources: CISA Known Exploited Vulnerabilities and NIST NVD. Log: {{ ${S}.googleSheetUrl }}`,
+  }, [1000, 0]));
+  const rows = code(wf, "Vulnerability rows", [], `
+const now = new Date().toISOString();
+return $('Relevant vulnerabilities').first().json.vulns.map((v) => ({ json: {
+  found_at: now, cve: v.cve, source: v.source, matched: v.matched, product: v.product, severity: v.severity, cvss: v.cvss,
+  summary: v.summary.slice(0, 500), required_action: v.action, due: v.due, ransomware: v.ransomware, status: 'open',
+}, pairedItem: { item: 0 } }));`, [780, 200]);
+  wf.connect(ai, rows);
+  wf.connect(rows, sheetsAppend(wf, "Log vulnerabilities", "Vulnerabilities", [1000, 200]));
+  save("21-vulnerability-watch-cve-kev", wf);
+}
+
+// ------------------------------------------------------------------------------- 22. data breach monitor
+{
+  const wf = new Workflow("Data Breach Monitor (Have I Been Pwned) | Ranime Jemal Agency");
+  wf.note("## Data Breach Monitor\nEvery Monday checks your team's email addresses against Have I Been Pwned. New breaches are logged with the kind of data exposed and what to do, the security contact gets a summary, and (optional) each affected person gets a short personal notice.\n1. Get a Have I Been Pwned API key (haveibeenpwned.com/API/Key) and create a Header Auth credential: name `hibp-api-key`, value = the key. 2. Fill in **Settings** (one email per line). 3. Make a sheet with a **Breaches** tab (`breaches-sheet.csv`). 4. Connect Google Sheets and Gmail. 5. Activate.", [-560, -460], 600, 300);
+  const weekly = schedule(wf, "Every Monday at 8:15", "15 8 * * 1", [-560, 100]);
+  const set = settings(wf, [
+    ["organisationName", "Your company"],
+    ["emails", "ceo@yourcompany.com\nfinance@yourcompany.com\nadmin@yourcompany.com"],
+    ["notifyPeople", false, "boolean"],
+    ["securityTeamEmail", "security@yourcompany.com"],
+    ["senderName", "IT security"],
+    ["googleSheetUrl", "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit"],
+  ], [-320, 100]);
+  wf.connect(weekly, set);
+  const emails = code(wf, "Emails to check", [], `
+return [...new Set(String(${S}.emails).split(/[\\n,;]+/).map((e) => e.trim().toLowerCase()).filter((e) => /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(e)))]
+  .map((email) => ({ json: { email }, pairedItem: { item: 0 } }));`, [-100, 100]);
+  wf.connect(set, emails);
+  const hibp = httpGet(wf, "Have I Been Pwned", "=https://haveibeenpwned.com/api/v3/breachedaccount/{{ encodeURIComponent($json.email) }}", [120, 100], {
+    auth: "header", query: [["truncateResponse", "false"]], headers: [["user-agent", "RJA-breach-monitor"]], text: true, full: true, batch: 6500, timeout: 20000,
+    extra: { retryOnFail: true, maxTries: 3, waitBetweenTries: 10000 },
+  });
+  wf.connect(emails, hibp);
+  const fresh = code(wf, "New breaches", [L.newBreaches, L.breachAdvice], `
+const emails = $('Emails to check').all();
+const store = $getWorkflowStaticData('global');
+const now = new Date().toISOString();
+return $input.all().flatMap((item, i) => {
+  if (item.json.statusCode && item.json.statusCode !== 200) return [];   // 404 means no breach for this address
+  let breaches = [];
+  try { breaches = JSON.parse(item.json.body || item.json.data || '[]'); } catch { breaches = []; }
+  return newBreaches(emails[i].json.email, breaches, store).map((b) => ({ json: { found_at: now, ...b, advice: breachAdvice(b.data) }, pairedItem: { item: i } }));
+});`, [340, 100]);
+  wf.connect(hibp, fresh);
+  const log = sheetsAppend(wf, "Log breaches", "Breaches", [560, 100]);
+  wf.connect(fresh, log);
+  const B = "$('New breaches').item.json";
+  const notify = ifNode(wf, "Notify the person?", condition(`={{ ${S}.notifyPeople }}`, "true", "", "boolean"), [780, 0]);
+  wf.connect(log, notify);
+  wf.connect(notify, gmailSend(wf, "Notify the person", {
+    to: `={{ ${B}.email }}`,
+    subject: "=Your work email appeared in the {{ " + B + ".breach }} data breach",
+    message: `=Hello,\n\nYour address {{ ${B}.email }} appears in the {{ ${B}.breach }} breach ({{ ${B}.breach_date }}). Data exposed: {{ ${B}.data }}.\n\n{{ ${B}.advice }}\n\nThis does not mean your company account was hacked. If you have questions, reply to this email.\n\n{{ ${S}.senderName }}`,
+  }, [1000, -60]), { output: 0 });
+  const summary = code(wf, "Summary", [], `
+const rows = $('New breaches').all().map((i) => i.json);
+const lines = rows.map((r) => '- ' + r.email + ': ' + r.breach + ' (' + r.breach_date + ')' + (r.passwords ? ' [PASSWORDS EXPOSED]' : '') + '\\n  Data: ' + r.data);
+return [{ json: { count: rows.length, people: new Set(rows.map((r) => r.email)).size, passwords: rows.filter((r) => r.passwords).length, text: lines.join('\\n') }, pairedItem: rows.map((_, i) => ({ item: i })) }];`, [780, 220], { executeOnce: true });
+  wf.connect(log, summary);
+  wf.connect(summary, gmailSend(wf, "Email the security team", {
+    to: `={{ ${S}.securityTeamEmail }}`,
+    subject: "={{ $json.count }} new breach(es) affecting {{ $json.people }} address(es){{ $json.passwords ? ', passwords exposed' : '' }}",
+    message: `={{ $json.text }}\n\nFor exposed passwords: make sure the person changes the password everywhere it was reused and that two-factor authentication is on.\nLog: {{ ${S}.googleSheetUrl }}`,
+  }, [1000, 220]));
+  save("22-data-breach-monitor", wf);
+}
+
+// ------------------------------------------------------------------------------- 23. lookalike domain monitor
+{
+  const wf = new Workflow("Lookalike Domain Monitor | Ranime Jemal Agency");
+  wf.note("## Lookalike Domain Monitor\nEvery day searches public certificate logs (Certificate Transparency, via crt.sh) for new domains that contain or imitate your brand, such as acme-login.com, acrne.com or punycode lookalikes. They are often set up for phishing before an attack. New ones are scored, logged and emailed so you can warn staff, block them and ask for a takedown.\nThe first run lists every existing match; after that only new ones.\n1. Fill in **Settings**. 2. Make a sheet with a **Lookalike domains** tab (`lookalike-domains-sheet.csv`). 3. Connect Google Sheets and Gmail. 4. Activate.", [-560, -460], 600, 300);
+  const daily = schedule(wf, "Every day", "10 9 * * *", [-560, 100]);
+  const set = settings(wf, [
+    ["brandDomains", "yourcompany.com"],
+    ["searchTerms", "yourcompany"],
+    ["allowlist", "yourcompany-partner.com"],
+    ["alertEmail", "security@yourcompany.com"],
+    ["senderName", "Domain monitor"],
+    ["googleSheetUrl", "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit"],
+  ], [-320, 100]);
+  wf.connect(daily, set);
+  const terms = code(wf, "Search terms", [], `
+return String(${S}.searchTerms).split(/[\\n,]+/).map((t) => t.trim().toLowerCase()).filter((t) => t.length >= 4)
+  .map((term) => ({ json: { term }, pairedItem: { item: 0 } }));`, [-100, 100]);
+  wf.connect(set, terms);
+  const crt = httpGet(wf, "Certificate logs (crt.sh)", "https://crt.sh/", [120, 100], {
+    query: [["q", "=%{{ $json.term }}%"], ["output", "json"], ["exclude", "expired"]], text: true, timeout: 120000, batch: 3000,
+    extra: { onError: "continueRegularOutput", retryOnFail: true, maxTries: 3, waitBetweenTries: 15000 },
+  });
+  wf.connect(terms, crt);
+  const found = code(wf, "New lookalikes", [L.levenshtein, L.lookalikeDomains], `
+const s = ${S};
+const entries = $input.all().flatMap((item) => { try { return JSON.parse(item.json.data || '[]'); } catch { return []; } });
+const now = new Date().toISOString();
+return lookalikeDomains(entries, s.brandDomains, s.allowlist, $getWorkflowStaticData('global'))
+  .map((d) => ({ json: { found_at: now, ...d, status: 'to review' }, pairedItem: { item: 0 } }));`, [340, 100]);
+  wf.connect(crt, found);
+  const log = sheetsAppend(wf, "Log domains", "Lookalike domains", [560, 100]);
+  wf.connect(found, log);
+  const alert = code(wf, "Alert text", [], `
+const rows = $('New lookalikes').all().map((i) => i.json);
+const high = rows.filter((r) => r.risk === 'high');
+return [{ json: { count: rows.length, high: high.length, text: rows.map((r) => '- [' + r.risk.toUpperCase() + '] ' + r.domain + ': ' + r.reasons).join('\\n') }, pairedItem: rows.map((_, i) => ({ item: i })) }];`, [780, 100], { executeOnce: true });
+  wf.connect(log, alert);
+  wf.connect(alert, gmailSend(wf, "Email the alert", {
+    to: `={{ ${S}.alertEmail }}`,
+    subject: "={{ $json.count }} new lookalike domain(s){{ $json.high ? ', ' + $json.high + ' high risk' : '' }}",
+    message: `={{ $json.text }}\n\nWhat to do: block these domains in your email filter and web proxy, warn staff if any is high risk, and report phishing sites to the registrar or hosting provider.\nLog: {{ ${S}.googleSheetUrl }}`,
+  }, [1000, 100]));
+  save("23-lookalike-domain-monitor", wf);
+}
+
 // ============================================================================================ sheet templates
 // Header rows for the Google Sheets each workflow uses (import the CSV into a new tab with the given name).
 const SHEETS = {
@@ -1689,6 +2042,11 @@ const SHEETS = {
   "15-meeting-notes-task-assistant": { "tasks-sheet.csv": [["meeting", "meeting_date", "task", "owner", "due_date", "status", "created_at"]] },
   "16-invoice-receipt-data-extraction": { "documents-sheet.csv": [["processed_at", "source", "received_from", "original_file", "document_type", "supplier_name", "supplier_vat_id", "invoice_number", "invoice_date", "due_date", "currency", "subtotal", "vat_amount", "total", "line_items", "status", "issues", "drive_file", "drive_link"]] },
   "18-website-uptime-incident-notifier": { "uptime-incidents-sheet.csv": [["url", "event", "at", "detail", "duration_minutes"]] },
+  "19-phishing-email-analyzer": { "phishing-reports-sheet.csv": [["received_at", "reporter", "subject", "claimed_sender", "verdict", "confidence", "reasons", "malicious_links", "links_checked", "actions_for_it", "advice_for_user", "status"]] },
+  "20-website-security-ssl-scanner": { "scans-sheet.csv": [["scanned_at", "url", "grade", "score", "cert_days_left", "passed", "issues", "requested_by"]] },
+  "21-vulnerability-watch-cve-kev": { "vulnerabilities-sheet.csv": [["found_at", "cve", "source", "matched", "product", "severity", "cvss", "summary", "required_action", "due", "ransomware", "status"]] },
+  "22-data-breach-monitor": { "breaches-sheet.csv": [["found_at", "email", "breach", "domain", "breach_date", "added", "data", "passwords", "verified", "advice"]] },
+  "23-lookalike-domain-monitor": { "lookalike-domains-sheet.csv": [["found_at", "domain", "registered_domain", "risk", "reasons", "status"]] },
   "07-ai-security-monitoring-workflows": { "incidents-sheet.csv": [["received_at", "source", "title", "host", "ip", "rule", "severity", "ai_summary", "likely_cause", "false_positive_likelihood", "recommended_actions", "ip_malicious_votes", "ip_country", "details", "status"]] },
 };
 const csv = (rows) => rows.map((r) => r.map((v) => (/[",\n]/.test(v) ? `"${v.replaceAll('"', '""')}"` : v)).join(",")).join("\n") + "\n";

@@ -592,6 +592,125 @@ if (results.w18check00000001) {
   check('recovery reported', a3 && a3.length === 1 && a3[0].__params.subject === 'RECOVERED: ' + SITE, a3 && a3.map((x) => x.__params.subject));
 }
 
+// --------------------------------------------------------------------------------------------- 19
+const W19 = '19-phishing-email-analyzer';
+scenario(19, W19, {
+  id: 'w19phish00000001', trigger: 'Reported email',
+  triggerCode: `return [${gmailFull('emp@corp.com', 'Emp', 'Fwd: Your mailbox is full', '---------- Forwarded message ---------\nFrom: IT Support <it@micros0ft-help.com>\nClick https://micros0ft-help.com/fix now or lose access.')}];`,
+  code: { 'Link reputation (VirusTotal)': `return $input.all().map((it, i) => ({ json: { data: { attributes: { last_analysis_stats: { malicious: 6, suspicious: 1 } } } }, pairedItem: { item: i } }));` },
+}, (r) => {
+  check('the link was checked on VirusTotal with its URL id', r.outputOf('Links to check')[0].vt_id === Buffer.from('https://micros0ft-help.com/fix').toString('base64url'));
+  const row = r.outputOf('Log report')[0];
+  check('malicious link forces a phishing verdict', row.verdict === 'phishing' && row.malicious_links === 'https://micros0ft-help.com/fix' && row.claimed_sender === 'IT Support <it@micros0ft-help.com>', row);
+  const reply = r.outputOf('Answer the employee')[0].__params;
+  check('employee gets the verdict and advice', reply.sendTo === 'emp@corp.com' && /\[PHISHING\]/.test(reply.subject) && /Do not click/.test(reply.message), reply);
+  const alert = r.outputOf('Alert the security team');
+  check('security team alerted with actions', alert && /- Block the sender domain/.test(alert[0].__params.message), alert && alert[0].__params);
+});
+scenario(19, W19, {
+  id: 'w19nolink0000001', trigger: 'Reported email',
+  triggerCode: `return [${gmailFull('emp2@corp.com', 'Emp2', 'Fwd: Invoice', 'From: Supplier <billing@supplier.com>\nPlease pay the attached invoice today.')}];`,
+}, (r) => {
+  check('report without links skips VirusTotal and is still judged', !r.outputOf('Link reputation (VirusTotal)') && r.outputOf('Log report')[0].links_checked === 0 && r.outputOf('Log report')[0].verdict === 'suspicious');
+});
+
+// --------------------------------------------------------------------------------------------- 20
+const W20 = '20-website-security-ssl-scanner';
+const goodHeaders = { 'strict-transport-security': 'max-age=63072000', 'content-security-policy': "default-src 'self'; frame-ancestors 'none'", 'x-content-type-options': 'nosniff', 'referrer-policy': 'strict-origin', 'permissions-policy': 'camera=()' };
+const certFor = (host, days) => JSON.stringify([{ name_value: host, not_after: new Date(Date.now() + days * 86400000).toISOString().slice(0, 19) }]);
+scenario(20, W20, {
+  id: 'w20form00000001', trigger: 'Scan a website',
+  triggerCode: `return [{ json: { Website: 'acme.example', 'Email for the report': 'owner@acme.example' } }];`,
+  code: {
+    'HTTPS response': `return $input.all().map((it, i) => ({ json: { statusCode: 200, headers: ${JSON.stringify(goodHeaders)}, body: '<html>' }, pairedItem: { item: i } }));`,
+    'HTTP redirect': `return $input.all().map((it, i) => ({ json: { statusCode: 301, headers: { location: 'https://acme.example/' }, body: '' }, pairedItem: { item: i } }));`,
+    'Certificates (crt.sh)': `return $input.all().map((it, i) => ({ json: { data: ${JSON.stringify(certFor('acme.example', 60))} }, pairedItem: { item: i } }));`,
+  },
+}, (r) => {
+  check('form URL normalized to https', r.outputOf('Sites to scan')[0].url === 'https://acme.example' && r.outputOf('Sites to scan')[0].host === 'acme.example');
+  const g = r.outputOf('Grade')[0];
+  check('good site graded A', g.grade === 'A' && g.cert_days_left >= 59, g);
+  const mail = r.outputOf('Email the report')[0].__params;
+  check('report emailed to the requester', mail.sendTo === 'owner@acme.example' && /acme.example A/.test(mail.subject), mail);
+  check('scan logged with requester', r.outputOf('Log scans')[0].requested_by === 'owner@acme.example');
+});
+scenario(20, W20, {
+  id: 'w20weekly0000001', trigger: 'Every Monday at 7:00', triggerCode: `return [{ json: {} }];`,
+  settings: { sites: 'https://good.example\nhttps://old.example' },
+  code: {
+    'HTTPS response': `return $input.all().map((it, i) => ({ json: i === 0 ? { statusCode: 200, headers: ${JSON.stringify(goodHeaders)} } : { statusCode: 200, headers: { server: 'Apache/2.2.15' } }, pairedItem: { item: i } }));`,
+    'HTTP redirect': `return $input.all().map((it, i) => ({ json: i === 0 ? { statusCode: 301, headers: { location: 'https://good.example/' } } : { statusCode: 200, headers: {} }, pairedItem: { item: i } }));`,
+    'Certificates (crt.sh)': `return $input.all().map((it, i) => ({ json: { data: i === 0 ? ${JSON.stringify(certFor('good.example', 90))} : ${JSON.stringify(certFor('old.example', 5))} }, pairedItem: { item: i } }));`,
+  },
+}, (r) => {
+  const g = r.outputOf('Grade');
+  check('each site graded on its own responses', g.length === 2 && g[0].grade === 'A' && g[1].grade === 'F' && g[1].cert_days_left <= 5, g.map((x) => [x.url, x.grade, x.cert_days_left]));
+  const mail = r.outputOf('Email the report');
+  check('one weekly report, certificate warning first', mail.length === 1 && mail[0].__params.sendTo === 'it@yourcompany.com' && /^Certificate expiring soon/.test(mail[0].__params.subject) && /\[high\] Certificate valid/.test(mail[0].__params.message), mail.map((x) => x.__params.subject));
+});
+
+// --------------------------------------------------------------------------------------------- 21
+const W21 = '21-vulnerability-watch-cve-kev';
+const kevStub = `return [{ json: { vulnerabilities: [
+  { cveID: 'CVE-2026-1001', vendorProject: 'Fortinet', product: 'FortiOS', vulnerabilityName: 'FortiOS SSL-VPN RCE', dateAdded: new Date().toISOString().slice(0, 10), shortDescription: 'Heap overflow allows remote code execution.', requiredAction: 'Apply updates per vendor instructions.', dueDate: '2026-11-20', knownRansomwareCampaignUse: 'Known' },
+  { cveID: 'CVE-2020-0001', vendorProject: 'Fortinet', product: 'FortiOS', vulnerabilityName: 'Old one', dateAdded: '2021-11-03' },
+] }, pairedItem: { item: 0 } }];`;
+const nvdStub = `return [{ json: { vulnerabilities: [
+  { cve: { id: 'CVE-2026-2002', descriptions: [{ lang: 'en', value: 'A race condition in OpenSSH sshd allows unauthenticated RCE.' }], metrics: { cvssMetricV31: [{ cvssData: { baseScore: 8.1, baseSeverity: 'HIGH' } }] } } },
+  { cve: { id: 'CVE-2026-2003', descriptions: [{ lang: 'en', value: 'Unrelated product flaw.' }], metrics: { cvssMetricV31: [{ cvssData: { baseScore: 9.8, baseSeverity: 'CRITICAL' } }] } } },
+] }, pairedItem: { item: 0 } }];`;
+const VULN_ID = ('w21' + Date.now().toString(36) + '0000000000').slice(0, 16);
+const vulnRun = () => ({ id: VULN_ID, trigger: 'Every morning', triggerCode: `return [{ json: {} }];`, code: { 'Exploited vulnerabilities (CISA KEV)': kevStub, 'New CVEs (NVD)': nvdStub } });
+scenario(21, W21, vulnRun(), (r) => {
+  const v = r.outputOf('Relevant vulnerabilities')[0].vulns;
+  check('exploited Fortinet CVE and high OpenSSH CVE matched, old and unrelated skipped', v.map((x) => x.cve).join() === 'CVE-2026-1001,CVE-2026-2002', v.map((x) => x.cve));
+  const mail = r.outputOf('Email the advisory')[0].__params;
+  check('advisory flags exploited first with what to do', /^\[ACTION\] 1 exploited/.test(mail.subject) && /EXPLOITED IN THE WILD/.test(mail.message) && /Apply the FortiOS patch/.test(mail.message), mail.subject);
+  check('both CVEs logged', r.outputOf('Log vulnerabilities').length === 2);
+});
+scenario(21, W21, vulnRun(), (r) => {
+  check('next day: same CVEs are not reported again', r.outputOf('Relevant vulnerabilities').length === 0 && !r.outputOf('Email the advisory'));
+});
+
+// --------------------------------------------------------------------------------------------- 22
+const W22 = '22-data-breach-monitor';
+const hibpStub = `return $input.all().map((it, i) => ({ json: it.json.email === 'ceo@yourcompany.com'
+  ? { statusCode: 200, body: JSON.stringify([{ Name: 'Adobe-${Date.now()}', Title: 'Adobe', Domain: 'adobe.com', BreachDate: '2013-10-04', AddedDate: '2013-12-04', DataClasses: ['Email addresses', 'Passwords'], IsVerified: true }]) }
+  : { statusCode: 404, body: '' }, pairedItem: { item: i } }));`;
+scenario(22, W22, {
+  id: 'w22breach0000001', trigger: 'Every Monday at 8:15', triggerCode: `return [{ json: {} }];`,
+  code: { 'Have I Been Pwned': hibpStub },
+}, (r) => {
+  check('three addresses checked', r.outputOf('Emails to check').length === 3);
+  const rows = r.outputOf('Log breaches');
+  check('only the breached address logged, with advice', rows.length === 1 && rows[0].email === 'ceo@yourcompany.com' && rows[0].passwords === true && /Change the password/.test(rows[0].advice), rows);
+  check('people not notified when the option is off', !r.outputOf('Notify the person'));
+  const mail = r.outputOf('Email the security team')[0].__params;
+  check('security team summary', /1 new breach\(es\) affecting 1 address\(es\), passwords exposed/.test(mail.subject), mail.subject);
+});
+scenario(22, W22, {
+  id: 'w22notify0000001', trigger: 'Every Monday at 8:15', triggerCode: `return [{ json: {} }];`, settings: { notifyPeople: true },
+  code: { 'Have I Been Pwned': hibpStub.replace('Adobe-', 'Adobe2-') },
+}, (r) => {
+  const n = r.outputOf('Notify the person');
+  check('affected person notified when the option is on', n && n.length === 1 && n[0].__params.sendTo === 'ceo@yourcompany.com' && /Adobe/.test(n[0].__params.subject), n && n[0].__params);
+});
+
+// --------------------------------------------------------------------------------------------- 23
+const W23 = '23-lookalike-domain-monitor';
+scenario(23, W23, {
+  id: 'w23domains000001', trigger: 'Every day', triggerCode: `return [{ json: {} }];`,
+  settings: { brandDomains: 'acme.com', searchTerms: 'acme', allowlist: 'acme-partner.com' },
+  code: { 'Certificate logs (crt.sh)': `return [{ json: { data: JSON.stringify([
+    { name_value: 'acme.com\\nwww.acme.com' }, { name_value: 'acme-login-${Date.now()}.net' }, { name_value: 'shop.acme-partner.com' }, { name_value: 'acme${Date.now()}.shop' },
+  ]) }, pairedItem: { item: 0 } }];` },
+}, (r) => {
+  const rows = r.outputOf('Log domains');
+  check('own and allowlisted domains ignored, lookalikes logged', rows.length === 2 && rows.every((x) => !/^(www\.)?acme\.com$|partner/.test(x.domain)), rows.map((x) => x.domain));
+  check('login lookalike is high risk', rows.find((x) => x.domain.startsWith('acme-login')).risk === 'high');
+  check('alert emailed', /2 new lookalike domain\(s\), 1 high risk/.test(r.outputOf('Email the alert')[0].__params.subject));
+});
+
 console.log(`\n${passed} checks passed, ${failed} failed`);
 mock.kill();
 process.exit(failed ? 1 : 0);

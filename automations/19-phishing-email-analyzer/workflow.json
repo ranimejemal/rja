@@ -1,0 +1,540 @@
+{
+  "name": "Phishing Email Analyzer | Ranime Jemal Agency",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Phishing Email Analyzer\nEmployees forward suspicious emails to a reporting mailbox (for example phishing@yourcompany.com). For each report the workflow checks every link on VirusTotal, has the AI judge the email (phishing, suspicious, spam or safe), answers the employee with clear advice, logs the case, and alerts the security team about phishing.\n1. Create the reporting mailbox and connect it as the Gmail account of the trigger. 2. Fill in **Settings**. 3. Make a sheet with a **Phishing reports** tab (`phishing-reports-sheet.csv`). 4. Connect OpenAI, VirusTotal, Google Sheets and Gmail. 5. Activate and tell employees where to forward suspicious emails.",
+        "height": 320,
+        "width": 600,
+        "color": 4
+      },
+      "id": "node-01c4",
+      "name": "Note 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -480
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "value": 5,
+              "unit": "minutes"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "q": "in:inbox -from:me"
+        },
+        "options": {}
+      },
+      "id": "node-01c5",
+      "name": "Reported email",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -560,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-01c6",
+              "name": "organisationName",
+              "value": "Your company",
+              "type": "string"
+            },
+            {
+              "id": "set-01c7",
+              "name": "securityTeamEmail",
+              "value": "security@yourcompany.com",
+              "type": "string"
+            },
+            {
+              "id": "set-01c8",
+              "name": "senderName",
+              "value": "IT security",
+              "type": "string"
+            },
+            {
+              "id": "set-01c9",
+              "name": "googleSheetUrl",
+              "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
+              "type": "string"
+            },
+            {
+              "id": "set-01ca",
+              "name": "openAiModel",
+              "value": "gpt-4.1-mini",
+              "type": "string"
+            },
+            {
+              "id": "set-01cb",
+              "name": "openAiBaseUrl",
+              "value": "https://api.openai.com/v1",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "node-01cc",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -320,
+        100
+      ],
+      "notes": "Fill in these values before activating.",
+      "color": "#FFD233"
+    },
+    {
+      "parameters": {
+        "jsCode": "function extractUrls(text, html, max = 10) {\n  const found = [];\n  const add = (u) => {\n    const url = String(u || \"\").trim().replace(/[)>\\].,;'\"]+$/, \"\");\n    if (/^https?:\\/\\//i.test(url) && !found.includes(url)) found.push(url);\n  };\n  for (const m of String(html || \"\").matchAll(/href\\s*=\\s*[\"']([^\"']+)[\"']/gi)) add(m[1]);\n  for (const m of String(text || \"\").matchAll(/https?:\\/\\/[^\\s<>\"']+/gi)) add(m[0]);\n  return found.slice(0, max);\n}\n\nfunction phishingReport(msg) {\n  const from = (msg.from && msg.from.value && msg.from.value[0]) || {};\n  const text = String(msg.text || \"\");\n  const claimed = (text.match(/^\\s*(?:From|De)\\s*:\\s*(.+)$/im) || [])[1] || \"\";\n  return {\n    report_id: msg.id || \"\", thread_id: msg.threadId || \"\", reporter: String(from.address || \"\").toLowerCase(), reporter_name: from.name || \"\",\n    subject: String(msg.subject || \"\").replace(/^\\s*(fwd?|tr|fw)\\s*:\\s*/i, \"\"), claimed_sender: claimed.trim().slice(0, 200),\n    text: text.slice(0, 8000), urls: extractUrls(text, msg.html), attachments: Object.values(msg.binary || {}).map((b) => b.fileName).filter(Boolean),\n    received_at: msg.date ? new Date(msg.date).toISOString() : new Date().toISOString(),\n  };\n}\n\nreturn $input.all().map((item, i) => ({ json: phishingReport(item.json), pairedItem: { item: i } })).filter((i) => i.json.reporter);"
+      },
+      "id": "node-01cd",
+      "name": "Read report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -100,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function vtUrlId(url) {\n  const b64 = typeof Buffer !== \"undefined\" ? Buffer.from(url, \"utf8\").toString(\"base64\") : btoa(unescape(encodeURIComponent(url)));\n  return b64.replace(/\\+/g, \"-\").replace(/\\//g, \"_\").replace(/=+$/, \"\");\n}\n\n// One item per link (and one empty item for reports without links, so every report is judged).\nreturn $input.all().flatMap((item, i) => {\n  const urls = item.json.urls.slice(0, 5);\n  return (urls.length ? urls : ['']).map((url) => ({ json: { report_index: i, url, vt_id: url ? vtUrlId(url) : '' }, pairedItem: { item: i } }));\n});"
+      },
+      "id": "node-01ce",
+      "name": "Links to check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        120,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-01cf",
+              "leftValue": "={{ $json.url }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "node-01d0",
+      "name": "Has a link?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        340,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://www.virustotal.com/api/v3/urls/{{ $json.vt_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "virusTotalApi",
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "node-01d1",
+      "name": "Link reputation (VirusTotal)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        560,
+        0
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {},
+      "id": "node-01d2",
+      "name": "All links",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        780,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "function urlVerdict(url, vt) {\n  const a = vt && vt.data && vt.data.attributes;\n  if (!a) return { url, known: false, malicious: 0, suspicious: 0 };\n  const s = a.last_analysis_stats || {};\n  return { url, known: true, malicious: s.malicious || 0, suspicious: s.suspicious || 0, categories: Object.values(a.categories || {}).slice(0, 3).join(\", \") };\n}\n\nconst link = $('Links to check').item.json;\nreturn { json: { report_index: link.report_index, ...(link.url ? urlVerdict(link.url, $json) : { url: '' }) } };"
+      },
+      "id": "node-01d3",
+      "name": "Link result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function buildPhishingRequest(report, urlChecks, s) {\n  const system = [\n    `You are the security analyst of ${s.organisationName}. An employee forwarded an email they think is suspicious.`,\n    \"Judge it from the content, the claimed sender, the links and their reputation. Look for urgency, credential or payment requests, mismatched or lookalike domains, unexpected attachments, and spoofed brands.\",\n    \"verdict: phishing (malicious), suspicious (unclear, treat with care), spam (unwanted but not dangerous), safe (legitimate).\",\n    \"advice_for_user: 2-4 short sentences for the employee, in the email's language. actions_for_it: concrete steps for IT (block sender or domain, reset password if they clicked, search mailboxes).\",\n    'Answer with JSON only: {\"verdict\":\"phishing|suspicious|spam|safe\",\"confidence\":\"high|medium|low\",\"reasons\":[\"...\"],\"advice_for_user\":\"...\",\"actions_for_it\":[\"...\"]}',\n  ].join(\"\\n\");\n  return {\n    model: s.openAiModel, temperature: 0.1, response_format: { type: \"json_object\" },\n    messages: [{ role: \"system\", content: system }, { role: \"user\", content: JSON.stringify({ subject: report.subject, claimed_sender: report.claimed_sender, attachments: report.attachments, links: urlChecks, body: report.text }) }],\n  };\n}\n\nconst s = $('Settings').first().json;\nconst reports = $('Read report').all();\nconst checks = $input.all().map((i) => i.json);\nreturn reports.map((r, i) => {\n  const links = checks.filter((c) => c.report_index === i && c.url).map(({ report_index, ...c }) => c);\n  return { json: { ...r.json, links, request: buildPhishingRequest(r.json, links, s) }, pairedItem: { item: i } };\n});"
+      },
+      "id": "node-01d4",
+      "name": "Prepare verdict",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1220,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Settings').first().json.openAiBaseUrl }}/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.request) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "node-01d5",
+      "name": "Judge with AI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        100
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "function readAiJson(response) {\n  const content = response && response.choices && response.choices[0] && response.choices[0].message && response.choices[0].message.content;\n  if (!content) throw new Error(\"OpenAI returned no answer: \" + JSON.stringify(response).slice(0, 300));\n  try {\n    return JSON.parse(content);\n  } catch {\n    throw new Error(\"OpenAI answer was not valid JSON: \" + content.slice(0, 300));\n  }\n}\n\nconst src = $('Prepare verdict').all();\nreturn $input.all().map((item, i) => {\n  const r = src[i].json;\n  let v;\n  try { v = readAiJson(item.json); } catch (e) { v = { verdict: 'suspicious', confidence: 'low', reasons: ['Automatic analysis failed: ' + e.message], advice_for_user: 'Do not click links or open attachments in this email. The security team will check it.', actions_for_it: [] }; }\n  const flagged = r.links.filter((l) => l.malicious > 0);\n  // A link flagged as malicious by VirusTotal always makes the report phishing, whatever the AI says.\n  const verdict = flagged.length ? 'phishing' : (['phishing', 'suspicious', 'spam', 'safe'].includes(v.verdict) ? v.verdict : 'suspicious');\n  return { json: {\n    received_at: r.received_at, reporter: r.reporter, subject: r.subject, claimed_sender: r.claimed_sender, verdict, confidence: v.confidence || '',\n    reasons: (v.reasons || []).join(' | '), malicious_links: flagged.map((l) => l.url).join(' '), links_checked: r.links.length,\n    actions_for_it: (v.actions_for_it || []).join(' | '), advice_for_user: v.advice_for_user || '', status: 'open',\n  }, pairedItem: { item: i } };\n});"
+      },
+      "id": "node-01d6",
+      "name": "Verdict",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1660,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Settings').first().json.googleSheetUrl }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Phishing reports"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "node-01d7",
+      "name": "Log report",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1880,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Verdict').item.json.reporter }}",
+        "subject": "=Re: {{ $('Verdict').item.json.subject }} [{{ $('Verdict').item.json.verdict.toUpperCase() }}]",
+        "emailType": "text",
+        "message": "=Thank you for reporting this email.\n\nOur check says: {{ $('Verdict').item.json.verdict.toUpperCase() }} ({{ $('Verdict').item.json.confidence }} confidence).\n\n{{ $('Verdict').item.json.advice_for_user }}\n\n{{ $('Settings').first().json.senderName }}",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "={{ $('Settings').first().json.senderName }}"
+        }
+      },
+      "id": "node-01d8",
+      "name": "Answer the employee",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2100,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-01d9",
+              "leftValue": "={{ ['phishing', 'suspicious'].includes($('Verdict').item.json.verdict) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "node-01da",
+      "name": "Phishing or suspicious?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2320,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Settings').first().json.securityTeamEmail }}",
+        "subject": "=[{{ $('Verdict').item.json.verdict.toUpperCase() }}] reported by {{ $('Verdict').item.json.reporter }}: {{ $('Verdict').item.json.subject }}",
+        "emailType": "text",
+        "message": "=Claimed sender: {{ $('Verdict').item.json.claimed_sender }}\nWhy: {{ $('Verdict').item.json.reasons }}\nMalicious links (VirusTotal): {{ $('Verdict').item.json.malicious_links || 'none' }}\n\nRecommended actions:\n{{ $('Verdict').item.json.actions_for_it.split(' | ').filter(Boolean).map((a) => '- ' + a).join('\\n') }}\n\nIf the employee clicked a link or entered a password, reset their password and check their sign-ins now.",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "={{ $('Settings').first().json.senderName }}"
+        }
+      },
+      "id": "node-01db",
+      "name": "Alert the security team",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2540,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Reported email": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Read report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read report": {
+      "main": [
+        [
+          {
+            "node": "Links to check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Links to check": {
+      "main": [
+        [
+          {
+            "node": "Has a link?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has a link?": {
+      "main": [
+        [
+          {
+            "node": "Link reputation (VirusTotal)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "All links",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Link reputation (VirusTotal)": {
+      "main": [
+        [
+          {
+            "node": "All links",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "All links": {
+      "main": [
+        [
+          {
+            "node": "Link result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Link result": {
+      "main": [
+        [
+          {
+            "node": "Prepare verdict",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare verdict": {
+      "main": [
+        [
+          {
+            "node": "Judge with AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Judge with AI": {
+      "main": [
+        [
+          {
+            "node": "Verdict",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verdict": {
+      "main": [
+        [
+          {
+            "node": "Log report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log report": {
+      "main": [
+        [
+          {
+            "node": "Answer the employee",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Answer the employee": {
+      "main": [
+        [
+          {
+            "node": "Phishing or suspicious?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Phishing or suspicious?": {
+      "main": [
+        [
+          {
+            "node": "Alert the security team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

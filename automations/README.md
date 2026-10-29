@@ -32,6 +32,18 @@ Each folder holds the workflow, the Google Sheet templates it uses, and a setup 
 | 17 | (see 07) | *Security Alert Triage & Reporting* is delivered by **07**: alert triage, incident log and weekly report | |
 | 18 | [18-website-uptime-incident-notifier](18-website-uptime-incident-notifier/) | Checks sites every 5 minutes (status and required text), emails DOWN after confirmed failures and RECOVERED with the downtime | Google Sheets, Gmail |
 
+### Security suite
+
+Ready-made security automations for companies: fill in Settings, connect the accounts, activate. 07 and 18 are part of the suite too.
+
+| # | Folder | What it does | Accounts it needs |
+|---|---|---|---|
+| 19 | [19-phishing-email-analyzer](19-phishing-email-analyzer/) | Employees forward suspicious emails; links are checked on VirusTotal, the AI gives a verdict, the employee gets advice, the security team gets phishing alerts | OpenAI, VirusTotal, Gmail, Google Sheets |
+| 20 | [20-website-security-ssl-scanner](20-website-security-ssl-scanner/) | Weekly passive scan of your websites (HTTPS, redirects, security headers, cookies, version leaks, certificate expiry) with an A-F grade and fixes; on-demand form | Google Sheets, Gmail |
+| 21 | [21-vulnerability-watch-cve-kev](21-vulnerability-watch-cve-kev/) | Daily: exploited vulnerabilities (CISA KEV) and new CVEs (NVD) matching your products, with an AI advisory | OpenAI, Google Sheets, Gmail |
+| 22 | [22-data-breach-monitor](22-data-breach-monitor/) | Weekly Have I Been Pwned check of your team's addresses, new breaches only, advice and optional personal notices | Have I Been Pwned, Google Sheets, Gmail |
+| 23 | [23-lookalike-domain-monitor](23-lookalike-domain-monitor/) | Daily Certificate Transparency search for new domains imitating your brand, with risk levels | Google Sheets, Gmail |
+
 ## Setting one up for a client
 
 1. **n8n**: use n8n Cloud or a self-hosted n8n. The workflows were built and tested on **n8n 1.123**; use that version or newer.
@@ -54,6 +66,7 @@ Each folder holds the workflow, the Google Sheet templates it uses, and a setup 
 | Shopify (13, 14) | A custom app in the Shopify admin (*Settings → Apps → Develop apps*) with `read_orders` (and `read_checkouts` for 14); use its Admin API access token. |
 | WooCommerce (13) | *WooCommerce → Settings → Advanced → REST API*: a key with read/write access. |
 | Google Places API (11) | A Google Cloud API key with **Places API (New)** enabled, stored as a Header Auth credential named `X-Goog-Api-Key`. |
+| Have I Been Pwned (22) | An API key from haveibeenpwned.com/API/Key, stored as a Header Auth credential named `hibp-api-key`. |
 | VirusTotal (security) | Free API key from virustotal.com (account → API key). Free tier: 4 lookups per minute. |
 | Header Auth (voice and security webhooks) | Create a *Header Auth* credential with a long random value. Give the same header to whatever calls the webhook. |
 

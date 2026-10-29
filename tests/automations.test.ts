@@ -220,6 +220,69 @@ describe("catalog automation logic", () => {
   });
 });
 
+describe("security suite logic", () => {
+  it("extracts links and VirusTotal ids", () => {
+    expect(L.extractUrls("See https://evil.example/login?x=1. Thanks", '<a href="https://evil.example/login?x=1">x</a><a href="mailto:a@b.c">m</a>'))
+      .toEqual(["https://evil.example/login?x=1"]);
+    expect(L.vtUrlId("http://example.com/")).toBe("aHR0cDovL2V4YW1wbGUuY29tLw");
+    expect(L.urlVerdict("u", null)).toMatchObject({ known: false });
+    expect(L.urlVerdict("u", { data: { attributes: { last_analysis_stats: { malicious: 4 } } } })).toMatchObject({ known: true, malicious: 4 });
+  });
+
+  it("reads a forwarded phishing report", () => {
+    const r = L.phishingReport({ id: "m1", threadId: "t1", subject: "Fwd: Your account is locked", from: { value: [{ address: "Emp@Corp.com", name: "Emp" }] },
+      text: "---------- Forwarded message ---------\nFrom: Microsoft <security@micros0ft-support.com>\nVerify now: https://micros0ft-support.com/verify" });
+    expect(r).toMatchObject({ reporter: "emp@corp.com", subject: "Your account is locked", claimed_sender: "Microsoft <security@micros0ft-support.com>", urls: ["https://micros0ft-support.com/verify"] });
+  });
+
+  it("grades website security headers, redirects, cookies and certificates", () => {
+    const good = L.websiteSecurity({ url: "https://acme.com" },
+      { statusCode: 200, headers: { "Strict-Transport-Security": "max-age=31536000", "Content-Security-Policy": "default-src 'self'; frame-ancestors 'self'", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer", "Permissions-Policy": "camera=()", "Set-Cookie": "sid=1; Secure; HttpOnly; SameSite=Lax" } },
+      { statusCode: 301, headers: { location: "https://acme.com/" } },
+      [{ name_value: "acme.com\nwww.acme.com", not_after: "2026-06-01T00:00:00" }], NOW, 21);
+    expect(good).toMatchObject({ grade: "A", score: 100, cert_days_left: 82 });
+    const bad = L.websiteSecurity({ url: "https://old.example" }, { statusCode: 200, headers: { server: "Apache/2.2.15", "set-cookie": "sid=1" } }, { statusCode: 200, headers: {} },
+      [{ name_value: "*.example", not_after: "2026-03-14T00:00:00" }], NOW, 21);
+    expect(bad.grade).toBe("F");
+    expect(bad.failed.map((f: { check: string }) => f.check)).toEqual(expect.arrayContaining(["HSTS enabled (at least 6 months)", "HTTP redirects to HTTPS", "No software versions disclosed", "Cookies use Secure and HttpOnly"]));
+    expect(bad.cert_days_left).toBe(3);
+    expect(L.securityReportText([bad])).toMatch(/grade F/);
+  });
+
+  it("matches exploited and new CVEs against the watchlist once", () => {
+    const store: Record<string, unknown> = {};
+    const kev = { vulnerabilities: [
+      { cveID: "CVE-2026-1", vendorProject: "Fortinet", product: "FortiOS", vulnerabilityName: "FortiOS RCE", dateAdded: "2026-03-08", shortDescription: "RCE", requiredAction: "Patch", dueDate: "2026-03-29" },
+      { cveID: "CVE-2019-9", vendorProject: "Fortinet", product: "FortiOS", vulnerabilityName: "Old", dateAdded: "2019-01-01" },
+      { cveID: "CVE-2026-2", vendorProject: "Other", product: "Thing", vulnerabilityName: "x", dateAdded: "2026-03-09" },
+    ] };
+    const nvd = { vulnerabilities: [
+      { cve: { id: "CVE-2026-3", descriptions: [{ lang: "en", value: "A flaw in OpenSSH allows..." }], metrics: { cvssMetricV31: [{ cvssData: { baseScore: 8.1, baseSeverity: "HIGH" } }] } } },
+      { cve: { id: "CVE-2026-4", descriptions: [{ lang: "en", value: "OpenSSH minor issue" }], metrics: { cvssMetricV31: [{ cvssData: { baseScore: 3.1, baseSeverity: "LOW" } }] } } },
+    ] };
+    const first = L.matchVulnerabilities(kev, nvd, "fortinet\nopenssh", 7, store, NOW);
+    expect(first.map((v: { cve: string }) => v.cve)).toEqual(["CVE-2026-1", "CVE-2026-3"]);
+    expect(L.matchVulnerabilities(kev, nvd, "fortinet\nopenssh", 7, store, NOW)).toEqual([]);
+  });
+
+  it("reports only new breaches and gives advice", () => {
+    const store: Record<string, unknown> = {};
+    const b = [{ Name: "Adobe", Title: "Adobe", BreachDate: "2013-10-04", DataClasses: ["Email addresses", "Passwords"] }];
+    expect(L.newBreaches("a@x.io", b, store)).toEqual([expect.objectContaining({ breach: "Adobe", passwords: true })]);
+    expect(L.newBreaches("a@x.io", b, store)).toEqual([]);
+    expect(L.breachAdvice("Email addresses, Passwords")).toMatch(/Change the password/);
+  });
+
+  it("finds new lookalike domains with risk reasons", () => {
+    const store: Record<string, unknown> = {};
+    const entries = [{ name_value: "acme.com\nwww.acme.com" }, { name_value: "acme-login.net" }, { name_value: "acrne.com" }, { name_value: "partner.io" }, { name_value: "*.xn--acme-9qa.com" }];
+    const found = L.lookalikeDomains(entries, "acme.com", "partner.io", store);
+    expect(found.map((d: { domain: string }) => d.domain)).toEqual(["acme-login.net", "xn--acme-9qa.com", "acrne.com"]);
+    expect(found[0]).toMatchObject({ risk: "high" });
+    expect(L.lookalikeDomains(entries, "acme.com", "partner.io", store)).toEqual([]);
+  });
+});
+
 // The generated workflows: each one must pass the marketplace upload scan and reference only existing nodes.
 const dir = join(__dirname, "..", "automations");
 const workflows = existsSync(dir)

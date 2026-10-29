@@ -1,0 +1,402 @@
+{
+  "name": "Data Breach Monitor (Have I Been Pwned) | Ranime Jemal Agency",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Data Breach Monitor\nEvery Monday checks your team's email addresses against Have I Been Pwned. New breaches are logged with the kind of data exposed and what to do, the security contact gets a summary, and (optional) each affected person gets a short personal notice.\n1. Get a Have I Been Pwned API key (haveibeenpwned.com/API/Key) and create a Header Auth credential: name `hibp-api-key`, value = the key. 2. Fill in **Settings** (one email per line). 3. Make a sheet with a **Breaches** tab (`breaches-sheet.csv`). 4. Connect Google Sheets and Gmail. 5. Activate.",
+        "height": 300,
+        "width": 600,
+        "color": 4
+      },
+      "id": "node-0203",
+      "name": "Note 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -460
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "15 8 * * 1"
+            }
+          ]
+        }
+      },
+      "id": "node-0204",
+      "name": "Every Monday at 8:15",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -560,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-0205",
+              "name": "organisationName",
+              "value": "Your company",
+              "type": "string"
+            },
+            {
+              "id": "set-0206",
+              "name": "emails",
+              "value": "ceo@yourcompany.com\nfinance@yourcompany.com\nadmin@yourcompany.com",
+              "type": "string"
+            },
+            {
+              "id": "set-0207",
+              "name": "notifyPeople",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "set-0208",
+              "name": "securityTeamEmail",
+              "value": "security@yourcompany.com",
+              "type": "string"
+            },
+            {
+              "id": "set-0209",
+              "name": "senderName",
+              "value": "IT security",
+              "type": "string"
+            },
+            {
+              "id": "set-020a",
+              "name": "googleSheetUrl",
+              "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "node-020b",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -320,
+        100
+      ],
+      "notes": "Fill in these values before activating.",
+      "color": "#FFD233"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [...new Set(String($('Settings').first().json.emails).split(/[\\n,;]+/).map((e) => e.trim().toLowerCase()).filter((e) => /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(e)))]\n  .map((email) => ({ json: { email }, pairedItem: { item: 0 } }));"
+      },
+      "id": "node-020c",
+      "name": "Emails to check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -100,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://haveibeenpwned.com/api/v3/breachedaccount/{{ encodeURIComponent($json.email) }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "truncateResponse",
+              "value": "false"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "user-agent",
+              "value": "RJA-breach-monitor"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          },
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 6500
+            }
+          }
+        }
+      },
+      "id": "node-020d",
+      "name": "Have I Been Pwned",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        120,
+        100
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 10000
+    },
+    {
+      "parameters": {
+        "jsCode": "function newBreaches(email, breaches, store) {\n  store.seen = store.seen || {};\n  const known = new Set(store.seen[email] || []);\n  const fresh = (Array.isArray(breaches) ? breaches : []).filter((b) => b && b.Name && !known.has(b.Name));\n  store.seen[email] = [...known, ...fresh.map((b) => b.Name)];\n  return fresh.map((b) => ({\n    email, breach: b.Title || b.Name, domain: b.Domain || \"\", breach_date: b.BreachDate || \"\", added: b.AddedDate || \"\",\n    data: (b.DataClasses || []).join(\", \"), passwords: (b.DataClasses || []).includes(\"Passwords\"), verified: b.IsVerified !== false,\n  }));\n}\n\nfunction breachAdvice(dataText) {\n  const d = String(dataText).toLowerCase();\n  const steps = [];\n  if (d.includes(\"password\")) steps.push(\"Change the password on that site and anywhere the same password is used, and turn on two-factor authentication.\");\n  if (/email|phone/.test(d)) steps.push(\"Expect targeted phishing that mentions this breach; do not click links in unexpected messages.\");\n  if (/credit card|bank|financial/.test(d)) steps.push(\"Watch bank statements and tell the bank about the breach.\");\n  if (/address|date of birth|government/.test(d)) steps.push(\"Be careful with calls or letters using these personal details.\");\n  if (!steps.length) steps.push(\"No immediate action is required; stay alert to unexpected messages.\");\n  return steps.join(\" \");\n}\n\nconst emails = $('Emails to check').all();\nconst store = $getWorkflowStaticData('global');\nconst now = new Date().toISOString();\nreturn $input.all().flatMap((item, i) => {\n  if (item.json.statusCode && item.json.statusCode !== 200) return [];   // 404 means no breach for this address\n  let breaches = [];\n  try { breaches = JSON.parse(item.json.body || item.json.data || '[]'); } catch { breaches = []; }\n  return newBreaches(emails[i].json.email, breaches, store).map((b) => ({ json: { found_at: now, ...b, advice: breachAdvice(b.data) }, pairedItem: { item: i } }));\n});"
+      },
+      "id": "node-020e",
+      "name": "New breaches",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        340,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Settings').first().json.googleSheetUrl }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Breaches"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "node-020f",
+      "name": "Log breaches",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        560,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-0210",
+              "leftValue": "={{ $('Settings').first().json.notifyPeople }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "node-0211",
+      "name": "Notify the person?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        780,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('New breaches').item.json.email }}",
+        "subject": "=Your work email appeared in the {{ $('New breaches').item.json.breach }} data breach",
+        "emailType": "text",
+        "message": "=Hello,\n\nYour address {{ $('New breaches').item.json.email }} appears in the {{ $('New breaches').item.json.breach }} breach ({{ $('New breaches').item.json.breach_date }}). Data exposed: {{ $('New breaches').item.json.data }}.\n\n{{ $('New breaches').item.json.advice }}\n\nThis does not mean your company account was hacked. If you have questions, reply to this email.\n\n{{ $('Settings').first().json.senderName }}",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "={{ $('Settings').first().json.senderName }}"
+        }
+      },
+      "id": "node-0212",
+      "name": "Notify the person",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1000,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $('New breaches').all().map((i) => i.json);\nconst lines = rows.map((r) => '- ' + r.email + ': ' + r.breach + ' (' + r.breach_date + ')' + (r.passwords ? ' [PASSWORDS EXPOSED]' : '') + '\\n  Data: ' + r.data);\nreturn [{ json: { count: rows.length, people: new Set(rows.map((r) => r.email)).size, passwords: rows.filter((r) => r.passwords).length, text: lines.join('\\n') }, pairedItem: rows.map((_, i) => ({ item: i })) }];"
+      },
+      "id": "node-0213",
+      "name": "Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        220
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Settings').first().json.securityTeamEmail }}",
+        "subject": "={{ $json.count }} new breach(es) affecting {{ $json.people }} address(es){{ $json.passwords ? ', passwords exposed' : '' }}",
+        "emailType": "text",
+        "message": "={{ $json.text }}\n\nFor exposed passwords: make sure the person changes the password everywhere it was reused and that two-factor authentication is on.\nLog: {{ $('Settings').first().json.googleSheetUrl }}",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "={{ $('Settings').first().json.senderName }}"
+        }
+      },
+      "id": "node-0214",
+      "name": "Email the security team",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1000,
+        220
+      ]
+    }
+  ],
+  "connections": {
+    "Every Monday at 8:15": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Emails to check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Emails to check": {
+      "main": [
+        [
+          {
+            "node": "Have I Been Pwned",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Have I Been Pwned": {
+      "main": [
+        [
+          {
+            "node": "New breaches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "New breaches": {
+      "main": [
+        [
+          {
+            "node": "Log breaches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log breaches": {
+      "main": [
+        [
+          {
+            "node": "Notify the person?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify the person?": {
+      "main": [
+        [
+          {
+            "node": "Notify the person",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summary": {
+      "main": [
+        [
+          {
+            "node": "Email the security team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

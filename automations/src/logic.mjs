@@ -648,3 +648,209 @@ export function uptimeEvents(results, store, nowIso, confirm) {
   }
   return events;
 }
+
+// ------------------------------------------------------------------------------------------ security suite
+
+/** Unique http(s) links from an email's text and HTML (at most `max`). */
+export function extractUrls(text, html, max = 10) {
+  const found = [];
+  const add = (u) => {
+    const url = String(u || "").trim().replace(/[)>\].,;'"]+$/, "");
+    if (/^https?:\/\//i.test(url) && !found.includes(url)) found.push(url);
+  };
+  for (const m of String(html || "").matchAll(/href\s*=\s*["']([^"']+)["']/gi)) add(m[1]);
+  for (const m of String(text || "").matchAll(/https?:\/\/[^\s<>"']+/gi)) add(m[0]);
+  return found.slice(0, max);
+}
+
+/** VirusTotal's URL identifier: unpadded base64url of the URL. */
+export function vtUrlId(url) {
+  const b64 = typeof Buffer !== "undefined" ? Buffer.from(url, "utf8").toString("base64") : btoa(unescape(encodeURIComponent(url)));
+  return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+/** Short result of a VirusTotal URL report (or "not known" when the lookup found nothing). */
+export function urlVerdict(url, vt) {
+  const a = vt && vt.data && vt.data.attributes;
+  if (!a) return { url, known: false, malicious: 0, suspicious: 0 };
+  const s = a.last_analysis_stats || {};
+  return { url, known: true, malicious: s.malicious || 0, suspicious: s.suspicious || 0, categories: Object.values(a.categories || {}).slice(0, 3).join(", ") };
+}
+
+/** A phishing report forwarded by an employee: who reported it, and the suspicious message's content. */
+export function phishingReport(msg) {
+  const from = (msg.from && msg.from.value && msg.from.value[0]) || {};
+  const text = String(msg.text || "");
+  const claimed = (text.match(/^\s*(?:From|De)\s*:\s*(.+)$/im) || [])[1] || "";
+  return {
+    report_id: msg.id || "", thread_id: msg.threadId || "", reporter: String(from.address || "").toLowerCase(), reporter_name: from.name || "",
+    subject: String(msg.subject || "").replace(/^\s*(fwd?|tr|fw)\s*:\s*/i, ""), claimed_sender: claimed.trim().slice(0, 200),
+    text: text.slice(0, 8000), urls: extractUrls(text, msg.html), attachments: Object.values(msg.binary || {}).map((b) => b.fileName).filter(Boolean),
+    received_at: msg.date ? new Date(msg.date).toISOString() : new Date().toISOString(),
+  };
+}
+
+/** OpenAI request that judges a reported email. */
+export function buildPhishingRequest(report, urlChecks, s) {
+  const system = [
+    `You are the security analyst of ${s.organisationName}. An employee forwarded an email they think is suspicious.`,
+    "Judge it from the content, the claimed sender, the links and their reputation. Look for urgency, credential or payment requests, mismatched or lookalike domains, unexpected attachments, and spoofed brands.",
+    "verdict: phishing (malicious), suspicious (unclear, treat with care), spam (unwanted but not dangerous), safe (legitimate).",
+    "advice_for_user: 2-4 short sentences for the employee, in the email's language. actions_for_it: concrete steps for IT (block sender or domain, reset password if they clicked, search mailboxes).",
+    'Answer with JSON only: {"verdict":"phishing|suspicious|spam|safe","confidence":"high|medium|low","reasons":["..."],"advice_for_user":"...","actions_for_it":["..."]}',
+  ].join("\n");
+  return {
+    model: s.openAiModel, temperature: 0.1, response_format: { type: "json_object" },
+    messages: [{ role: "system", content: system }, { role: "user", content: JSON.stringify({ subject: report.subject, claimed_sender: report.claimed_sender, attachments: report.attachments, links: urlChecks, body: report.text }) }],
+  };
+}
+
+/** Security headers, HTTPS redirect, cookies and certificate checks for one website, with a score and fixes. */
+export function websiteSecurity(site, https, http, certs, nowIso, warnDays) {
+  const findings = [];
+  const add = (check, ok, severity, fix) => findings.push({ check, ok, severity, fix: ok ? "" : fix });
+  const h = {};
+  for (const [k, v] of Object.entries((https && https.headers) || {})) h[k.toLowerCase()] = Array.isArray(v) ? v.join("; ") : String(v);
+  const reachable = Boolean(https && https.statusCode);
+  add("Site reachable over HTTPS", reachable && https.statusCode < 400, "high", "The site does not answer correctly over HTTPS. Check the server and certificate.");
+  const hsts = (h["strict-transport-security"] || "").match(/max-age=(\d+)/i);
+  add("HSTS enabled (at least 6 months)", Boolean(hsts && Number(hsts[1]) >= 15552000), "medium", "Add the header Strict-Transport-Security: max-age=31536000; includeSubDomains");
+  const csp = h["content-security-policy"] || "";
+  add("Content-Security-Policy set", Boolean(csp), "medium", "Add a Content-Security-Policy header that lists the sources your pages may load scripts and styles from.");
+  add("Clickjacking protection", /frame-ancestors/i.test(csp) || /deny|sameorigin/i.test(h["x-frame-options"] || ""), "medium", "Add X-Frame-Options: SAMEORIGIN (or frame-ancestors 'self' in the CSP).");
+  add("X-Content-Type-Options: nosniff", /nosniff/i.test(h["x-content-type-options"] || ""), "low", "Add the header X-Content-Type-Options: nosniff");
+  add("Referrer-Policy set", Boolean(h["referrer-policy"]), "low", "Add Referrer-Policy: strict-origin-when-cross-origin");
+  add("Permissions-Policy set", Boolean(h["permissions-policy"]), "low", "Add a Permissions-Policy header that turns off browser features you do not use (camera, microphone, geolocation).");
+  const leak = [h["server"], h["x-powered-by"], h["x-aspnet-version"]].filter((v) => v && /\d/.test(v));
+  add("No software versions disclosed", leak.length === 0, "low", `Hide version numbers from headers (${leak.join(", ")}).`);
+  const cookies = String(h["set-cookie"] || "").split(/,(?=\s*[^;=\s]+=)/).filter((c) => c.trim());
+  const weak = cookies.filter((c) => !/;\s*secure/i.test(c) || !/;\s*httponly/i.test(c));
+  add("Cookies use Secure and HttpOnly", weak.length === 0, "medium", "Set the Secure and HttpOnly flags (and SameSite) on session cookies.");
+  const location = String((http && http.headers && (http.headers.location || http.headers.Location)) || "");
+  const redirects = http && http.statusCode >= 300 && http.statusCode < 400 && /^https:\/\//i.test(location);
+  add("HTTP redirects to HTTPS", Boolean(redirects), "medium", "Redirect every http:// request to https:// with a 301.");
+  const host = site.url.replace(/^https?:\/\//i, "").split(/[/:?#]/)[0].toLowerCase();
+  const valid = (Array.isArray(certs) ? certs : []).filter((c) => String(c.name_value || "").toLowerCase().split("\n").some((n) => n === host || (n.startsWith("*.") && host.endsWith(n.slice(1)))));
+  const latest = valid.sort((a, b) => Date.parse(b.not_after) - Date.parse(a.not_after))[0];
+  const days = latest ? Math.floor((Date.parse(latest.not_after + (latest.not_after.endsWith("Z") ? "" : "Z")) - Date.parse(nowIso)) / 86400000) : null;
+  add(`Certificate valid for at least ${warnDays} days`, days === null ? true : days >= warnDays, days !== null && days < 7 ? "high" : "medium", `The certificate expires in ${days} days. Renew it (or check that automatic renewal works).`);
+  const weights = { high: 25, medium: 10, low: 4 };
+  const score = Math.max(0, 100 - findings.filter((f) => !f.ok).reduce((n, f) => n + weights[f.severity], 0));
+  const grade = score >= 90 ? "A" : score >= 75 ? "B" : score >= 60 ? "C" : score >= 40 ? "D" : "F";
+  return { url: site.url, host, score, grade, cert_days_left: days, failed: findings.filter((f) => !f.ok), passed: findings.filter((f) => f.ok).length, total: findings.length };
+}
+
+/** Plain-text report for several scanned sites. */
+export function securityReportText(results) {
+  return results.map((r) => [
+    `${r.url}: grade ${r.grade} (${r.score}/100), ${r.passed}/${r.total} checks passed${r.cert_days_left !== null ? `, certificate expires in ${r.cert_days_left} days` : ""}`,
+    ...r.failed.map((f) => `  - [${f.severity}] ${f.check}: ${f.fix}`),
+  ].join("\n")).join("\n\n");
+}
+
+/** Vulnerabilities that concern the watchlist: actively exploited ones (CISA KEV) and new high-severity CVEs (NVD). */
+export function matchVulnerabilities(kev, nvd, watchText, minCvss, store, nowIso) {
+  const words = String(watchText || "").split("\n").map((w) => w.trim().toLowerCase()).filter((w) => w && !w.startsWith("#"));
+  const hit = (text) => words.find((w) => String(text || "").toLowerCase().includes(w));
+  store.seen = store.seen || {};
+  const firstRun = !store.initialized;
+  const out = [];
+  for (const v of (kev && kev.vulnerabilities) || []) {
+    const match = hit(`${v.vendorProject} ${v.product} ${v.vulnerabilityName}`);
+    if (!match || store.seen["kev:" + v.cveID]) continue;
+    store.seen["kev:" + v.cveID] = true;
+    // On the first run, only report recent additions instead of the whole catalog.
+    if (firstRun && Date.parse(nowIso) - Date.parse(v.dateAdded) > 14 * 86400000) continue;
+    out.push({ cve: v.cveID, source: "CISA KEV (exploited in the wild)", matched: match, product: `${v.vendorProject} ${v.product}`, severity: "exploited",
+      cvss: "", summary: v.shortDescription || v.vulnerabilityName, action: v.requiredAction || "", due: v.dueDate || "", ransomware: v.knownRansomwareCampaignUse || "" });
+  }
+  for (const item of (nvd && nvd.vulnerabilities) || []) {
+    const c = item.cve || {};
+    const desc = ((c.descriptions || []).find((d) => d.lang === "en") || {}).value || "";
+    const metric = ((c.metrics && (c.metrics.cvssMetricV31 || c.metrics.cvssMetricV40 || c.metrics.cvssMetricV30)) || [])[0];
+    const score = metric ? Number(metric.cvssData.baseScore) : 0;
+    const match = hit(desc);
+    if (!match || score < minCvss || store.seen["nvd:" + c.id] || store.seen["kev:" + c.id]) continue;
+    store.seen["nvd:" + c.id] = true;
+    out.push({ cve: c.id, source: "NVD", matched: match, product: match, severity: metric ? metric.cvssData.baseSeverity : "", cvss: score, summary: desc.slice(0, 600), action: "", due: "", ransomware: "" });
+  }
+  store.initialized = true;
+  return out;
+}
+
+/** OpenAI request that turns matched vulnerabilities into a short advisory. */
+export function buildAdvisoryRequest(vulns, s) {
+  const system = [
+    `You write vulnerability advisories for the IT team of ${s.organisationName}. Their environment: ${s.environment}.`,
+    "For each vulnerability: who is affected, how urgent (exploited ones first), and the concrete action (patch version, workaround, or check). Do not invent version numbers; say 'see vendor advisory' when unknown.",
+    'Answer with JSON only: {"headline":"one line","items":[{"cve":"","urgency":"now|this week|monitor","what_to_do":"..."}]}',
+  ].join("\n");
+  return {
+    model: s.openAiModel, temperature: 0.1, response_format: { type: "json_object" },
+    messages: [{ role: "system", content: system }, { role: "user", content: JSON.stringify(vulns.map(({ cve, source, product, cvss, summary, action, due }) => ({ cve, source, product, cvss, summary, action, due }))) }],
+  };
+}
+
+/** New breaches for one email address (Have I Been Pwned), remembering what was already reported. */
+export function newBreaches(email, breaches, store) {
+  store.seen = store.seen || {};
+  const known = new Set(store.seen[email] || []);
+  const fresh = (Array.isArray(breaches) ? breaches : []).filter((b) => b && b.Name && !known.has(b.Name));
+  store.seen[email] = [...known, ...fresh.map((b) => b.Name)];
+  return fresh.map((b) => ({
+    email, breach: b.Title || b.Name, domain: b.Domain || "", breach_date: b.BreachDate || "", added: b.AddedDate || "",
+    data: (b.DataClasses || []).join(", "), passwords: (b.DataClasses || []).includes("Passwords"), verified: b.IsVerified !== false,
+  }));
+}
+
+/** What an affected person should do, from the kinds of data exposed. */
+export function breachAdvice(dataText) {
+  const d = String(dataText).toLowerCase();
+  const steps = [];
+  if (d.includes("password")) steps.push("Change the password on that site and anywhere the same password is used, and turn on two-factor authentication.");
+  if (/email|phone/.test(d)) steps.push("Expect targeted phishing that mentions this breach; do not click links in unexpected messages.");
+  if (/credit card|bank|financial/.test(d)) steps.push("Watch bank statements and tell the bank about the breach.");
+  if (/address|date of birth|government/.test(d)) steps.push("Be careful with calls or letters using these personal details.");
+  if (!steps.length) steps.push("No immediate action is required; stay alert to unexpected messages.");
+  return steps.join(" ");
+}
+
+/** Edit distance (for spotting lookalike domains). */
+export function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  const d = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)]);
+  for (let j = 1; j <= n; j++) d[0][j] = j;
+  for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[m][n];
+}
+
+/** New lookalike domains from Certificate Transparency results (crt.sh), with a risk level and reasons. */
+export function lookalikeDomains(entries, brandsText, allowText, store) {
+  const brands = String(brandsText || "").split(/[\n,]/).map((b) => b.trim().toLowerCase()).filter(Boolean);
+  const allow = String(allowText || "").split(/[\n,]/).map((b) => b.trim().toLowerCase()).filter(Boolean);
+  const labels = brands.map((b) => b.split(".")[0]);
+  store.seen = store.seen || {};
+  const out = [];
+  const names = new Set();
+  for (const e of Array.isArray(entries) ? entries : []) for (const n of String(e.name_value || "").toLowerCase().split("\n")) names.add(n.replace(/^\*\./, "").trim());
+  for (const domain of names) {
+    if (!domain || store.seen[domain]) continue;
+    const own = brands.some((b) => domain === b || domain.endsWith("." + b)) || allow.some((a) => domain === a || domain.endsWith("." + a));
+    if (own) continue;
+    const parts = domain.split(".");
+    const reg = parts.slice(-2).join(".");
+    const label = parts.length > 1 ? parts[parts.length - 2] : parts[0];
+    const reasons = [];
+    for (const b of labels) {
+      if (domain.includes(b)) reasons.push(`contains "${b}"`);
+      else if (Math.abs(label.length - b.length) <= 2 && levenshtein(label, b) <= 2) reasons.push(`looks like "${b}" (${levenshtein(label, b)} letters different)`);
+    }
+    if (!reasons.length) continue;
+    store.seen[domain] = true;
+    if (/xn--/.test(domain)) reasons.push("uses look-alike characters (punycode)");
+    if (/(login|signin|secure|verify|account|support|billing|pay|wallet|update|auth|sso|mail)/.test(domain)) reasons.push("contains a word often used in phishing");
+    const risk = reasons.length >= 2 || /xn--/.test(domain) ? "high" : "medium";
+    out.push({ domain, registered_domain: reg, risk, reasons: reasons.join("; ") });
+  }
+  return out.sort((a, b) => (a.risk === b.risk ? a.domain.localeCompare(b.domain) : a.risk === "high" ? -1 : 1));
+}

@@ -7,6 +7,8 @@ const answers = [
   [/write follow-up emails/, { subject: 'Quick follow-up', reply: 'Hi again, just checking in...' }],
   [/social media writer/, { instagram: 'IG text', facebook: 'FB text', linkedin: 'LI text', x: 'X text', hashtags: '#ai #automation' }],
   [/extract data from invoices/, { document_type: 'invoice', supplier_name: 'Acme Ltd', invoice_number: 'INV-7', invoice_date: '2026-03-01', currency: 'EUR', subtotal: 100, vat_amount: 20, total: 120, line_items: [{ description: 'Service', amount: 100 }], confidence: 'high' }],
+  [/employee forwarded an email/, { verdict: 'suspicious', confidence: 'medium', reasons: ['Urgent tone', 'Lookalike sender domain'], advice_for_user: 'Do not click the link. We are checking it.', actions_for_it: ['Block the sender domain', 'Search other mailboxes for this email'] }],
+  [/write vulnerability advisories/, { headline: '2 vulnerabilities match your watchlist', items: [{ cve: 'CVE-2026-1001', urgency: 'now', what_to_do: 'Apply the FortiOS patch from the vendor advisory.' }] }],
   [/sort incoming enquiries/, { category: 'quote request', priority: 'high', summary: 'Wants a quote for 3 workflows', is_spam: false, reply: 'Thanks for your message, we will send a quote today.' }],
   [/qualify B2B leads/, { company_name: 'Acme Homes', industry: 'Real estate agency', company_size: 'small', what_they_do: 'Sells homes in Lyon', fit_score: 82, fit_reason: 'Agency with lead volume', confidence: 'high' }],
   [/manage online reviews/, { sentiment: 'negative', summary: 'Slow service', topics: ['service', 'waiting time'], reply: 'We are sorry about the wait.' }],

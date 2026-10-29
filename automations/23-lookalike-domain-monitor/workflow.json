@@ -1,0 +1,328 @@
+{
+  "name": "Lookalike Domain Monitor | Ranime Jemal Agency",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Lookalike Domain Monitor\nEvery day searches public certificate logs (Certificate Transparency, via crt.sh) for new domains that contain or imitate your brand, such as acme-login.com, acrne.com or punycode lookalikes. They are often set up for phishing before an attack. New ones are scored, logged and emailed so you can warn staff, block them and ask for a takedown.\nThe first run lists every existing match; after that only new ones.\n1. Fill in **Settings**. 2. Make a sheet with a **Lookalike domains** tab (`lookalike-domains-sheet.csv`). 3. Connect Google Sheets and Gmail. 4. Activate.",
+        "height": 300,
+        "width": 600,
+        "color": 4
+      },
+      "id": "node-0215",
+      "name": "Note 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -460
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "10 9 * * *"
+            }
+          ]
+        }
+      },
+      "id": "node-0216",
+      "name": "Every day",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -560,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-0217",
+              "name": "brandDomains",
+              "value": "yourcompany.com",
+              "type": "string"
+            },
+            {
+              "id": "set-0218",
+              "name": "searchTerms",
+              "value": "yourcompany",
+              "type": "string"
+            },
+            {
+              "id": "set-0219",
+              "name": "allowlist",
+              "value": "yourcompany-partner.com",
+              "type": "string"
+            },
+            {
+              "id": "set-021a",
+              "name": "alertEmail",
+              "value": "security@yourcompany.com",
+              "type": "string"
+            },
+            {
+              "id": "set-021b",
+              "name": "senderName",
+              "value": "Domain monitor",
+              "type": "string"
+            },
+            {
+              "id": "set-021c",
+              "name": "googleSheetUrl",
+              "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "node-021d",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -320,
+        100
+      ],
+      "notes": "Fill in these values before activating.",
+      "color": "#FFD233"
+    },
+    {
+      "parameters": {
+        "jsCode": "return String($('Settings').first().json.searchTerms).split(/[\\n,]+/).map((t) => t.trim().toLowerCase()).filter((t) => t.length >= 4)\n  .map((term) => ({ json: { term }, pairedItem: { item: 0 } }));"
+      },
+      "id": "node-021e",
+      "name": "Search terms",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -100,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://crt.sh/",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "=%{{ $json.term }}%"
+            },
+            {
+              "name": "output",
+              "value": "json"
+            },
+            {
+              "name": "exclude",
+              "value": "expired"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 120000,
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          },
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 3000
+            }
+          }
+        }
+      },
+      "id": "node-021f",
+      "name": "Certificate logs (crt.sh)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        120,
+        100
+      ],
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 15000
+    },
+    {
+      "parameters": {
+        "jsCode": "function levenshtein(a, b) {\n  const m = a.length, n = b.length;\n  const d = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)]);\n  for (let j = 1; j <= n; j++) d[0][j] = j;\n  for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));\n  return d[m][n];\n}\n\nfunction lookalikeDomains(entries, brandsText, allowText, store) {\n  const brands = String(brandsText || \"\").split(/[\\n,]/).map((b) => b.trim().toLowerCase()).filter(Boolean);\n  const allow = String(allowText || \"\").split(/[\\n,]/).map((b) => b.trim().toLowerCase()).filter(Boolean);\n  const labels = brands.map((b) => b.split(\".\")[0]);\n  store.seen = store.seen || {};\n  const out = [];\n  const names = new Set();\n  for (const e of Array.isArray(entries) ? entries : []) for (const n of String(e.name_value || \"\").toLowerCase().split(\"\\n\")) names.add(n.replace(/^\\*\\./, \"\").trim());\n  for (const domain of names) {\n    if (!domain || store.seen[domain]) continue;\n    const own = brands.some((b) => domain === b || domain.endsWith(\".\" + b)) || allow.some((a) => domain === a || domain.endsWith(\".\" + a));\n    if (own) continue;\n    const parts = domain.split(\".\");\n    const reg = parts.slice(-2).join(\".\");\n    const label = parts.length > 1 ? parts[parts.length - 2] : parts[0];\n    const reasons = [];\n    for (const b of labels) {\n      if (domain.includes(b)) reasons.push(`contains \"${b}\"`);\n      else if (Math.abs(label.length - b.length) <= 2 && levenshtein(label, b) <= 2) reasons.push(`looks like \"${b}\" (${levenshtein(label, b)} letters different)`);\n    }\n    if (!reasons.length) continue;\n    store.seen[domain] = true;\n    if (/xn--/.test(domain)) reasons.push(\"uses look-alike characters (punycode)\");\n    if (/(login|signin|secure|verify|account|support|billing|pay|wallet|update|auth|sso|mail)/.test(domain)) reasons.push(\"contains a word often used in phishing\");\n    const risk = reasons.length >= 2 || /xn--/.test(domain) ? \"high\" : \"medium\";\n    out.push({ domain, registered_domain: reg, risk, reasons: reasons.join(\"; \") });\n  }\n  return out.sort((a, b) => (a.risk === b.risk ? a.domain.localeCompare(b.domain) : a.risk === \"high\" ? -1 : 1));\n}\n\nconst s = $('Settings').first().json;\nconst entries = $input.all().flatMap((item) => { try { return JSON.parse(item.json.data || '[]'); } catch { return []; } });\nconst now = new Date().toISOString();\nreturn lookalikeDomains(entries, s.brandDomains, s.allowlist, $getWorkflowStaticData('global'))\n  .map((d) => ({ json: { found_at: now, ...d, status: 'to review' }, pairedItem: { item: 0 } }));"
+      },
+      "id": "node-0220",
+      "name": "New lookalikes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        340,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Settings').first().json.googleSheetUrl }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Lookalike domains"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "node-0221",
+      "name": "Log domains",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        560,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $('New lookalikes').all().map((i) => i.json);\nconst high = rows.filter((r) => r.risk === 'high');\nreturn [{ json: { count: rows.length, high: high.length, text: rows.map((r) => '- [' + r.risk.toUpperCase() + '] ' + r.domain + ': ' + r.reasons).join('\\n') }, pairedItem: rows.map((_, i) => ({ item: i })) }];"
+      },
+      "id": "node-0222",
+      "name": "Alert text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        100
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Settings').first().json.alertEmail }}",
+        "subject": "={{ $json.count }} new lookalike domain(s){{ $json.high ? ', ' + $json.high + ' high risk' : '' }}",
+        "emailType": "text",
+        "message": "={{ $json.text }}\n\nWhat to do: block these domains in your email filter and web proxy, warn staff if any is high risk, and report phishing sites to the registrar or hosting provider.\nLog: {{ $('Settings').first().json.googleSheetUrl }}",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "={{ $('Settings').first().json.senderName }}"
+        }
+      },
+      "id": "node-0223",
+      "name": "Email the alert",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1000,
+        100
+      ]
+    }
+  ],
+  "connections": {
+    "Every day": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Search terms",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search terms": {
+      "main": [
+        [
+          {
+            "node": "Certificate logs (crt.sh)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Certificate logs (crt.sh)": {
+      "main": [
+        [
+          {
+            "node": "New lookalikes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "New lookalikes": {
+      "main": [
+        [
+          {
+            "node": "Log domains",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log domains": {
+      "main": [
+        [
+          {
+            "node": "Alert text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert text": {
+      "main": [
+        [
+          {
+            "node": "Email the alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
