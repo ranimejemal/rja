@@ -8,7 +8,7 @@
         "width": 600,
         "color": 4
       },
-      "id": "node-01dc",
+      "id": "node-1p9ryri-0001",
       "name": "Note 1",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -28,7 +28,7 @@
           ]
         }
       },
-      "id": "node-01dd",
+      "id": "node-1p9ryri-0002",
       "name": "Every Monday at 7:00",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
@@ -65,7 +65,7 @@
           }
         }
       },
-      "id": "node-01df",
+      "id": "node-1p9ryri-0004",
       "name": "Scan a website",
       "type": "n8n-nodes-base.formTrigger",
       "typeVersion": 2.2,
@@ -73,7 +73,7 @@
         -560,
         200
       ],
-      "webhookId": "hook-01de"
+      "webhookId": "hook-1p9ryri-0003"
     },
     {
       "parameters": {
@@ -81,31 +81,31 @@
         "assignments": {
           "assignments": [
             {
-              "id": "set-01e0",
+              "id": "set-1p9ryri-0005",
               "name": "sites",
               "value": "https://www.example.com\nhttps://shop.example.com",
               "type": "string"
             },
             {
-              "id": "set-01e1",
+              "id": "set-1p9ryri-0006",
               "name": "reportEmail",
               "value": "it@yourcompany.com",
               "type": "string"
             },
             {
-              "id": "set-01e2",
+              "id": "set-1p9ryri-0007",
               "name": "certWarningDays",
               "value": 21,
               "type": "number"
             },
             {
-              "id": "set-01e3",
+              "id": "set-1p9ryri-0008",
               "name": "senderName",
               "value": "Website security scanner",
               "type": "string"
             },
             {
-              "id": "set-01e4",
+              "id": "set-1p9ryri-0009",
               "name": "googleSheetUrl",
               "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
               "type": "string"
@@ -115,7 +115,7 @@
         "includeOtherFields": true,
         "options": {}
       },
-      "id": "node-01e5",
+      "id": "node-1p9ryri-000a",
       "name": "Settings",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -130,7 +130,7 @@
       "parameters": {
         "jsCode": "function parseSites(text) {\n  return String(text || \"\").split(\"\\n\").map((l) => l.trim()).filter((l) => l && !l.startsWith(\"#\")).map((l) => {\n    const [url, keyword] = l.split(\"|\").map((x) => x.trim());\n    return { url, keyword: keyword || \"\" };\n  }).filter((s) => /^https?:\\/\\//i.test(s.url));\n}\n\nconst s = $('Settings').first().json;\nif ($('Scan a website').isExecuted) {\n  const f = $('Scan a website').first().json;\n  let url = String(f['Website'] || '').trim();\n  if (!/^https?:\\/\\//i.test(url)) url = 'https://' + url;\n  url = url.replace(/^http:/i, 'https:');\n  return [{ json: { url, host: url.replace(/^https?:\\/\\//i, '').split(/[\\/:?#]/)[0].toLowerCase(), recipient: f['Email for the report'] }, pairedItem: { item: 0 } }];\n}\nreturn parseSites(s.sites).map((x) => {\n  const url = x.url.replace(/^http:/i, 'https:');\n  return { json: { url, host: url.replace(/^https?:\\/\\//i, '').split(/[\\/:?#]/)[0].toLowerCase(), recipient: s.reportEmail }, pairedItem: { item: 0 } };\n});"
       },
-      "id": "node-01e6",
+      "id": "node-1p9ryri-000b",
       "name": "Sites to scan",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -153,7 +153,7 @@
           }
         }
       },
-      "id": "node-01e7",
+      "id": "node-1p9ryri-000c",
       "name": "HTTPS response",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -182,7 +182,7 @@
           }
         }
       },
-      "id": "node-01e8",
+      "id": "node-1p9ryri-000d",
       "name": "HTTP redirect",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -222,7 +222,7 @@
           }
         }
       },
-      "id": "node-01e9",
+      "id": "node-1p9ryri-000e",
       "name": "Certificates (crt.sh)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -239,7 +239,7 @@
       "parameters": {
         "jsCode": "function websiteSecurity(site, https, http, certs, nowIso, warnDays) {\n  const findings = [];\n  const add = (check, ok, severity, fix) => findings.push({ check, ok, severity, fix: ok ? \"\" : fix });\n  const h = {};\n  for (const [k, v] of Object.entries((https && https.headers) || {})) h[k.toLowerCase()] = Array.isArray(v) ? v.join(\"; \") : String(v);\n  const reachable = Boolean(https && https.statusCode);\n  add(\"Site reachable over HTTPS\", reachable && https.statusCode < 400, \"high\", \"The site does not answer correctly over HTTPS. Check the server and certificate.\");\n  const hsts = (h[\"strict-transport-security\"] || \"\").match(/max-age=(\\d+)/i);\n  add(\"HSTS enabled (at least 6 months)\", Boolean(hsts && Number(hsts[1]) >= 15552000), \"medium\", \"Add the header Strict-Transport-Security: max-age=31536000; includeSubDomains\");\n  const csp = h[\"content-security-policy\"] || \"\";\n  add(\"Content-Security-Policy set\", Boolean(csp), \"medium\", \"Add a Content-Security-Policy header that lists the sources your pages may load scripts and styles from.\");\n  add(\"Clickjacking protection\", /frame-ancestors/i.test(csp) || /deny|sameorigin/i.test(h[\"x-frame-options\"] || \"\"), \"medium\", \"Add X-Frame-Options: SAMEORIGIN (or frame-ancestors 'self' in the CSP).\");\n  add(\"X-Content-Type-Options: nosniff\", /nosniff/i.test(h[\"x-content-type-options\"] || \"\"), \"low\", \"Add the header X-Content-Type-Options: nosniff\");\n  add(\"Referrer-Policy set\", Boolean(h[\"referrer-policy\"]), \"low\", \"Add Referrer-Policy: strict-origin-when-cross-origin\");\n  add(\"Permissions-Policy set\", Boolean(h[\"permissions-policy\"]), \"low\", \"Add a Permissions-Policy header that turns off browser features you do not use (camera, microphone, geolocation).\");\n  const leak = [h[\"server\"], h[\"x-powered-by\"], h[\"x-aspnet-version\"]].filter((v) => v && /\\d/.test(v));\n  add(\"No software versions disclosed\", leak.length === 0, \"low\", `Hide version numbers from headers (${leak.join(\", \")}).`);\n  const cookies = String(h[\"set-cookie\"] || \"\").split(/,(?=\\s*[^;=\\s]+=)/).filter((c) => c.trim());\n  const weak = cookies.filter((c) => !/;\\s*secure/i.test(c) || !/;\\s*httponly/i.test(c));\n  add(\"Cookies use Secure and HttpOnly\", weak.length === 0, \"medium\", \"Set the Secure and HttpOnly flags (and SameSite) on session cookies.\");\n  const location = String((http && http.headers && (http.headers.location || http.headers.Location)) || \"\");\n  const redirects = http && http.statusCode >= 300 && http.statusCode < 400 && /^https:\\/\\//i.test(location);\n  add(\"HTTP redirects to HTTPS\", Boolean(redirects), \"medium\", \"Redirect every http:// request to https:// with a 301.\");\n  const host = site.url.replace(/^https?:\\/\\//i, \"\").split(/[/:?#]/)[0].toLowerCase();\n  const valid = (Array.isArray(certs) ? certs : []).filter((c) => String(c.name_value || \"\").toLowerCase().split(\"\\n\").some((n) => n === host || (n.startsWith(\"*.\") && host.endsWith(n.slice(1)))));\n  const latest = valid.sort((a, b) => Date.parse(b.not_after) - Date.parse(a.not_after))[0];\n  const days = latest ? Math.floor((Date.parse(latest.not_after + (latest.not_after.endsWith(\"Z\") ? \"\" : \"Z\")) - Date.parse(nowIso)) / 86400000) : null;\n  add(`Certificate valid for at least ${warnDays} days`, days === null ? true : days >= warnDays, days !== null && days < 7 ? \"high\" : \"medium\", `The certificate expires in ${days} days. Renew it (or check that automatic renewal works).`);\n  const weights = { high: 25, medium: 10, low: 4 };\n  const score = Math.max(0, 100 - findings.filter((f) => !f.ok).reduce((n, f) => n + weights[f.severity], 0));\n  const grade = score >= 90 ? \"A\" : score >= 75 ? \"B\" : score >= 60 ? \"C\" : score >= 40 ? \"D\" : \"F\";\n  return { url: site.url, host, score, grade, cert_days_left: days, failed: findings.filter((f) => !f.ok), passed: findings.filter((f) => f.ok).length, total: findings.length };\n}\n\nconst s = $('Settings').first().json;\nconst sites = $('Sites to scan').all();\nconst httpsAll = $('HTTPS response').all();\nconst httpAll = $('HTTP redirect').all();\nconst now = new Date().toISOString();\nreturn $input.all().map((item, i) => {\n  let certs = [];\n  try { certs = JSON.parse(item.json.data || '[]'); } catch { certs = []; }\n  const r = websiteSecurity(sites[i].json, httpsAll[i].json, httpAll[i].json, certs, now, Number(s.certWarningDays));\n  return { json: { ...r, recipient: sites[i].json.recipient, scanned_at: now }, pairedItem: { item: i } };\n});"
       },
-      "id": "node-01ea",
+      "id": "node-1p9ryri-000f",
       "name": "Grade",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -252,7 +252,7 @@
       "parameters": {
         "jsCode": "return $input.all().map((item, i) => ({ json: {\n  scanned_at: item.json.scanned_at, url: item.json.url, grade: item.json.grade, score: item.json.score,\n  cert_days_left: item.json.cert_days_left ?? '', passed: item.json.passed + '/' + item.json.total,\n  issues: item.json.failed.map((f) => f.check).join(' | '), requested_by: $('Scan a website').isExecuted ? item.json.recipient : 'weekly scan',\n}, pairedItem: { item: i } }));"
       },
-      "id": "node-01eb",
+      "id": "node-1p9ryri-0010",
       "name": "Scan rows",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -284,7 +284,7 @@
           "handlingExtraData": "ignoreIt"
         }
       },
-      "id": "node-01ec",
+      "id": "node-1p9ryri-0011",
       "name": "Log scans",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -297,7 +297,7 @@
       "parameters": {
         "jsCode": "function securityReportText(results) {\n  return results.map((r) => [\n    `${r.url}: grade ${r.grade} (${r.score}/100), ${r.passed}/${r.total} checks passed${r.cert_days_left !== null ? `, certificate expires in ${r.cert_days_left} days` : \"\"}`,\n    ...r.failed.map((f) => `  - [${f.severity}] ${f.check}: ${f.fix}`),\n  ].join(\"\\n\")).join(\"\\n\\n\");\n}\n\nconst results = $input.all().map((i) => i.json);\nconst worst = results.reduce((w, r) => (r.score < w.score ? r : w), results[0]);\nconst certWarnings = results.filter((r) => r.failed.some((f) => f.check.startsWith('Certificate')));\nreturn [{ json: {\n  recipient: results[0].recipient, count: results.length, worst_grade: worst.grade,\n  subject: (certWarnings.length ? 'Certificate expiring soon: ' : 'Website security report: ') + results.map((r) => r.host + ' ' + r.grade).join(', '),\n  text: securityReportText(results),\n}, pairedItem: results.map((_, i) => ({ item: i })) }];"
       },
-      "id": "node-01ed",
+      "id": "node-1p9ryri-0012",
       "name": "Report",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -317,7 +317,7 @@
           "senderName": "={{ $('Settings').first().json.senderName }}"
         }
       },
-      "id": "node-01ee",
+      "id": "node-1p9ryri-0013",
       "name": "Email the report",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,

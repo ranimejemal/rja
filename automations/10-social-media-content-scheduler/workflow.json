@@ -8,7 +8,7 @@
         "width": 540,
         "color": 4
       },
-      "id": "node-0121",
+      "id": "node-1o6wy7i-0001",
       "name": "Note 1",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -28,7 +28,7 @@
           ]
         }
       },
-      "id": "node-0122",
+      "id": "node-1o6wy7i-0002",
       "name": "Every hour",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
@@ -43,25 +43,25 @@
         "assignments": {
           "assignments": [
             {
-              "id": "set-0123",
+              "id": "set-1o6wy7i-0003",
               "name": "facebookPageId",
               "value": "YOUR_FACEBOOK_PAGE_ID",
               "type": "string"
             },
             {
-              "id": "set-0124",
+              "id": "set-1o6wy7i-0004",
               "name": "instagramAccountId",
               "value": "YOUR_INSTAGRAM_BUSINESS_ACCOUNT_ID",
               "type": "string"
             },
             {
-              "id": "set-0125",
+              "id": "set-1o6wy7i-0005",
               "name": "linkedinOrganizationId",
               "value": "YOUR_LINKEDIN_ORGANIZATION_ID",
               "type": "string"
             },
             {
-              "id": "set-0126",
+              "id": "set-1o6wy7i-0006",
               "name": "googleSheetUrl",
               "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
               "type": "string"
@@ -71,7 +71,7 @@
         "includeOtherFields": true,
         "options": {}
       },
-      "id": "node-0127",
+      "id": "node-1o6wy7i-0007",
       "name": "Settings",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -96,7 +96,7 @@
         },
         "options": {}
       },
-      "id": "node-0128",
+      "id": "node-1o6wy7i-0008",
       "name": "Read schedule",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -110,7 +110,7 @@
       "parameters": {
         "jsCode": "function duePosts(rows, nowIso, status = \"approved\") {\n  const now = Date.parse(nowIso);\n  return rows.filter((r) => String(r.status).toLowerCase() === status && Date.parse(r.publish_at) <= now);\n}\n\nconst input = $input.all();\nconst index = new Map(input.map((it, i) => [it.json, i]));\nconst rows = input.map((i) => i.json).filter((r) => r.post_id);\n// One post per run (the trigger runs hourly), so each result clearly belongs to one post.\nreturn duePosts(rows, new Date().toISOString(), \"scheduled\").slice(0, 1).map((row) => ({ json: row, pairedItem: { item: index.get(row) } }));"
       },
-      "id": "node-0129",
+      "id": "node-1o6wy7i-0009",
       "name": "Posts due now",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -136,7 +136,7 @@
           }
         }
       },
-      "id": "node-012a",
+      "id": "node-1o6wy7i-000a",
       "name": "Post to Facebook",
       "type": "n8n-nodes-base.facebookGraphApi",
       "typeVersion": 1,
@@ -167,7 +167,7 @@
           }
         }
       },
-      "id": "node-012b",
+      "id": "node-1o6wy7i-000b",
       "name": "Instagram: upload image",
       "type": "n8n-nodes-base.facebookGraphApi",
       "typeVersion": 1,
@@ -195,7 +195,7 @@
           }
         }
       },
-      "id": "node-012c",
+      "id": "node-1o6wy7i-000c",
       "name": "Instagram: publish",
       "type": "n8n-nodes-base.facebookGraphApi",
       "typeVersion": 1,
@@ -213,7 +213,7 @@
         "shareMediaCategory": "NONE",
         "additionalFields": {}
       },
-      "id": "node-012d",
+      "id": "node-1o6wy7i-000d",
       "name": "Post to LinkedIn",
       "type": "n8n-nodes-base.linkedIn",
       "typeVersion": 1,
@@ -228,7 +228,7 @@
         "text": "={{ $('Posts due now').first().json.x }}",
         "additionalFields": {}
       },
-      "id": "node-012e",
+      "id": "node-1o6wy7i-000e",
       "name": "Post to X",
       "type": "n8n-nodes-base.twitter",
       "typeVersion": 2,
@@ -244,7 +244,7 @@
       "parameters": {
         "jsCode": "function publishOutcome(results) {\n  const failed = results.filter((r) => r.enabled && r.error).map((r) => `${r.network}: ${r.error}`);\n  const done = results.filter((r) => r.enabled && !r.error).map((r) => r.network);\n  return {\n    status: failed.length === 0 ? \"published\" : done.length ? \"partly published\" : \"failed\",\n    published_to: done.join(\", \"),\n    errors: failed.join(\" | \").slice(0, 1000),\n  };\n}\n\n// Each network node sends failures to its error output. A disabled node passes its input through unchanged,\n// so a network only counts as published when its node returned a new response without an error.\nconst post = $('Posts due now').first();\nconst steps = [\n  ['facebook', 'Post to Facebook'], ['instagram', 'Instagram: upload image'], ['instagram', 'Instagram: publish'],\n  ['linkedin', 'Post to LinkedIn'], ['x', 'Post to X'],\n];\nconst emitted = (node) => {\n  try { if (!$(node).isExecuted) return null; } catch { return null; }\n  let failed = [];\n  try { failed = $(node).all(1); } catch { failed = []; }\n  if (failed.length) return { json: failed[0].json, failed: true };\n  const ok = $(node).all(0);\n  return ok.length ? { json: ok[0].json, failed: false } : null;\n};\nconst status = {};\nlet previous = JSON.stringify(post.json);\nfor (const [network, node] of steps) {\n  const out = emitted(node);\n  if (!out) { status[network] = status[network] || { network, enabled: false }; continue; }\n  const now = JSON.stringify(out.json);\n  const passedThrough = !out.failed && now === previous;\n  previous = now;\n  if (status[network] && status[network].error) continue;\n  if (passedThrough) { status[network] = status[network] || { network, enabled: false }; continue; }\n  const e = out.json.error;\n  const message = out.failed ? (e && (e.message || e.description || e)) || 'failed' : out.json.statusCode ? out.json.message || 'HTTP ' + out.json.statusCode : '';\n  status[network] = { network, enabled: true, error: message ? String(message).slice(0, 200) : '' };\n}\nreturn [{ json: { post_id: post.json.post_id, ...publishOutcome(Object.values(status)), published_at: new Date().toISOString() }, pairedItem: { item: 0 } }];"
       },
-      "id": "node-012f",
+      "id": "node-1o6wy7i-000f",
       "name": "Publishing result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -278,7 +278,7 @@
           "handlingExtraData": "ignoreIt"
         }
       },
-      "id": "node-0130",
+      "id": "node-1o6wy7i-0010",
       "name": "Record publishing",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,

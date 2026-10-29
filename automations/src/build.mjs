@@ -9,11 +9,16 @@ import * as L from "./logic.mjs";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OPENAI_URL = "={{ $('Settings').first().json.openAiBaseUrl }}/chat/completions";
 
+// Node and webhook ids are stable per workflow: a short hash of the workflow name plus a counter, so editing one
+// workflow never renumbers the others, and webhook ids stay unique across workflows.
 let idCounter = 0;
-const uid = (prefix) => `${prefix}-${(++idCounter).toString(16).padStart(4, "0")}`;
+let idPrefix = "wf";
+const uid = (prefix) => `${prefix}-${idPrefix}-${(++idCounter).toString(16).padStart(4, "0")}`;
 
 class Workflow {
   constructor(name) {
+    idCounter = 0;
+    idPrefix = [...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7).toString(36);
     this.name = name;
     this.nodes = [];
     this.connections = {};
@@ -681,9 +686,13 @@ return dueReminders(events, new Date().toISOString(), Number(s.reminderHoursBefo
 // ===================================================================================== 4. social media
 {
   const wf = new Workflow("AI Social Media Automation | Ranime Jemal Agency");
-  wf.note("## AI Social Media Automation\n1. Fill in **Settings**.\n2. Make a Google Sheet with a **Content plan** tab (columns in `content-plan.csv`). Add one row per post: post_id, publish_at, topic, status = idea.\n3. Every Monday the AI writes the posts and emails the approver. Change status to **approved** in the sheet to publish.\n4. Every hour the next approved post whose time has come is published (one post per hour).\n5. Connect OpenAI, Google Sheets, Gmail, Facebook Graph API (page token) and LinkedIn. X is disabled: enable it if you have API access.", [-560, -460], 560, 320);
+  wf.note("## AI Social Media Automation\n**Write** (every Monday): the AI writes each planned post for Instagram, Facebook, LinkedIn and X, creates an **AI image** when the row has none, saves the drafts and asks for approval.\n**Publish** (every hour): the next approved post is published (one per hour); the result per network is written back.\n**Reply** (instantly): comments and messages on your Facebook page and Instagram account get an AI reply in your brand voice. Complaints and anything uncertain are sent to you instead; set `autoReply` to false to approve every reply yourself.\n1. Fill in **Settings**. 2. Make a sheet with **Content plan** and **Replies** tabs (CSV files). 3. Connect OpenAI, Google Sheets, Gmail, Facebook Graph API (page token) and LinkedIn; X is disabled. 4. For replies, subscribe your Meta app's webhooks (page: feed, messages; Instagram: comments, messages) to the *Meta events* URL with your verify token.", [-560, -560], 640, 400);
   const weekly = schedule(wf, "Every Monday at 8:00", "0 8 * * 1", [-560, 0]);
-  const hourly = schedule(wf, "Every hour", "10 * * * *", [-560, 400]);
+  const hourly = schedule(wf, "Every hour", "10 * * * *", [-560, 520]);
+  const verify = wf.add("Meta webhook check", "n8n-nodes-base.webhook", 2, {
+    httpMethod: "GET", path: "meta-social-k7q2x9", responseMode: "responseNode", options: {},
+  }, [-560, 900], { webhookId: uid("hook") });
+  const events = webhook(wf, "Meta events", "meta-social-k7q2x9", [-560, 1100]);
   const set = settings(wf, [
     ["businessName", "Your brand"],
     ["businessDescription", "What the brand does, in one or two sentences."],
@@ -696,14 +705,20 @@ return dueReminders(events, new Date().toISOString(), Number(s.reminderHoursBefo
     ["linkedinOrganizationId", "YOUR_LINKEDIN_ORGANIZATION_ID"],
     ["googleSheetUrl", "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit"],
     ["daysAhead", 7, "number"],
+    ["generateImages", true, "boolean"],
+    ["imageModel", "gpt-image-1"],
+    ["imageStyle", "clean, modern, bright photo with natural light"],
+    ["autoReply", true, "boolean"],
+    ["replyKnowledge", "Opening hours, prices, delivery, services, booking link and anything customers often ask."],
+    ["metaVerifyToken", "CHOOSE-A-LONG-RANDOM-TOKEN"],
     ["senderName", "Social media assistant"],
     ...COMMON_AI,
-  ], [-320, 200]);
-  wf.connect(weekly, set);
-  wf.connect(hourly, set);
-  const r = route(wf, [["Write drafts", [weekly]], ["Publish", [hourly]]], [-100, 200]);
+  ], [-320, 520]);
+  for (const t of [weekly, hourly, verify, events]) wf.connect(t, set);
+  const r = route(wf, [["Write drafts", [weekly]], ["Publish", [hourly]], ["Verify webhook", [verify]], ["Reply", [events]]], [-100, 520]);
   wf.connect(set, r);
 
+  // Write drafts (+ AI images)
   const read = sheetsRead(wf, "Read content plan", "Content plan", [160, 0]);
   wf.connect(r, read, { output: 0 });
   const pick = code(wf, "Posts to write", [L.contentToDraft, L.buildCaptionRequest], `
@@ -721,25 +736,135 @@ return $input.all().map((item, i) => {
   const row = rows[i].json;
   const ai = readAiJson(item.json);
   return { json: { post_id: row.post_id, status: 'waiting approval', instagram: ai.instagram || '', facebook: ai.facebook || '',
-    linkedin: ai.linkedin || '', x: ai.x || '', hashtags: ai.hashtags || '', topic: row.topic, publish_at: row.publish_at }, pairedItem: { item: i } };
+    linkedin: ai.linkedin || '', x: ai.x || '', hashtags: ai.hashtags || '', image_prompt: ai.image_prompt || '', image_url: row.image_url || '',
+    topic: row.topic, publish_at: row.publish_at }, pairedItem: { item: i } };
 });`, [820, 0]);
   wf.connect(write, drafts);
-  const saveDrafts = sheetsUpdate(wf, "Save drafts", "Content plan", "post_id", [1040, 0]);
-  wf.connect(drafts, saveDrafts);
+  const needsImage = ifNode(wf, "Needs an AI image?", condition(`={{ ${S}.generateImages && !$json.image_url }}`, "true", "", "boolean"), [1040, 0]);
+  wf.connect(drafts, needsImage);
+  const imgReq = codeEach(wf, "Image request", [L.buildImageRequest], `
+return { json: { ...$json, request: buildImageRequest($json, ${S}) } };`, [1260, -120]);
+  wf.connect(needsImage, imgReq, { output: 0 });
+  const img = wf.add("Create image with AI", "n8n-nodes-base.httpRequest", 4.2, {
+    method: "POST", url: `={{ ${S}.openAiBaseUrl }}/images/generations`,
+    authentication: "predefinedCredentialType", nodeCredentialType: "openAiApi",
+    sendBody: true, specifyBody: "json", jsonBody: "={{ JSON.stringify($json.request) }}", options: { timeout: 180000 },
+  }, [1480, -120], { onError: "continueRegularOutput", retryOnFail: true, maxTries: 2, waitBetweenTries: 5000 });
+  wf.connect(imgReq, img);
+  const file = codeEach(wf, "Image file", [], `
+const draft = $('Image request').item.json;
+const b64 = $json.data && $json.data[0] && $json.data[0].b64_json;
+if (!b64) return { json: { ...draft, image_error: ($json.error && ($json.error.message || $json.error)) || 'no image returned' } };
+const data = await this.helpers.prepareBinaryData(Buffer.from(b64, 'base64'), draft.post_id + '.png', 'image/png');
+return { json: draft, binary: { data } };`, [1700, -120]);
+  wf.connect(img, file);
+  const upload = wf.add("Store image on Facebook (unpublished)", "n8n-nodes-base.facebookGraphApi", 1, {
+    httpRequestMethod: "POST", graphApiVersion: "v22.0", node: `={{ ${S}.facebookPageId }}`, edge: "photos",
+    sendBinaryData: true, binaryPropertyName: "source:data",
+    options: { queryParameters: { parameter: [{ name: "published", value: "false" }] } },
+  }, [1920, -120], { onError: "continueRegularOutput", notes: "Hosts the image on your page without posting it, so Instagram can fetch it by URL." });
+  wf.connect(file, upload);
+  const link = wf.add("Image link", "n8n-nodes-base.facebookGraphApi", 1, {
+    httpRequestMethod: "GET", graphApiVersion: "v22.0", node: "={{ $json.id || 'missing' }}", edge: "",
+    options: { fields: { field: [{ name: "images" }] } },
+  }, [2140, -120], { onError: "continueRegularOutput" });
+  wf.connect(upload, link);
+  const withImage = codeEach(wf, "Draft with image", [], `
+const draft = $('Image file').item.json;
+const url = ($json.images && $json.images[0] && $json.images[0].source) || '';
+const { image_error, ...row } = draft;
+return { json: { ...row, image_url: url, image_note: url ? 'AI image' : 'Image not created: ' + (image_error || ($json.error && ($json.error.message || $json.error)) || 'upload failed') } };`, [2360, -120]);
+  wf.connect(link, withImage);
+  const allDrafts = wf.add("All drafts", "n8n-nodes-base.merge", 3, {}, [2580, 0]);
+  wf.connect(withImage, allDrafts, { input: 0 });
+  wf.connect(needsImage, allDrafts, { output: 1, input: 1 });
+  const saveDrafts = sheetsUpdate(wf, "Save drafts", "Content plan", "post_id", [2800, 0]);
+  wf.connect(allDrafts, saveDrafts);
   const summary = code(wf, "Approval summary", [], `
-const posts = $('Draft rows').all().map((i) => i.json);
-const list = posts.map((p) => '- ' + p.publish_at + ': ' + p.topic).join('\\n');
-return [{ json: { count: posts.length, list }, pairedItem: $input.all().map((_, i) => ({ item: i })) }];`, [1260, 0]);
+const posts = $('All drafts').all().map((i) => i.json);
+const list = posts.map((p) => '- ' + p.publish_at + ': ' + p.topic + (p.image_url ? ' (image: ' + p.image_url + ')' : p.image_note ? ' (' + p.image_note + ')' : '')).join('\\n');
+return [{ json: { count: posts.length, list }, pairedItem: $input.all().map((_, i) => ({ item: i })) }];`, [3020, 0]);
   wf.connect(saveDrafts, summary);
   wf.connect(summary, gmailSend(wf, "Ask for approval", {
     to: `={{ ${S}.approverEmail }}`,
     subject: "={{ $json.count }} social posts are ready for approval",
-    message: `=Hello,\n\nThe posts for the coming days are written:\n{{ $json.list }}\n\nOpen the content plan, check and edit the texts, then set the status to "approved" for each post you want published:\n{{ ${S}.googleSheetUrl }}\n\nApproved posts are published automatically at their publish time.`,
-  }, [1480, 0]));
+    message: `=Hello,\n\nThe posts for the coming days are written:\n{{ $json.list }}\n\nOpen the content plan, check the texts and images, edit anything you like, then set the status to "approved" for each post you want published:\n{{ ${S}.googleSheetUrl }}\n\nApproved posts are published automatically at their publish time.`,
+  }, [3240, 0]));
 
-  const readP = sheetsRead(wf, "Read approved posts", "Content plan", [160, 400]);
+  // Publish
+  const readP = sheetsRead(wf, "Read approved posts", "Content plan", [160, 520]);
   wf.connect(r, readP, { output: 1 });
-  publishBranch(wf, readP, { status: "approved", tab: "Content plan", y: 400 });
+  publishBranch(wf, readP, { status: "approved", tab: "Content plan", y: 520 });
+
+  // Meta webhook verification
+  const tokenOk = ifNode(wf, "Verify token matches?", condition(`={{ $('Meta webhook check').first().json.query['hub.verify_token'] === ${S}.metaVerifyToken }}`, "true", "", "boolean"), [160, 900]);
+  wf.connect(r, tokenOk, { output: 2 });
+  wf.connect(tokenOk, wf.add("Confirm webhook", "n8n-nodes-base.respondToWebhook", 1.1, {
+    respondWith: "text", responseBody: "={{ $('Meta webhook check').first().json.query['hub.challenge'] }}", options: {},
+  }, [380, 840]), { output: 0 });
+  wf.connect(tokenOk, wf.add("Refuse webhook", "n8n-nodes-base.respondToWebhook", 1.1, {
+    respondWith: "noData", options: { responseCode: 403 },
+  }, [380, 980]), { output: 1 });
+
+  // Replies to comments and messages
+  const parse = code(wf, "Comments and messages", [L.parseMetaEvents, L.buildSocialReplyRequest], `
+const s = ${S};
+return parseMetaEvents($('Meta events').first().json.body, s.facebookPageId, s.instagramAccountId)
+  .map((e) => ({ json: { ...e, received_at: new Date().toISOString(), request: buildSocialReplyRequest(e, s) }, pairedItem: { item: 0 } }));`, [160, 1160]);
+  wf.connect(r, parse, { output: 3 });
+  const replyAi = openAi(wf, "Write reply with AI", [380, 1160]);
+  wf.connect(parse, replyAi);
+  const decision = code(wf, "Reply decision", [L.readAiJson], `
+const s = ${S};
+const src = $('Comments and messages').all();
+return $input.all().map((item, i) => {
+  const e = src[i].json;
+  let a;
+  try { a = readAiJson(item.json); } catch { a = { reply: '', needs_human: true, category: 'other', sentiment: '' }; }
+  const spam = a.category === 'spam';
+  const human = !spam && (a.needs_human === true || !a.reply);
+  const send = !spam && !human && s.autoReply === true;
+  return { json: { received_at: e.received_at, channel: e.channel, target_id: e.target_id, author: e.author, post_id: e.post_id, text: e.text,
+    category: a.category || '', sentiment: a.sentiment || '', reply: spam ? '' : (a.reply || ''),
+    status: spam ? 'ignored (spam)' : send ? 'replied automatically' : 'sent to you for review', send, human: !spam && !send }, pairedItem: { item: i } };
+});`, [600, 1160]);
+  wf.connect(replyAi, decision);
+  const logReply = sheetsAppend(wf, "Log reply", "Replies", [820, 1160]);
+  wf.connect(decision, logReply);
+  const D = "$('Reply decision').item.json";
+  const auto = ifNode(wf, "Reply automatically?", condition(`={{ ${D}.send }}`, "true", "", "boolean"), [1040, 1160]);
+  wf.connect(logReply, auto);
+  const channel = wf.add("Where to reply", "n8n-nodes-base.switch", 3.2, {
+    rules: { values: [
+      ["facebook_comment", "Facebook comment"], ["instagram_comment", "Instagram comment"],
+    ].map(([value, label]) => ({ conditions: condition(`={{ ${D}.channel }}`, "equals", value), renameOutput: true, outputKey: label })) },
+    options: { fallbackOutput: "extra", renameFallbackOutput: "Message" },
+  }, [1260, 1100]);
+  wf.connect(auto, channel, { output: 0 });
+  const replyOpts = { onError: "continueRegularOutput" };
+  wf.connect(channel, wf.add("Reply to Facebook comment", "n8n-nodes-base.facebookGraphApi", 1, {
+    httpRequestMethod: "POST", graphApiVersion: "v22.0", node: `={{ ${D}.target_id }}`, edge: "comments",
+    options: { queryParameters: { parameter: [{ name: "message", value: `={{ ${D}.reply }}` }] } },
+  }, [1480, 1000], replyOpts), { output: 0 });
+  wf.connect(channel, wf.add("Reply to Instagram comment", "n8n-nodes-base.facebookGraphApi", 1, {
+    httpRequestMethod: "POST", graphApiVersion: "v22.0", node: `={{ ${D}.target_id }}`, edge: "replies",
+    options: { queryParameters: { parameter: [{ name: "message", value: `={{ ${D}.reply }}` }] } },
+  }, [1480, 1140], replyOpts), { output: 1 });
+  wf.connect(channel, wf.add("Answer the message", "n8n-nodes-base.facebookGraphApi", 1, {
+    httpRequestMethod: "POST", graphApiVersion: "v22.0", node: `={{ ${S}.facebookPageId }}`, edge: "messages",
+    options: { queryParameters: { parameter: [
+      { name: "recipient", value: `={{ JSON.stringify({ id: ${D}.target_id }) }}` },
+      { name: "message", value: `={{ JSON.stringify({ text: ${D}.reply }) }}` },
+      { name: "messaging_type", value: "RESPONSE" },
+    ] } },
+  }, [1480, 1280], replyOpts), { output: 2 });
+  const review = ifNode(wf, "Needs you?", condition(`={{ ${D}.human }}`, "true", "", "boolean"), [1260, 1300]);
+  wf.connect(auto, review, { output: 1 });
+  wf.connect(review, gmailSend(wf, "Ask you to reply", {
+    to: `={{ ${S}.approverEmail }}`,
+    subject: `=New {{ ${D}.channel.replace('_', ' ') }} to answer ({{ ${D}.category }}, {{ ${D}.sentiment }})`,
+    message: `=From: {{ ${D}.author || 'a customer' }}\n\n"{{ ${D}.text }}"\n\nSuggested reply:\n{{ ${D}.reply || '(none)' }}\n\nAnswer it from your Facebook or Instagram inbox.`,
+  }, [1480, 1420]), { output: 0 });
   save("04-ai-social-media-automation", wf);
 }
 
@@ -2021,8 +2146,9 @@ const SHEETS = {
     "conversations-sheet.csv": [["time", "session_id", "question", "answer"]],
   },
   "04-ai-social-media-automation": {
-    "content-plan.csv": [["post_id", "publish_at", "topic", "notes", "call_to_action", "image_url", "status", "instagram", "facebook", "linkedin", "x", "hashtags", "published_to", "errors", "published_at"],
-      ["P001", "2026-01-15T10:00:00+01:00", "Example: three ways our service saves you time", "Short, practical tips", "", "https://example.com/image.jpg", "idea", "", "", "", "", "", "", "", ""]],
+    "content-plan.csv": [["post_id", "publish_at", "topic", "notes", "call_to_action", "image_url", "image_prompt", "image_note", "status", "instagram", "facebook", "linkedin", "x", "hashtags", "published_to", "errors", "published_at"],
+      ["P001", "2026-01-15T10:00:00+01:00", "Example: three ways our service saves you time", "Short, practical tips", "", "", "", "", "idea", "", "", "", "", "", "", "", ""]],
+    "replies-sheet.csv": [["received_at", "channel", "target_id", "author", "post_id", "text", "category", "sentiment", "reply", "status"]],
   },
   "05-ai-voice-receptionist": { "calls-sheet.csv": [["call_id", "ended_at", "caller_number", "duration_seconds", "ended_reason", "summary", "transcript", "recording_url", "cost"]] },
   "06-ai-document-processing": { "documents-sheet.csv": [["processed_at", "source", "received_from", "original_file", "document_type", "supplier_name", "supplier_vat_id", "invoice_number", "invoice_date", "due_date", "currency", "subtotal", "vat_amount", "total", "line_items", "status", "issues", "drive_file", "drive_link"]] },

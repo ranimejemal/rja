@@ -8,7 +8,7 @@
         "width": 520,
         "color": 4
       },
-      "id": "node-0039",
+      "id": "node-16fy3sl-0001",
       "name": "Note 1",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -29,7 +29,7 @@
           "showWelcomeScreen": false
         }
       },
-      "id": "node-003b",
+      "id": "node-16fy3sl-0003",
       "name": "Chat",
       "type": "@n8n/n8n-nodes-langchain.chatTrigger",
       "typeVersion": 1.1,
@@ -37,7 +37,7 @@
         -560,
         0
       ],
-      "webhookId": "hook-003a"
+      "webhookId": "hook-16fy3sl-0002"
     },
     {
       "parameters": {
@@ -45,55 +45,55 @@
         "assignments": {
           "assignments": [
             {
-              "id": "set-003c",
+              "id": "set-16fy3sl-0004",
               "name": "businessName",
               "value": "Your business name",
               "type": "string"
             },
             {
-              "id": "set-003d",
+              "id": "set-16fy3sl-0005",
               "name": "businessDescription",
               "value": "What you sell and to whom.",
               "type": "string"
             },
             {
-              "id": "set-003e",
+              "id": "set-16fy3sl-0006",
               "name": "openingHours",
               "value": "Monday to Friday, 9:00 to 18:00",
               "type": "string"
             },
             {
-              "id": "set-003f",
+              "id": "set-16fy3sl-0007",
               "name": "contactDetails",
               "value": "support@yourbusiness.com, +33 6 00 00 00 00",
               "type": "string"
             },
             {
-              "id": "set-0040",
+              "id": "set-16fy3sl-0008",
               "name": "tone",
               "value": "friendly, short and clear",
               "type": "string"
             },
             {
-              "id": "set-0041",
+              "id": "set-16fy3sl-0009",
               "name": "teamEmail",
               "value": "support@yourbusiness.com",
               "type": "string"
             },
             {
-              "id": "set-0042",
+              "id": "set-16fy3sl-000a",
               "name": "googleSheetUrl",
               "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
               "type": "string"
             },
             {
-              "id": "set-0043",
+              "id": "set-16fy3sl-000b",
               "name": "openAiModel",
               "value": "gpt-4.1-mini",
               "type": "string"
             },
             {
-              "id": "set-0044",
+              "id": "set-16fy3sl-000c",
               "name": "openAiBaseUrl",
               "value": "https://api.openai.com/v1",
               "type": "string"
@@ -103,7 +103,7 @@
         "includeOtherFields": true,
         "options": {}
       },
-      "id": "node-0045",
+      "id": "node-16fy3sl-000d",
       "name": "Settings",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -123,7 +123,7 @@
           "maxIterations": 6
         }
       },
-      "id": "node-0046",
+      "id": "node-16fy3sl-000e",
       "name": "Customer service agent",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 2.2,
@@ -144,7 +144,7 @@
           "baseURL": "={{ $('Settings').first().json.openAiBaseUrl }}"
         }
       },
-      "id": "node-0047",
+      "id": "node-16fy3sl-000f",
       "name": "OpenAI chat model",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1.2,
@@ -159,7 +159,7 @@
         "sessionKey": "={{ $('Chat').first().json.sessionId }}",
         "contextWindowLength": 12
       },
-      "id": "node-0048",
+      "id": "node-16fy3sl-0010",
       "name": "Conversation memory",
       "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
       "typeVersion": 1.3,
@@ -184,7 +184,7 @@
         },
         "options": {}
       },
-      "id": "node-0049",
+      "id": "node-16fy3sl-0011",
       "name": "faq",
       "type": "n8n-nodes-base.googleSheetsTool",
       "typeVersion": 4.5,
@@ -205,7 +205,7 @@
           "appendAttribution": false
         }
       },
-      "id": "node-004a",
+      "id": "node-16fy3sl-0012",
       "name": "handoff_to_team",
       "type": "n8n-nodes-base.gmailTool",
       "typeVersion": 2.1,
@@ -218,7 +218,7 @@
       "parameters": {
         "jsCode": "return [{ json: {\n  time: new Date().toISOString(),\n  session_id: $('Chat').first().json.sessionId,\n  question: $('Chat').first().json.chatInput,\n  answer: $input.first().json.output,\n}, pairedItem: { item: 0 } }];"
       },
-      "id": "node-004b",
+      "id": "node-16fy3sl-0013",
       "name": "Conversation row",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -250,7 +250,7 @@
           "handlingExtraData": "ignoreIt"
         }
       },
-      "id": "node-004c",
+      "id": "node-16fy3sl-0014",
       "name": "Log conversation",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -266,7 +266,7 @@
         "assignments": {
           "assignments": [
             {
-              "id": "set-004d",
+              "id": "set-16fy3sl-0015",
               "name": "output",
               "value": "={{ $('Customer service agent').first().json.output }}",
               "type": "string"
@@ -275,7 +275,7 @@
         },
         "options": {}
       },
-      "id": "node-004e",
+      "id": "node-16fy3sl-0016",
       "name": "Reply",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,

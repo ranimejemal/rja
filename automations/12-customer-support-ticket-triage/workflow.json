@@ -8,7 +8,7 @@
         "width": 540,
         "color": 4
       },
-      "id": "node-0148",
+      "id": "node-1aawapq-0001",
       "name": "Note 1",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -34,7 +34,7 @@
         },
         "options": {}
       },
-      "id": "node-0149",
+      "id": "node-1aawapq-0002",
       "name": "New support email",
       "type": "n8n-nodes-base.gmailTrigger",
       "typeVersion": 1.2,
@@ -49,55 +49,55 @@
         "assignments": {
           "assignments": [
             {
-              "id": "set-014a",
+              "id": "set-1aawapq-0003",
               "name": "businessName",
               "value": "Your business name",
               "type": "string"
             },
             {
-              "id": "set-014b",
+              "id": "set-1aawapq-0004",
               "name": "businessDescription",
               "value": "What you sell, in one or two sentences.",
               "type": "string"
             },
             {
-              "id": "set-014c",
+              "id": "set-1aawapq-0005",
               "name": "categories",
               "value": "order status, delivery problem, refund or return, billing, technical problem, account, product question, complaint, other",
               "type": "string"
             },
             {
-              "id": "set-014d",
+              "id": "set-1aawapq-0006",
               "name": "policies",
               "value": "Returns within 30 days. Refunds in 5 business days. Delivery 2-4 business days.",
               "type": "string"
             },
             {
-              "id": "set-014e",
+              "id": "set-1aawapq-0007",
               "name": "senderName",
               "value": "Support team, Your business",
               "type": "string"
             },
             {
-              "id": "set-014f",
+              "id": "set-1aawapq-0008",
               "name": "urgentEmail",
               "value": "oncall@yourbusiness.com",
               "type": "string"
             },
             {
-              "id": "set-0150",
+              "id": "set-1aawapq-0009",
               "name": "googleSheetUrl",
               "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
               "type": "string"
             },
             {
-              "id": "set-0151",
+              "id": "set-1aawapq-000a",
               "name": "openAiModel",
               "value": "gpt-4.1-mini",
               "type": "string"
             },
             {
-              "id": "set-0152",
+              "id": "set-1aawapq-000b",
               "name": "openAiBaseUrl",
               "value": "https://api.openai.com/v1",
               "type": "string"
@@ -107,7 +107,7 @@
         "includeOtherFields": true,
         "options": {}
       },
-      "id": "node-0153",
+      "id": "node-1aawapq-000c",
       "name": "Settings",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -122,7 +122,7 @@
       "parameters": {
         "jsCode": "function emailEnquiry(msg) {\n  const from = (msg.from && msg.from.value && msg.from.value[0]) || {};\n  const text = String(msg.text || msg.textPlain || msg.snippet || \"\")\n    .split(/\\n-{2,}\\s*\\n|\\nOn .{5,80} wrote:\\n/)[0]\n    .replace(/\\n{3,}/g, \"\\n\\n\").trim().slice(0, 4000);\n  return {\n    message_id: msg.id || \"\", thread_id: msg.threadId || \"\", email: String(from.address || \"\").toLowerCase(), name: from.name || \"\",\n    subject: msg.subject || \"\", message: text, received_at: msg.date ? new Date(msg.date).toISOString() : new Date().toISOString(),\n  };\n}\n\nfunction buildTicketRequest(ticket, s) {\n  const system = [\n    `You triage customer support emails for ${s.businessName}. ${s.businessDescription}`,\n    `Categories: ${s.categories}. Urgency: urgent (service down, payment problem, angry customer, legal), high, normal, low.`,\n    `Suggest a reply in the customer's language, signed \"${s.senderName}\", using only these policies: ${s.policies}. If unsure, say the team is looking into it.`,\n    'Answer with JSON only: {\"category\":\"...\",\"urgency\":\"urgent|high|normal|low\",\"sentiment\":\"positive|neutral|negative\",\"language\":\"en\",\"summary\":\"one line\",\"suggested_reply\":\"plain text\"}',\n  ].join(\"\\n\");\n  return {\n    model: s.openAiModel, temperature: 0.2, response_format: { type: \"json_object\" },\n    messages: [{ role: \"system\", content: system }, { role: \"user\", content: JSON.stringify({ from: ticket.name || ticket.email, subject: ticket.subject, message: ticket.message }) }],\n  };\n}\n\nconst s = $('Settings').first().json;\nreturn $input.all().map((item, i) => {\n  const t = emailEnquiry(item.json);\n  return { json: { ...t, request: buildTicketRequest(t, s) }, pairedItem: { item: i } };\n}).filter((i) => i.json.email);"
       },
-      "id": "node-0154",
+      "id": "node-1aawapq-000d",
       "name": "Read ticket",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -144,7 +144,7 @@
           "timeout": 120000
         }
       },
-      "id": "node-0155",
+      "id": "node-1aawapq-000e",
       "name": "Triage with AI",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -160,7 +160,7 @@
       "parameters": {
         "jsCode": "function readAiJson(response) {\n  const content = response && response.choices && response.choices[0] && response.choices[0].message && response.choices[0].message.content;\n  if (!content) throw new Error(\"OpenAI returned no answer: \" + JSON.stringify(response).slice(0, 300));\n  try {\n    return JSON.parse(content);\n  } catch {\n    throw new Error(\"OpenAI answer was not valid JSON: \" + content.slice(0, 300));\n  }\n}\n\nconst src = $('Read ticket').all();\nreturn $input.all().map((item, i) => {\n  const t = src[i].json;\n  const ai = readAiJson(item.json);\n  return { json: {\n    ticket_id: t.message_id, received_at: t.received_at, name: t.name, email: t.email, subject: t.subject,\n    category: ai.category || 'other', urgency: ['urgent', 'high', 'normal', 'low'].includes(ai.urgency) ? ai.urgency : 'normal',\n    sentiment: ai.sentiment || '', language: ai.language || '', summary: ai.summary || '', status: 'new', thread_id: t.thread_id,\n    suggested_reply: ai.suggested_reply || '', message: t.message,\n  }, pairedItem: { item: i } };\n});"
       },
-      "id": "node-0156",
+      "id": "node-1aawapq-000f",
       "name": "Ticket row",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -192,7 +192,7 @@
           "handlingExtraData": "ignoreIt"
         }
       },
-      "id": "node-0157",
+      "id": "node-1aawapq-0010",
       "name": "Log ticket",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -212,7 +212,7 @@
           "threadId": "={{ $('Ticket row').item.json.thread_id }}"
         }
       },
-      "id": "node-0158",
+      "id": "node-1aawapq-0011",
       "name": "Draft the reply",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
@@ -232,7 +232,7 @@
           },
           "conditions": [
             {
-              "id": "cond-0159",
+              "id": "cond-1aawapq-0012",
               "leftValue": "={{ ['urgent', 'high'].includes($('Ticket row').item.json.urgency) }}",
               "rightValue": "",
               "operator": {
@@ -247,7 +247,7 @@
         "looseTypeValidation": true,
         "options": {}
       },
-      "id": "node-015a",
+      "id": "node-1aawapq-0013",
       "name": "Urgent?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -267,7 +267,7 @@
           "senderName": "={{ $('Settings').first().json.senderName }}"
         }
       },
-      "id": "node-015b",
+      "id": "node-1aawapq-0014",
       "name": "Alert the person on duty",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,

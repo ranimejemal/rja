@@ -57,3 +57,6 @@ export function newBreaches(...args: any[]): any;
 export function breachAdvice(...args: any[]): any;
 export function levenshtein(...args: any[]): any;
 export function lookalikeDomains(...args: any[]): any;
+export function buildImageRequest(...args: any[]): any;
+export function parseMetaEvents(...args: any[]): any;
+export function buildSocialReplyRequest(...args: any[]): any;

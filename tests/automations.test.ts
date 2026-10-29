@@ -283,6 +283,28 @@ describe("security suite logic", () => {
   });
 });
 
+describe("social media extras", () => {
+  it("builds image requests for both kinds of image models", () => {
+    expect(L.buildImageRequest({ image_prompt: "A cosy cafe", topic: "x" }, { imageModel: "gpt-image-1", imageStyle: "bright photo" })).toEqual({ model: "gpt-image-1", prompt: "A cosy cafe. Style: bright photo. No text, no logos, no watermarks.", n: 1, size: "1024x1024" });
+    expect(L.buildImageRequest({ topic: "Spring" }, { imageModel: "dall-e-3", imageStyle: "flat" }).response_format).toBe("b64_json");
+  });
+
+  it("reads Facebook and Instagram comments and messages, skipping the page's own", () => {
+    const fb = { object: "page", entry: [{ changes: [
+      { field: "feed", value: { item: "comment", verb: "add", comment_id: "c1", message: "Price?", from: { id: "u1", name: "Ana" }, post_id: "p1" } },
+      { field: "feed", value: { item: "comment", verb: "add", comment_id: "c2", message: "Thanks!", from: { id: "PAGE" } } },
+      { field: "feed", value: { item: "reaction", verb: "add" } },
+    ], messaging: [{ sender: { id: "u2" }, message: { text: "Open today?" } }, { sender: { id: "PAGE" }, message: { text: "echo", is_echo: true } }] }] };
+    expect(L.parseMetaEvents(fb, "PAGE", "IG")).toEqual([
+      { channel: "facebook_comment", target_id: "c1", text: "Price?", author: "Ana", post_id: "p1" },
+      { channel: "messenger", target_id: "u2", text: "Open today?", author: "", post_id: "" },
+    ]);
+    const ig = { object: "instagram", entry: [{ changes: [{ field: "comments", value: { id: "ic1", text: "Love it", from: { id: "u3", username: "bo" }, media: { id: "m1" } } }],
+      messaging: [{ sender: { id: "u4" }, message: { text: "Hi" } }] }] };
+    expect(L.parseMetaEvents(ig, "PAGE", "IG").map((e: { channel: string }) => e.channel)).toEqual(["instagram_comment", "instagram_dm"]);
+  });
+});
+
 // The generated workflows: each one must pass the marketplace upload scan and reference only existing nodes.
 const dir = join(__dirname, "..", "automations");
 const workflows = existsSync(dir)

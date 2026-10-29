@@ -8,7 +8,7 @@
         "width": 560,
         "color": 4
       },
-      "id": "node-015c",
+      "id": "node-pzgawz-0001",
       "name": "Note 1",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -22,7 +22,7 @@
         "authentication": "accessToken",
         "topic": "orders/create"
       },
-      "id": "node-015e",
+      "id": "node-pzgawz-0003",
       "name": "New Shopify order",
       "type": "n8n-nodes-base.shopifyTrigger",
       "typeVersion": 1,
@@ -30,13 +30,13 @@
         -560,
         0
       ],
-      "webhookId": "hook-015d"
+      "webhookId": "hook-pzgawz-0002"
     },
     {
       "parameters": {
         "event": "order.created"
       },
-      "id": "node-0160",
+      "id": "node-pzgawz-0005",
       "name": "New WooCommerce order",
       "type": "n8n-nodes-base.wooCommerceTrigger",
       "typeVersion": 1,
@@ -44,7 +44,7 @@
         -560,
         200
       ],
-      "webhookId": "hook-015f"
+      "webhookId": "hook-pzgawz-0004"
     },
     {
       "parameters": {
@@ -52,19 +52,19 @@
         "assignments": {
           "assignments": [
             {
-              "id": "set-0161",
+              "id": "set-pzgawz-0006",
               "name": "alertEmail",
               "value": "you@yourstore.com",
               "type": "string"
             },
             {
-              "id": "set-0162",
+              "id": "set-pzgawz-0007",
               "name": "senderName",
               "value": "Inventory assistant",
               "type": "string"
             },
             {
-              "id": "set-0163",
+              "id": "set-pzgawz-0008",
               "name": "googleSheetUrl",
               "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
               "type": "string"
@@ -74,7 +74,7 @@
         "includeOtherFields": true,
         "options": {}
       },
-      "id": "node-0164",
+      "id": "node-pzgawz-0009",
       "name": "Settings",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -89,7 +89,7 @@
       "parameters": {
         "jsCode": "function orderLines(order) {\n  return (order.line_items || []).map((l) => ({ sku: String(l.sku || \"\").trim(), name: l.title || l.name || \"\", qty: Number(l.quantity) || 0 })).filter((l) => l.qty > 0);\n}\n\nfunction orderSummary(order, source) {\n  const lines = orderLines(order);\n  return {\n    order_id: String(order.name || order.number || order.id || \"\"), source,\n    created_at: order.created_at || order.date_created_gmt || order.date_created || new Date().toISOString(),\n    customer_email: order.email || (order.billing && order.billing.email) || \"\",\n    total: order.total_price || order.total || \"\", currency: order.currency || \"\",\n    items: lines.map((l) => `${l.qty} x ${l.sku || l.name}`).join(\", \"),\n  };\n}\n\nconst source = $('New Shopify order').isExecuted ? 'shopify' : 'woocommerce';\nreturn $input.all().map((item, i) => ({ json: { ...orderSummary(item.json, source), lines: orderLines(item.json) }, pairedItem: { item: i } }));"
       },
-      "id": "node-0165",
+      "id": "node-pzgawz-000a",
       "name": "Order",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -121,7 +121,7 @@
           "handlingExtraData": "ignoreIt"
         }
       },
-      "id": "node-0166",
+      "id": "node-pzgawz-000b",
       "name": "Log order",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -144,7 +144,7 @@
         },
         "options": {}
       },
-      "id": "node-0167",
+      "id": "node-pzgawz-000c",
       "name": "Read inventory",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -159,7 +159,7 @@
       "parameters": {
         "jsCode": "function applyOrder(inventory, lines, nowIso) {\n  const bySku = new Map(inventory.filter((r) => r.sku).map((r) => [String(r.sku).trim(), r]));\n  const updates = new Map();\n  const unknown = [];\n  for (const l of lines) {\n    const row = bySku.get(l.sku);\n    if (!l.sku || !row) { unknown.push(l.sku || l.name); continue; }\n    const current = updates.has(l.sku) ? updates.get(l.sku).stock : Number(row.stock) || 0;\n    updates.set(l.sku, { sku: l.sku, stock: current - l.qty, last_order_at: nowIso, product: row.product, threshold: Number(row.low_stock_threshold) || 0 });\n  }\n  const rows = [...updates.values()];\n  return {\n    updates: rows.map(({ sku, stock, last_order_at }) => ({ sku, stock, last_order_at })),\n    low: rows.filter((r) => r.stock <= r.threshold).map((r) => ({ sku: r.sku, product: r.product, stock: r.stock, threshold: r.threshold })),\n    unknown,\n  };\n}\n\nconst lines = $('Order').all().flatMap((o) => o.json.lines);\nconst rows = $input.all().map((i) => i.json).filter((r) => r.sku);\nreturn applyOrder(rows, lines, new Date().toISOString()).updates.map((u) => ({ json: u, pairedItem: { item: 0 } }));"
       },
-      "id": "node-0168",
+      "id": "node-pzgawz-000d",
       "name": "Stock changes",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -193,7 +193,7 @@
           "handlingExtraData": "ignoreIt"
         }
       },
-      "id": "node-0169",
+      "id": "node-pzgawz-000e",
       "name": "Update stock",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -206,7 +206,7 @@
       "parameters": {
         "jsCode": "function applyOrder(inventory, lines, nowIso) {\n  const bySku = new Map(inventory.filter((r) => r.sku).map((r) => [String(r.sku).trim(), r]));\n  const updates = new Map();\n  const unknown = [];\n  for (const l of lines) {\n    const row = bySku.get(l.sku);\n    if (!l.sku || !row) { unknown.push(l.sku || l.name); continue; }\n    const current = updates.has(l.sku) ? updates.get(l.sku).stock : Number(row.stock) || 0;\n    updates.set(l.sku, { sku: l.sku, stock: current - l.qty, last_order_at: nowIso, product: row.product, threshold: Number(row.low_stock_threshold) || 0 });\n  }\n  const rows = [...updates.values()];\n  return {\n    updates: rows.map(({ sku, stock, last_order_at }) => ({ sku, stock, last_order_at })),\n    low: rows.filter((r) => r.stock <= r.threshold).map((r) => ({ sku: r.sku, product: r.product, stock: r.stock, threshold: r.threshold })),\n    unknown,\n  };\n}\n\nconst orders = $('Order').all().map((o) => o.json);\nconst lines = orders.flatMap((o) => o.lines);\nconst rows = $input.all().map((i) => i.json).filter((r) => r.sku);\nconst r = applyOrder(rows, lines, new Date().toISOString());\nif (!r.low.length && !r.unknown.length) return [];\nconst text = [\n  r.low.length ? 'Low stock:\\n' + r.low.map((l) => '- ' + l.sku + ' ' + (l.product || '') + ': ' + l.stock + ' left (threshold ' + l.threshold + ')').join('\\n') : '',\n  r.unknown.length ? 'Sold but not in the inventory sheet: ' + r.unknown.join(', ') : '',\n].filter(Boolean).join('\\n\\n');\nreturn [{ json: { order_id: orders.map((o) => o.order_id).join(', '), low_count: r.low.length, unknown_count: r.unknown.length, text }, pairedItem: { item: 0 } }];"
       },
-      "id": "node-016a",
+      "id": "node-pzgawz-000f",
       "name": "Low stock or unknown SKUs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -226,7 +226,7 @@
           "senderName": "={{ $('Settings').first().json.senderName }}"
         }
       },
-      "id": "node-016b",
+      "id": "node-pzgawz-0010",
       "name": "Email stock alert",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,

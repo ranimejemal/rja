@@ -8,7 +8,7 @@
         "width": 580,
         "color": 4
       },
-      "id": "node-0131",
+      "id": "node-p0jcds-0001",
       "name": "Note 1",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -28,7 +28,7 @@
           ]
         }
       },
-      "id": "node-0132",
+      "id": "node-p0jcds-0002",
       "name": "Every morning",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
@@ -43,61 +43,61 @@
         "assignments": {
           "assignments": [
             {
-              "id": "set-0133",
+              "id": "set-p0jcds-0003",
               "name": "businessName",
               "value": "Your business name",
               "type": "string"
             },
             {
-              "id": "set-0134",
+              "id": "set-p0jcds-0004",
               "name": "googlePlaceId",
               "value": "YOUR_GOOGLE_PLACE_ID",
               "type": "string"
             },
             {
-              "id": "set-0135",
+              "id": "set-p0jcds-0005",
               "name": "replyTone",
               "value": "warm, professional, short",
               "type": "string"
             },
             {
-              "id": "set-0136",
+              "id": "set-p0jcds-0006",
               "name": "contactEmail",
               "value": "contact@yourbusiness.com",
               "type": "string"
             },
             {
-              "id": "set-0137",
+              "id": "set-p0jcds-0007",
               "name": "alertEmail",
               "value": "you@yourbusiness.com",
               "type": "string"
             },
             {
-              "id": "set-0138",
+              "id": "set-p0jcds-0008",
               "name": "lowRating",
               "value": 3,
               "type": "number"
             },
             {
-              "id": "set-0139",
+              "id": "set-p0jcds-0009",
               "name": "senderName",
               "value": "Review monitor",
               "type": "string"
             },
             {
-              "id": "set-013a",
+              "id": "set-p0jcds-000a",
               "name": "googleSheetUrl",
               "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
               "type": "string"
             },
             {
-              "id": "set-013b",
+              "id": "set-p0jcds-000b",
               "name": "openAiModel",
               "value": "gpt-4.1-mini",
               "type": "string"
             },
             {
-              "id": "set-013c",
+              "id": "set-p0jcds-000c",
               "name": "openAiBaseUrl",
               "value": "https://api.openai.com/v1",
               "type": "string"
@@ -107,7 +107,7 @@
         "includeOtherFields": true,
         "options": {}
       },
-      "id": "node-013d",
+      "id": "node-p0jcds-000d",
       "name": "Settings",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -136,7 +136,7 @@
           "timeout": 20000
         }
       },
-      "id": "node-013e",
+      "id": "node-p0jcds-000e",
       "name": "Get Google reviews",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -152,7 +152,7 @@
       "parameters": {
         "jsCode": "function newReviews(reviews, store) {\n  store.seen = store.seen || {};\n  const fresh = [];\n  for (const r of reviews || []) {\n    const id = r.name || `${r.authorAttribution && r.authorAttribution.displayName}|${r.publishTime}`;\n    if (store.seen[id]) continue;\n    store.seen[id] = r.publishTime || true;\n    fresh.push({\n      review_id: id, rating: Number(r.rating) || 0, author: (r.authorAttribution && r.authorAttribution.displayName) || \"\",\n      text: String((r.originalText && r.originalText.text) || (r.text && r.text.text) || \"\").slice(0, 3000),\n      published_at: r.publishTime || \"\", when: r.relativePublishTimeDescription || \"\",\n    });\n  }\n  return fresh;\n}\n\nfunction buildReviewRequest(review, s) {\n  const system = [\n    `You manage online reviews for ${s.businessName}. Tone for replies: ${s.replyTone}.`,\n    \"Draft a short public reply in the reviewer's language: thank them, address specific points, never argue, never offer compensation or admit legal fault, invite unhappy customers to contact \" + s.contactEmail + \".\",\n    'Answer with JSON only: {\"sentiment\":\"positive|neutral|negative\",\"summary\":\"one line\",\"topics\":[\"...\"],\"reply\":\"...\"}',\n  ].join(\"\\n\");\n  return {\n    model: s.openAiModel, temperature: 0.4, response_format: { type: \"json_object\" },\n    messages: [{ role: \"system\", content: system }, { role: \"user\", content: JSON.stringify({ rating: review.rating, author: review.author, text: review.text }) }],\n  };\n}\n\nconst s = $('Settings').first().json;\nconst place = $input.first().json;\nconst reviews = newReviews(place.reviews || [], $getWorkflowStaticData('global'));\nreturn reviews.map((r) => ({ json: { ...r, place_rating: place.rating || '', place_reviews: place.userRatingCount || '', request: buildReviewRequest(r, s) }, pairedItem: { item: 0 } }));"
       },
-      "id": "node-013f",
+      "id": "node-p0jcds-000f",
       "name": "New reviews",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -174,7 +174,7 @@
           "timeout": 120000
         }
       },
-      "id": "node-0140",
+      "id": "node-p0jcds-0010",
       "name": "Analyse with AI",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -190,7 +190,7 @@
       "parameters": {
         "jsCode": "function readAiJson(response) {\n  const content = response && response.choices && response.choices[0] && response.choices[0].message && response.choices[0].message.content;\n  if (!content) throw new Error(\"OpenAI returned no answer: \" + JSON.stringify(response).slice(0, 300));\n  try {\n    return JSON.parse(content);\n  } catch {\n    throw new Error(\"OpenAI answer was not valid JSON: \" + content.slice(0, 300));\n  }\n}\n\nconst src = $('New reviews').all();\nreturn $input.all().map((item, i) => {\n  const r = src[i].json;\n  const ai = readAiJson(item.json);\n  return { json: {\n    checked_at: new Date().toISOString(), review_id: r.review_id, published_at: r.published_at, rating: r.rating, author: r.author, text: r.text,\n    sentiment: ai.sentiment || '', summary: ai.summary || '', topics: (ai.topics || []).join(', '), suggested_reply: ai.reply || '',\n    place_rating: r.place_rating, status: 'to reply',\n  }, pairedItem: { item: i } };\n});"
       },
-      "id": "node-0141",
+      "id": "node-p0jcds-0011",
       "name": "Review row",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -222,7 +222,7 @@
           "handlingExtraData": "ignoreIt"
         }
       },
-      "id": "node-0142",
+      "id": "node-p0jcds-0012",
       "name": "Log review",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -242,7 +242,7 @@
           },
           "conditions": [
             {
-              "id": "cond-0143",
+              "id": "cond-p0jcds-0013",
               "leftValue": "={{ $('Review row').item.json.rating <= $('Settings').first().json.lowRating }}",
               "rightValue": "",
               "operator": {
@@ -257,7 +257,7 @@
         "looseTypeValidation": true,
         "options": {}
       },
-      "id": "node-0144",
+      "id": "node-p0jcds-0014",
       "name": "Low rating?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -277,7 +277,7 @@
           "senderName": "={{ $('Settings').first().json.senderName }}"
         }
       },
-      "id": "node-0145",
+      "id": "node-p0jcds-0015",
       "name": "Alert about low rating",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
@@ -290,7 +290,7 @@
       "parameters": {
         "jsCode": "const rows = $('Review row').all().map((i) => i.json);\nconst lines = rows.map((r) => '- ' + r.rating + '/5 ' + r.author + ': ' + r.summary).join('\\n');\nreturn [{ json: { count: rows.length, rating: rows[0] ? rows[0].place_rating : '', lines }, pairedItem: rows.map((_, i) => ({ item: i })) }];"
       },
-      "id": "node-0146",
+      "id": "node-p0jcds-0016",
       "name": "Daily digest",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -311,7 +311,7 @@
           "senderName": "={{ $('Settings').first().json.senderName }}"
         }
       },
-      "id": "node-0147",
+      "id": "node-p0jcds-0017",
       "name": "Email the digest",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,

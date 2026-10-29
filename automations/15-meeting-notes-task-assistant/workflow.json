@@ -8,7 +8,7 @@
         "width": 560,
         "color": 4
       },
-      "id": "node-0191",
+      "id": "node-1ekvgne-0001",
       "name": "Note 1",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -51,7 +51,7 @@
           }
         }
       },
-      "id": "node-0193",
+      "id": "node-1ekvgne-0003",
       "name": "Meeting notes form",
       "type": "n8n-nodes-base.formTrigger",
       "typeVersion": 2.2,
@@ -59,7 +59,7 @@
         -560,
         0
       ],
-      "webhookId": "hook-0192"
+      "webhookId": "hook-1ekvgne-0002"
     },
     {
       "parameters": {
@@ -68,7 +68,7 @@
         "responseMode": "onReceived",
         "options": {}
       },
-      "id": "node-0195",
+      "id": "node-1ekvgne-0005",
       "name": "Transcript webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
@@ -76,7 +76,7 @@
         -560,
         200
       ],
-      "webhookId": "hook-0194"
+      "webhookId": "hook-1ekvgne-0004"
     },
     {
       "parameters": {
@@ -84,37 +84,37 @@
         "assignments": {
           "assignments": [
             {
-              "id": "set-0196",
+              "id": "set-1ekvgne-0006",
               "name": "teamName",
               "value": "Your team",
               "type": "string"
             },
             {
-              "id": "set-0197",
+              "id": "set-1ekvgne-0007",
               "name": "notesEmail",
               "value": "you@yourbusiness.com",
               "type": "string"
             },
             {
-              "id": "set-0198",
+              "id": "set-1ekvgne-0008",
               "name": "senderName",
               "value": "Meeting assistant",
               "type": "string"
             },
             {
-              "id": "set-0199",
+              "id": "set-1ekvgne-0009",
               "name": "googleSheetUrl",
               "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
               "type": "string"
             },
             {
-              "id": "set-019a",
+              "id": "set-1ekvgne-000a",
               "name": "openAiModel",
               "value": "gpt-4.1-mini",
               "type": "string"
             },
             {
-              "id": "set-019b",
+              "id": "set-1ekvgne-000b",
               "name": "openAiBaseUrl",
               "value": "https://api.openai.com/v1",
               "type": "string"
@@ -124,7 +124,7 @@
         "includeOtherFields": true,
         "options": {}
       },
-      "id": "node-019c",
+      "id": "node-1ekvgne-000c",
       "name": "Settings",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -139,7 +139,7 @@
       "parameters": {
         "jsCode": "function normalizeMeeting(input) {\n  const b = input.body || input;\n  const pick = (...keys) => { for (const k of keys) if (b[k] != null && String(b[k]).trim()) return String(b[k]).trim(); return \"\"; };\n  const attendees = (Array.isArray(b.attendees) ? b.attendees.join(\",\") : pick(\"attendees\", \"Attendees (emails, comma separated)\", \"Attendees\"))\n    .split(/[,;\\s]+/).map((e) => e.trim().toLowerCase()).filter((e) => /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(e));\n  return {\n    title: pick(\"title\", \"Meeting title\", \"meeting_title\") || \"Meeting\",\n    date: pick(\"date\", \"Meeting date\", \"meeting_date\") || new Date().toISOString().slice(0, 10),\n    attendees: [...new Set(attendees)],\n    transcript: pick(\"transcript\", \"Transcript or notes\", \"notes\", \"text\").slice(0, 60000),\n  };\n}\n\nfunction buildMeetingRequest(meeting, s) {\n  const system = [\n    `You write meeting notes for ${s.teamName}. Language: same as the transcript.`,\n    \"Be factual: only what was said. Action items need a clear task; owner is a person's name or email when stated, else empty; due_date as YYYY-MM-DD only when a date was stated.\",\n    'Answer with JSON only: {\"summary\":\"3-6 sentences\",\"decisions\":[\"...\"],\"action_items\":[{\"task\":\"\",\"owner\":\"\",\"due_date\":\"\"}],\"open_questions\":[\"...\"]}',\n  ].join(\"\\n\");\n  return {\n    model: s.openAiModel, temperature: 0.2, response_format: { type: \"json_object\" },\n    messages: [{ role: \"system\", content: system }, { role: \"user\", content: `Meeting: ${meeting.title} (${meeting.date})\\nAttendees: ${meeting.attendees.join(\", \")}\\n\\nTranscript:\\n${meeting.transcript}` }],\n  };\n}\n\nconst s = $('Settings').first().json;\nreturn $input.all().map((item, i) => {\n  const m = normalizeMeeting(item.json);\n  return { json: { ...m, request: buildMeetingRequest(m, s) }, pairedItem: { item: i } };\n}).filter((i) => i.json.transcript);"
       },
-      "id": "node-019d",
+      "id": "node-1ekvgne-000d",
       "name": "Meeting",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -161,7 +161,7 @@
           "timeout": 120000
         }
       },
-      "id": "node-019e",
+      "id": "node-1ekvgne-000e",
       "name": "Write notes with AI",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -177,7 +177,7 @@
       "parameters": {
         "jsCode": "function readAiJson(response) {\n  const content = response && response.choices && response.choices[0] && response.choices[0].message && response.choices[0].message.content;\n  if (!content) throw new Error(\"OpenAI returned no answer: \" + JSON.stringify(response).slice(0, 300));\n  try {\n    return JSON.parse(content);\n  } catch {\n    throw new Error(\"OpenAI answer was not valid JSON: \" + content.slice(0, 300));\n  }\n}\n\nfunction meetingEmail(meeting, notes) {\n  const list = (items) => (items && items.length ? items.map((x) => `- ${x}`).join(\"\\n\") : \"- none\");\n  const actions = (notes.action_items || []).map((a) => `- ${a.task}${a.owner ? ` (${a.owner})` : \"\"}${a.due_date ? `, due ${a.due_date}` : \"\"}`).join(\"\\n\") || \"- none\";\n  return `${meeting.title} (${meeting.date})\\n\\nSummary\\n${notes.summary || \"\"}\\n\\nDecisions\\n${list(notes.decisions)}\\n\\nAction items\\n${actions}\\n\\nOpen questions\\n${list(notes.open_questions)}`;\n}\n\nconst s = $('Settings').first().json;\nconst src = $('Meeting').all();\nreturn $input.all().map((item, i) => {\n  const m = src[i].json;\n  const n = readAiJson(item.json);\n  const recipients = [...new Set([...m.attendees, s.notesEmail].filter(Boolean))];\n  return { json: { title: m.title, date: m.date, recipients: recipients.join(','), body: meetingEmail(m, n), action_items: n.action_items || [] }, pairedItem: { item: i } };\n});"
       },
-      "id": "node-019f",
+      "id": "node-1ekvgne-000f",
       "name": "Notes",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -197,7 +197,7 @@
           "senderName": "={{ $('Settings').first().json.senderName }}"
         }
       },
-      "id": "node-01a0",
+      "id": "node-1ekvgne-0010",
       "name": "Email the notes",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
@@ -210,7 +210,7 @@
       "parameters": {
         "jsCode": "const now = new Date().toISOString();\nreturn $input.all().flatMap((item, i) => (item.json.action_items || []).filter((a) => a.task).map((a) => ({ json: {\n  meeting: item.json.title, meeting_date: item.json.date, task: a.task, owner: a.owner || '', due_date: a.due_date || '', status: 'open', created_at: now,\n}, pairedItem: { item: i } })));"
       },
-      "id": "node-01a1",
+      "id": "node-1ekvgne-0011",
       "name": "Task rows",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -242,7 +242,7 @@
           "handlingExtraData": "ignoreIt"
         }
       },
-      "id": "node-01a2",
+      "id": "node-1ekvgne-0012",
       "name": "Add tasks",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,

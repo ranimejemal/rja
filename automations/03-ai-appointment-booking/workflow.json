@@ -8,7 +8,7 @@
         "width": 520,
         "color": 4
       },
-      "id": "node-004f",
+      "id": "node-2bod7t-0001",
       "name": "Note 1",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -29,7 +29,7 @@
           "showWelcomeScreen": false
         }
       },
-      "id": "node-0051",
+      "id": "node-2bod7t-0003",
       "name": "Chat",
       "type": "@n8n/n8n-nodes-langchain.chatTrigger",
       "typeVersion": 1.1,
@@ -37,7 +37,7 @@
         -560,
         0
       ],
-      "webhookId": "hook-0050"
+      "webhookId": "hook-2bod7t-0002"
     },
     {
       "parameters": {
@@ -50,7 +50,7 @@
           ]
         }
       },
-      "id": "node-0052",
+      "id": "node-2bod7t-0004",
       "name": "Every hour",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
@@ -65,79 +65,79 @@
         "assignments": {
           "assignments": [
             {
-              "id": "set-0053",
+              "id": "set-2bod7t-0005",
               "name": "businessName",
               "value": "Your business name",
               "type": "string"
             },
             {
-              "id": "set-0054",
+              "id": "set-2bod7t-0006",
               "name": "services",
               "value": "Haircut (60 min), Colour (60 min), Consultation (60 min)",
               "type": "string"
             },
             {
-              "id": "set-0055",
+              "id": "set-2bod7t-0007",
               "name": "address",
               "value": "12 Example Street, Paris",
               "type": "string"
             },
             {
-              "id": "set-0056",
+              "id": "set-2bod7t-0008",
               "name": "calendarId",
               "value": "primary",
               "type": "string"
             },
             {
-              "id": "set-0057",
+              "id": "set-2bod7t-0009",
               "name": "timezone",
               "value": "Europe/Paris",
               "type": "string"
             },
             {
-              "id": "set-0058",
+              "id": "set-2bod7t-000a",
               "name": "openDays",
               "value": "Monday to Saturday",
               "type": "string"
             },
             {
-              "id": "set-0059",
+              "id": "set-2bod7t-000b",
               "name": "openTime",
               "value": "09:00",
               "type": "string"
             },
             {
-              "id": "set-005a",
+              "id": "set-2bod7t-000c",
               "name": "closeTime",
               "value": "18:00",
               "type": "string"
             },
             {
-              "id": "set-005b",
+              "id": "set-2bod7t-000d",
               "name": "slotMinutes",
               "value": 60,
               "type": "number"
             },
             {
-              "id": "set-005c",
+              "id": "set-2bod7t-000e",
               "name": "reminderHoursBefore",
               "value": 24,
               "type": "number"
             },
             {
-              "id": "set-005d",
+              "id": "set-2bod7t-000f",
               "name": "senderName",
               "value": "Your business name",
               "type": "string"
             },
             {
-              "id": "set-005e",
+              "id": "set-2bod7t-0010",
               "name": "openAiModel",
               "value": "gpt-4.1-mini",
               "type": "string"
             },
             {
-              "id": "set-005f",
+              "id": "set-2bod7t-0011",
               "name": "openAiBaseUrl",
               "value": "https://api.openai.com/v1",
               "type": "string"
@@ -147,7 +147,7 @@
         "includeOtherFields": true,
         "options": {}
       },
-      "id": "node-0060",
+      "id": "node-2bod7t-0012",
       "name": "Settings",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -172,7 +172,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "cond-0061",
+                    "id": "cond-2bod7t-0013",
                     "leftValue": "={{ $('Chat').isExecuted }}",
                     "rightValue": "",
                     "operator": {
@@ -197,7 +197,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "cond-0062",
+                    "id": "cond-2bod7t-0014",
                     "leftValue": "={{ $('Every hour').isExecuted }}",
                     "rightValue": "",
                     "operator": {
@@ -216,7 +216,7 @@
         },
         "options": {}
       },
-      "id": "node-0063",
+      "id": "node-2bod7t-0015",
       "name": "Route",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
@@ -234,7 +234,7 @@
           "maxIterations": 8
         }
       },
-      "id": "node-0064",
+      "id": "node-2bod7t-0016",
       "name": "Booking assistant",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 2.2,
@@ -255,7 +255,7 @@
           "baseURL": "={{ $('Settings').first().json.openAiBaseUrl }}"
         }
       },
-      "id": "node-0065",
+      "id": "node-2bod7t-0017",
       "name": "OpenAI chat model",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1.2,
@@ -270,7 +270,7 @@
         "sessionKey": "={{ $('Chat').first().json.sessionId }}",
         "contextWindowLength": 12
       },
-      "id": "node-0066",
+      "id": "node-2bod7t-0018",
       "name": "Conversation memory",
       "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
       "typeVersion": 1.3,
@@ -300,7 +300,7 @@
           }
         }
       },
-      "id": "node-0067",
+      "id": "node-2bod7t-0019",
       "name": "check_availability",
       "type": "n8n-nodes-base.googleCalendarTool",
       "typeVersion": 1.3,
@@ -327,7 +327,7 @@
           "sendUpdates": "all"
         }
       },
-      "id": "node-0068",
+      "id": "node-2bod7t-001a",
       "name": "book_appointment",
       "type": "n8n-nodes-base.googleCalendarTool",
       "typeVersion": 1.3,
@@ -355,7 +355,7 @@
           "orderBy": "startTime"
         }
       },
-      "id": "node-0069",
+      "id": "node-2bod7t-001b",
       "name": "find_bookings",
       "type": "n8n-nodes-base.googleCalendarTool",
       "typeVersion": 1.3,
@@ -379,7 +379,7 @@
           "sendUpdates": "all"
         }
       },
-      "id": "node-006a",
+      "id": "node-2bod7t-001c",
       "name": "cancel_booking",
       "type": "n8n-nodes-base.googleCalendarTool",
       "typeVersion": 1.3,
@@ -403,7 +403,7 @@
           "singleEvents": true
         }
       },
-      "id": "node-006b",
+      "id": "node-2bod7t-001d",
       "name": "Upcoming appointments",
       "type": "n8n-nodes-base.googleCalendar",
       "typeVersion": 1.3,
@@ -416,7 +416,7 @@
       "parameters": {
         "jsCode": "function dueReminders(events, nowIso, hoursBefore) {\n  const now = Date.parse(nowIso);\n  const from = now + hoursBefore * 3600000;\n  const to = from + 3600000;\n  const out = [];\n  for (const e of events) {\n    const start = Date.parse((e.start && (e.start.dateTime || e.start.date)) || \"\");\n    if (!Number.isFinite(start) || start < from || start >= to || e.status === \"cancelled\") continue;\n    const attendee = (e.attendees || []).find((a) => a.email && !a.self && !a.organizer);\n    const fromDescription = String(e.description || \"\").match(/[^\\s<>\"]+@[^\\s<>\"]+\\.[a-z]{2,}/i);\n    const email = attendee ? attendee.email : fromDescription ? fromDescription[0] : \"\";\n    if (email) out.push({ event_id: e.id, summary: e.summary || \"Appointment\", start: new Date(start).toISOString(), email });\n  }\n  return out;\n}\n\nconst s = $('Settings').first().json;\nconst input = $input.all();\nconst events = input.map((i) => i.json).filter((e) => e.id);\nconst index = new Map(input.map((it, i) => [it.json.id, i]));\nreturn dueReminders(events, new Date().toISOString(), Number(s.reminderHoursBefore)).map((r) => ({ json: {\n  ...r,\n  when: DateTime.fromISO(r.start).setZone(s.timezone).toFormat(\"cccc d LLLL 'at' HH:mm\"),\n}, pairedItem: { item: index.get(r.event_id) } }));"
       },
-      "id": "node-006c",
+      "id": "node-2bod7t-001e",
       "name": "Reminders to send",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -436,7 +436,7 @@
           "senderName": "={{ $('Settings').first().json.senderName }}"
         }
       },
-      "id": "node-006d",
+      "id": "node-2bod7t-001f",
       "name": "Send reminder",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,

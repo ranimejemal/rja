@@ -8,7 +8,7 @@
         "width": 600,
         "color": 4
       },
-      "id": "node-00d1",
+      "id": "node-1sg94s9-0001",
       "name": "Note 1",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -25,7 +25,7 @@
         "responseMode": "onReceived",
         "options": {}
       },
-      "id": "node-00d3",
+      "id": "node-1sg94s9-0003",
       "name": "Security alert",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
@@ -33,7 +33,7 @@
         -560,
         0
       ],
-      "webhookId": "hook-00d2"
+      "webhookId": "hook-1sg94s9-0002"
     },
     {
       "parameters": {
@@ -46,7 +46,7 @@
           ]
         }
       },
-      "id": "node-00d4",
+      "id": "node-1sg94s9-0004",
       "name": "Every Monday at 8:00",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
@@ -61,43 +61,43 @@
         "assignments": {
           "assignments": [
             {
-              "id": "set-00d5",
+              "id": "set-1sg94s9-0005",
               "name": "organisationName",
               "value": "Your company",
               "type": "string"
             },
             {
-              "id": "set-00d6",
+              "id": "set-1sg94s9-0006",
               "name": "alertEmail",
               "value": "security@yourcompany.com",
               "type": "string"
             },
             {
-              "id": "set-00d7",
+              "id": "set-1sg94s9-0007",
               "name": "googleSheetUrl",
               "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
               "type": "string"
             },
             {
-              "id": "set-00d8",
+              "id": "set-1sg94s9-0008",
               "name": "muteRepeatsMinutes",
               "value": 30,
               "type": "number"
             },
             {
-              "id": "set-00d9",
+              "id": "set-1sg94s9-0009",
               "name": "senderName",
               "value": "Security monitor",
               "type": "string"
             },
             {
-              "id": "set-00da",
+              "id": "set-1sg94s9-000a",
               "name": "openAiModel",
               "value": "gpt-4.1-mini",
               "type": "string"
             },
             {
-              "id": "set-00db",
+              "id": "set-1sg94s9-000b",
               "name": "openAiBaseUrl",
               "value": "https://api.openai.com/v1",
               "type": "string"
@@ -107,7 +107,7 @@
         "includeOtherFields": true,
         "options": {}
       },
-      "id": "node-00dc",
+      "id": "node-1sg94s9-000c",
       "name": "Settings",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -132,7 +132,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "cond-00dd",
+                    "id": "cond-1sg94s9-000d",
                     "leftValue": "={{ $('Security alert').isExecuted }}",
                     "rightValue": "",
                     "operator": {
@@ -157,7 +157,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "cond-00de",
+                    "id": "cond-1sg94s9-000e",
                     "leftValue": "={{ $('Every Monday at 8:00').isExecuted }}",
                     "rightValue": "",
                     "operator": {
@@ -176,7 +176,7 @@
         },
         "options": {}
       },
-      "id": "node-00df",
+      "id": "node-1sg94s9-000f",
       "name": "Route",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
@@ -189,7 +189,7 @@
       "parameters": {
         "jsCode": "function normalizeAlerts(body, nowIso) {\n  const sev = (n) => (n >= 12 ? \"critical\" : n >= 8 ? \"high\" : n >= 5 ? \"medium\" : \"low\");\n  const word = (w) => {\n    const v = String(w || \"\").toLowerCase();\n    if ([\"critical\", \"crit\", \"emergency\", \"fatal\", \"p1\"].includes(v)) return \"critical\";\n    if ([\"high\", \"error\", \"major\", \"p2\"].includes(v)) return \"high\";\n    if ([\"medium\", \"warning\", \"warn\", \"moderate\", \"p3\"].includes(v)) return \"medium\";\n    return \"low\";\n  };\n  const ip = (text) => (String(text || \"\").match(/\\b(?:\\d{1,3}\\.){3}\\d{1,3}\\b/) || [\"\"])[0];\n  const out = [];\n  let b = body || {};\n  if (b.Type === \"Notification\" && typeof b.Message === \"string\") {\n    try { b = JSON.parse(b.Message); } catch { b = { title: b.Subject, description: b.Message }; }\n  }\n  if (b.rule && b.agent) {\n    out.push({\n      source: \"wazuh\", title: b.rule.description || \"Wazuh alert\", severity: sev(Number(b.rule.level) || 0),\n      host: b.agent.name || b.agent.ip || \"\", ip: (b.data && (b.data.srcip || b.data.src_ip)) || ip(b.full_log),\n      rule: String(b.rule.id || \"\"), details: String(b.full_log || \"\").slice(0, 2000), at: b.timestamp || nowIso,\n    });\n  } else if (Array.isArray(b.alerts)) {\n    for (const a of b.alerts) {\n      if (a.status === \"resolved\") continue;\n      const l = a.labels || {};\n      const n = a.annotations || {};\n      out.push({\n        source: \"alertmanager\", title: l.alertname || n.summary || \"Alert\", severity: word(l.severity),\n        host: l.instance || l.host || \"\", ip: ip(l.instance), rule: l.alertname || \"\",\n        details: String(n.description || n.summary || \"\").slice(0, 2000), at: a.startsAt || nowIso,\n      });\n    }\n  } else if (b[\"detail-type\"] === \"GuardDuty Finding\" || (b.detail && b.detail.type && b.detail.severity !== undefined)) {\n    const d = b.detail || {};\n    const res = d.resource || {};\n    const inst = res.instanceDetails || {};\n    const remote = (((d.service || {}).action || {}).networkConnectionAction || {}).remoteIpDetails || {};\n    out.push({\n      source: \"guardduty\", title: d.title || d.type, severity: sev(Number(d.severity) * 1.2 || 0),\n      host: inst.instanceId || res.resourceType || \"\", ip: remote.ipAddressV4 || \"\", rule: d.type || \"\",\n      details: String(d.description || \"\").slice(0, 2000), at: d.updatedAt || nowIso,\n    });\n  } else {\n    out.push({\n      source: b.source || \"webhook\", title: b.title || b.name || b.alert || \"Security alert\", severity: word(b.severity || b.level || b.priority),\n      host: b.host || b.hostname || b.server || \"\", ip: b.ip || b.src_ip || b.source_ip || ip(b.message || b.description),\n      rule: String(b.rule || b.rule_id || b.title || \"\"), details: String(b.description || b.message || \"\").slice(0, 2000), at: b.timestamp || nowIso,\n    });\n  }\n  return out.map((a) => ({ ...a, received_at: nowIso, key: `${a.source}|${a.rule}|${a.host}|${a.ip}` }));\n}\n\nfunction dedupeAlerts(alerts, store, nowMs, windowMinutes) {\n  store.seen = store.seen || {};\n  for (const [k, t] of Object.entries(store.seen)) if (nowMs - t > windowMinutes * 60000) delete store.seen[k];\n  const fresh = [];\n  for (const a of alerts) {\n    if (a.key in store.seen) continue;\n    store.seen[a.key] = nowMs;\n    fresh.push(a);\n  }\n  return fresh;\n}\n\nconst s = $('Settings').first().json;\nconst now = new Date();\nconst alerts = normalizeAlerts($('Security alert').first().json.body, now.toISOString());\nconst fresh = dedupeAlerts(alerts, $getWorkflowStaticData('global'), now.getTime(), Number(s.muteRepeatsMinutes));\nconst isPublic = (ip) => !!ip && !/^(10\\.|127\\.|169\\.254\\.|192\\.168\\.|172\\.(1[6-9]|2\\d|3[01])\\.)/.test(ip);\nreturn fresh.map((a) => ({ json: { ...a, public_ip: isPublic(a.ip) }, pairedItem: { item: 0 } }));"
       },
-      "id": "node-00e0",
+      "id": "node-1sg94s9-0010",
       "name": "Normalize and mute repeats",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -209,7 +209,7 @@
           },
           "conditions": [
             {
-              "id": "cond-00e1",
+              "id": "cond-1sg94s9-0011",
               "leftValue": "={{ $json.public_ip }}",
               "rightValue": "",
               "operator": {
@@ -224,7 +224,7 @@
         "looseTypeValidation": true,
         "options": {}
       },
-      "id": "node-00e2",
+      "id": "node-1sg94s9-0012",
       "name": "Public IP?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -242,7 +242,7 @@
           "timeout": 20000
         }
       },
-      "id": "node-00e3",
+      "id": "node-1sg94s9-0013",
       "name": "IP reputation (VirusTotal)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -254,7 +254,7 @@
     },
     {
       "parameters": {},
-      "id": "node-00e4",
+      "id": "node-1sg94s9-0014",
       "name": "All alerts",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3,
@@ -268,7 +268,7 @@
         "mode": "runOnceForEachItem",
         "jsCode": "function ipReputation(vt) {\n  const a = vt && vt.data && vt.data.attributes;\n  if (!a) return null;\n  const s = a.last_analysis_stats || {};\n  return { malicious: s.malicious || 0, suspicious: s.suspicious || 0, harmless: s.harmless || 0, country: a.country || \"\", owner: a.as_owner || \"\" };\n}\n\nfunction buildTriageRequest(alert, reputation, s) {\n  const system = [\n    `You are a security analyst for ${s.organisationName}. Triage the alert for a small team without a dedicated SOC.`,\n    \"Use only the data given. Say clearly when something is uncertain. Recommended actions must be concrete and safe (no destructive steps).\",\n    'Answer with JSON only: {\"severity\":\"critical|high|medium|low\",\"summary\":\"one sentence\",\"likely_cause\":\"...\",',\n    '\"false_positive_likelihood\":\"high|medium|low\",\"recommended_actions\":[\"...\",\"...\"]}',\n  ].join(\"\\n\");\n  return {\n    model: s.openAiModel,\n    temperature: 0.2,\n    response_format: { type: \"json_object\" },\n    messages: [{ role: \"system\", content: system }, { role: \"user\", content: JSON.stringify({ alert, ip_reputation: reputation }) }],\n  };\n}\n\nconst s = $('Settings').first().json;\nconst alert = $('Normalize and mute repeats').item.json;\nconst reputation = ipReputation($json);\nreturn { json: { ...alert, reputation, request: buildTriageRequest(alert, reputation, s) } };"
       },
-      "id": "node-00e5",
+      "id": "node-1sg94s9-0015",
       "name": "Prepare triage",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -290,7 +290,7 @@
           "timeout": 120000
         }
       },
-      "id": "node-00e6",
+      "id": "node-1sg94s9-0016",
       "name": "Triage with AI",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -306,7 +306,7 @@
       "parameters": {
         "jsCode": "function readAiJson(response) {\n  const content = response && response.choices && response.choices[0] && response.choices[0].message && response.choices[0].message.content;\n  if (!content) throw new Error(\"OpenAI returned no answer: \" + JSON.stringify(response).slice(0, 300));\n  try {\n    return JSON.parse(content);\n  } catch {\n    throw new Error(\"OpenAI answer was not valid JSON: \" + content.slice(0, 300));\n  }\n}\n\nconst prepared = $('Prepare triage').all();\nreturn $input.all().map((item, i) => {\n  const a = prepared[i].json;\n  let t;\n  try { t = readAiJson(item.json); } catch (e) { t = { severity: a.severity, summary: 'AI triage failed: ' + e.message, recommended_actions: [] }; }\n  const order = ['low', 'medium', 'high', 'critical'];\n  // Keep the higher of the tool's severity and the AI's, so a confused answer never hides a critical alert.\n  const severity = order[Math.max(order.indexOf(a.severity), order.indexOf(t.severity))] || a.severity;\n  return { json: {\n    received_at: a.received_at, source: a.source, title: a.title, host: a.host, ip: a.ip, rule: a.rule,\n    severity, ai_summary: t.summary || '', likely_cause: t.likely_cause || '', false_positive_likelihood: t.false_positive_likelihood || '',\n    recommended_actions: (t.recommended_actions || []).join(' | '),\n    ip_malicious_votes: a.reputation ? a.reputation.malicious : '', ip_country: a.reputation ? a.reputation.country : '',\n    details: a.details, status: 'open',\n  }, pairedItem: { item: i } };\n});"
       },
-      "id": "node-00e7",
+      "id": "node-1sg94s9-0017",
       "name": "Incident row",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -338,7 +338,7 @@
           "handlingExtraData": "ignoreIt"
         }
       },
-      "id": "node-00e8",
+      "id": "node-1sg94s9-0018",
       "name": "Log incident",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -358,7 +358,7 @@
           },
           "conditions": [
             {
-              "id": "cond-00e9",
+              "id": "cond-1sg94s9-0019",
               "leftValue": "={{ ['high', 'critical'].includes($('Incident row').item.json.severity) }}",
               "rightValue": "",
               "operator": {
@@ -373,7 +373,7 @@
         "looseTypeValidation": true,
         "options": {}
       },
-      "id": "node-00ea",
+      "id": "node-1sg94s9-001a",
       "name": "High or critical?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -393,7 +393,7 @@
           "senderName": "={{ $('Settings').first().json.senderName }}"
         }
       },
-      "id": "node-00eb",
+      "id": "node-1sg94s9-001b",
       "name": "Email the alert",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
@@ -416,7 +416,7 @@
         },
         "options": {}
       },
-      "id": "node-00ec",
+      "id": "node-1sg94s9-001c",
       "name": "Read incidents",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -430,7 +430,7 @@
       "parameters": {
         "jsCode": "function weeklyStats(rows, nowIso) {\n  const since = Date.parse(nowIso) - 7 * 86400000;\n  const recent = rows.filter((r) => Date.parse(r.received_at) >= since);\n  const count = (key) => recent.reduce((m, r) => ((m[r[key] || \"unknown\"] = (m[r[key] || \"unknown\"] || 0) + 1), m), {});\n  const top = (obj) => Object.entries(obj).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k, v]) => `${k} (${v})`);\n  return {\n    total: recent.length,\n    by_severity: count(\"severity\"),\n    top_hosts: top(count(\"host\")),\n    top_alerts: top(count(\"title\")),\n    open_critical: recent.filter((r) => [\"critical\", \"high\"].includes(r.severity) && String(r.status).toLowerCase() !== \"closed\")\n      .map((r) => `${r.received_at.slice(0, 10)} ${r.title} on ${r.host || \"?\"}`).slice(0, 20),\n  };\n}\n\nconst rows = $input.all().map((i) => i.json).filter((r) => r.received_at);\nconst st = weeklyStats(rows, new Date().toISOString());\nconst sev = Object.entries(st.by_severity).map(([k, v]) => k + ': ' + v).join(', ') || 'none';\nconst text = [\n  'Alerts in the last 7 days: ' + st.total + ' (' + sev + ')',\n  '', 'Most affected hosts: ' + (st.top_hosts.join(', ') || 'none'),\n  'Most frequent alerts: ' + (st.top_alerts.join(', ') || 'none'),\n  '', 'High or critical alerts still open:', ...(st.open_critical.length ? st.open_critical.map((x) => '- ' + x) : ['- none']),\n].join('\\n');\nreturn [{ json: { total: st.total, text }, pairedItem: { item: 0 } }];"
       },
-      "id": "node-00ed",
+      "id": "node-1sg94s9-001d",
       "name": "Weekly numbers",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -450,7 +450,7 @@
           "senderName": "={{ $('Settings').first().json.senderName }}"
         }
       },
-      "id": "node-00ee",
+      "id": "node-1sg94s9-001e",
       "name": "Email weekly summary",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,

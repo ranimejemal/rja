@@ -11,7 +11,7 @@ Each folder holds the workflow, the Google Sheet templates it uses, and a setup 
 | 1 | [01-ai-lead-generation-follow-up](01-ai-lead-generation-follow-up/) | Captures leads (form, webhook, Facebook Lead Ads), scores them with AI, replies within minutes, follows up until they answer, alerts you about hot leads | OpenAI, Gmail, Google Sheets (Facebook optional) |
 | 2 | [02-ai-customer-service-chatbot](02-ai-customer-service-chatbot/) | Website chat that answers from the client's FAQ sheet and hands off to a person by email | OpenAI, Google Sheets, Gmail |
 | 3 | [03-ai-appointment-booking](03-ai-appointment-booking/) | Chat that checks the real calendar, books, finds and cancels appointments, and emails reminders 24 h before | OpenAI, Google Calendar, Gmail |
-| 4 | [04-ai-social-media-automation](04-ai-social-media-automation/) | Writes a week of posts from a content plan, asks for approval, publishes approved posts to Facebook, Instagram and LinkedIn (X optional) | OpenAI, Google Sheets, Gmail, Meta, LinkedIn |
+| 4 | [04-ai-social-media-automation](04-ai-social-media-automation/) | Writes a week of posts with AI images, asks for approval, publishes to Facebook, Instagram and LinkedIn (X optional), and replies to comments and messages (complaints go to you) | OpenAI, Google Sheets, Gmail, Meta, LinkedIn |
 | 5 | [05-ai-voice-receptionist](05-ai-voice-receptionist/) | Back office for a Vapi phone agent: free times, bookings, messages, call log and summary emails | Vapi, Google Calendar, Google Sheets, Gmail |
 | 6 | [06-ai-document-processing](06-ai-document-processing/) | Reads invoices and receipts (PDF or photo) from email or an upload form, extracts and checks the data, files them in Drive, logs them in a sheet | OpenAI, Gmail, Google Drive, Google Sheets |
 | 7 | [07-ai-security-monitoring-workflows](07-ai-security-monitoring-workflows/) | Receives alerts (Wazuh, Grafana/Alertmanager, AWS GuardDuty via EventBridge, any JSON), mutes repeats, checks IPs on VirusTotal, triages with AI, emails urgent ones, weekly summary | OpenAI, VirusTotal, Google Sheets, Gmail |
@@ -84,7 +84,7 @@ The JavaScript inside the Code nodes comes from `src/logic.mjs`, which has unit 
 - `npm test` runs the logic unit tests and checks that each workflow passes the marketplace's upload scan and has valid connections.
 - `automations/test/validate.cjs` checks every node against n8n's own node definitions: node types and versions exist,
   every parameter name is known, and required fields are filled (the same check the n8n editor uses for warnings).
-- `automations/test/run-all.cjs` runs 101 end-to-end checks **inside a real n8n**: each trigger is replaced by sample data,
+- `automations/test/run-all.cjs` runs 137 end-to-end checks **inside a real n8n**: each trigger is replaced by sample data,
   Google/Gmail/Meta/LinkedIn/VirusTotal nodes are replaced by stand-ins that still evaluate the node's real parameters,
   and the OpenAI requests go to a local mock. It covers every branch: new leads with and without email, auto-send and
   draft mode, follow-ups, replies, chat answers and the tools offered to the AI, reminders, drafting and publishing with

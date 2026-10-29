@@ -233,6 +233,75 @@ scenario(4, W4, {
   check('graph error on normal output and thrown error both reported', res.status === 'partly published' && res.published_to === 'instagram' && /facebook: Invalid OAuth/.test(res.errors) && /linkedin: LinkedIn credentials expired/.test(res.errors), res);
 });
 
+// --------------------------------------------------------------------------------------------- 4 (images, replies)
+scenario(4, W4, {
+  id: 'w4images00000001', trigger: 'Every Monday at 8:00', triggerCode: `return [{ json: {} }];`,
+  reads: { 'Read content plan': `() => [
+    { post_id: 'P1', publish_at: '${iso(new Date(Date.now() + 86400000))}', topic: 'Spring offer', status: 'idea', image_url: '' },
+    { post_id: 'P2', publish_at: '${iso(new Date(Date.now() + 2 * 86400000))}', topic: 'Team', status: 'idea', image_url: 'https://mine/photo.jpg' },
+  ]` },
+  stubs: {
+    'Store image on Facebook (unpublished)': { id: 'photo123' },
+    'Image link': { images: ["={{ [{ source: 'https://scontent.example/photo123.png' }] }}", 'array'] },
+  },
+}, (r) => {
+  const req = lastRequests(3).find((x) => x.url.endsWith('/images/generations'));
+  check('image created from the AI image prompt', req && req.body.model === 'gpt-image-1' && /bright modern office desk/.test(req.body.prompt) && !('response_format' in req.body), req && req.body);
+  const up = r.outputOf('Store image on Facebook (unpublished)')[0].__params;
+  check('image uploaded to the page unpublished as a file', up.sendBinaryData === 'true' && up.binaryPropertyName === 'source:data' && up.options.queryParameters.parameter[0].value === 'false', up);
+  const saved = r.outputOf('Save drafts');
+  const p1 = saved.find((x) => x.post_id === 'P1'); const p2 = saved.find((x) => x.post_id === 'P2');
+  check('new image URL saved for the post without one, own image kept', p1.image_url === 'https://scontent.example/photo123.png' && p2.image_url === 'https://mine/photo.jpg', saved.map((x) => [x.post_id, x.image_url]));
+  check('approver email lists the image', /image: https:\/\/scontent.example\/photo123.png/.test(r.outputOf('Ask for approval')[0].__params.message));
+});
+scenario(4, W4, {
+  id: 'w4noimages000001', trigger: 'Every Monday at 8:00', triggerCode: `return [{ json: {} }];`, settings: { generateImages: false },
+  reads: { 'Read content plan': `() => [{ post_id: 'P1', publish_at: '${iso(new Date(Date.now() + 86400000))}', topic: 'Spring offer', status: 'idea' }]` },
+}, (r) => {
+  check('no image created when turned off', !r.outputOf('Create image with AI') && r.outputOf('Save drafts').length === 1);
+});
+scenario(4, W4, {
+  id: 'w4verify00000001', trigger: 'Meta webhook check',
+  triggerCode: `return [{ json: { query: { 'hub.mode': 'subscribe', 'hub.verify_token': 'CHOOSE-A-LONG-RANDOM-TOKEN', 'hub.challenge': '987654' } } }];`,
+}, (r) => {
+  check('Meta verification answered with the challenge', r.outputOf('Confirm webhook')[0].__params.responseBody === '987654' && !r.outputOf('Refuse webhook'));
+});
+scenario(4, W4, {
+  id: 'w4verifyBad00001', trigger: 'Meta webhook check',
+  triggerCode: `return [{ json: { query: { 'hub.verify_token': 'wrong', 'hub.challenge': '1' } } }];`,
+}, (r) => {
+  check('wrong verify token refused with 403', r.outputOf('Refuse webhook')[0].__params.options.responseCode === '403' && !r.outputOf('Confirm webhook'));
+});
+scenario(4, W4, {
+  id: 'w4replies0000001', trigger: 'Meta events',
+  settings: { facebookPageId: 'PAGE1' },
+  triggerCode: `return [{ json: { body: { object: 'page', entry: [{ changes: [
+    { field: 'feed', value: { item: 'comment', verb: 'add', comment_id: 'c1', message: 'Are you open on Sunday?', from: { id: 'u1', name: 'Ana' }, post_id: 'p1' } },
+    { field: 'feed', value: { item: 'comment', verb: 'add', comment_id: 'c2', message: 'Our own reply', from: { id: 'PAGE1' } } },
+  ], messaging: [ { sender: { id: 'u9' }, message: { text: 'I want a refund, my order never arrived' } } ] }] } } }];`,
+}, (r) => {
+  const rows = r.outputOf('Log reply');
+  check('page’s own comment ignored, two events logged', rows.length === 2, rows.map((x) => x.text));
+  const fb = r.outputOf('Reply to Facebook comment');
+  check('question answered publicly under the comment', fb && fb.length === 1 && fb[0].__params.node === 'c1' && fb[0].__params.options.queryParameters.parameter[0].value === 'We are open every day from 9:00 to 18:00!', fb && fb[0].__params);
+  check('complaint not answered automatically', !r.outputOf('Answer the message'));
+  const ask = r.outputOf('Ask you to reply');
+  check('complaint sent to you with a suggested reply', ask && ask.length === 1 && /refund/.test(ask[0].__params.message) && /complaint/.test(ask[0].__params.subject), ask && ask[0].__params);
+});
+scenario(4, W4, {
+  id: 'w4dm000000000001', trigger: 'Meta events',
+  triggerCode: `return [{ json: { body: { object: 'instagram', entry: [{ messaging: [ { sender: { id: 'igu1' }, message: { text: 'Hi! Are you open today?' } } ] }] } } }];`,
+}, (r) => {
+  const m = r.outputOf('Answer the message');
+  check('Instagram DM answered privately with the Send API format', m && JSON.parse(m[0].__params.options.queryParameters.parameter[0].value).id === 'igu1' && JSON.parse(m[0].__params.options.queryParameters.parameter[1].value).text.startsWith('We are open') && m[0].__params.options.queryParameters.parameter[2].value === 'RESPONSE', m && m[0].__params);
+});
+scenario(4, W4, {
+  id: 'w4manual00000001', trigger: 'Meta events', settings: { autoReply: false },
+  triggerCode: `return [{ json: { body: { object: 'page', entry: [{ changes: [ { field: 'feed', value: { item: 'comment', verb: 'add', comment_id: 'c5', message: 'Price?', from: { id: 'u5', name: 'Leo' } } } ] }] } } }];`,
+}, (r) => {
+  check('with auto-reply off, every reply goes to you first', !r.outputOf('Reply to Facebook comment') && r.outputOf('Ask you to reply').length === 1 && r.outputOf('Log reply')[0].status === 'sent to you for review');
+});
+
 // --------------------------------------------------------------------------------------------- 5
 const W5 = '05-ai-voice-receptionist';
 const nextWeekday = (() => { const d = new Date(Date.now() + 2 * 86400000); while ([0, 6].includes(d.getUTCDay())) d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10); })();

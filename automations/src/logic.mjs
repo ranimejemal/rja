@@ -135,7 +135,8 @@ export function buildCaptionRequest(row, s) {
     `Brand voice: ${s.brandVoice}. Language: ${s.language}.`,
     "Write one post per network for the topic. Instagram: hook first line, up to 150 words, line breaks. Facebook: up to 100 words.",
     "LinkedIn: professional, up to 150 words. X: under 260 characters. No made-up facts, prices or statistics.",
-    'Answer with JSON only: {"instagram":"...","facebook":"...","linkedin":"...","x":"...","hashtags":"#tag1 #tag2 ..."}',
+    "image_prompt: a description of one eye-catching image for the post (subject, setting, style, colours), with no text, logos or real people's faces in it.",
+    'Answer with JSON only: {"instagram":"...","facebook":"...","linkedin":"...","x":"...","hashtags":"#tag1 #tag2 ...","image_prompt":"..."}',
   ].join("\n");
   const user = JSON.stringify({ topic: row.topic, notes: row.notes || "", call_to_action: row.call_to_action || s.defaultCallToAction });
   return {
@@ -853,4 +854,54 @@ export function lookalikeDomains(entries, brandsText, allowText, store) {
     out.push({ domain, registered_domain: reg, risk, reasons: reasons.join("; ") });
   }
   return out.sort((a, b) => (a.risk === b.risk ? a.domain.localeCompare(b.domain) : a.risk === "high" ? -1 : 1));
+}
+
+// ------------------------------------------------------------------------------------- social media extras
+
+/** OpenAI image request for a post. gpt-image models always return base64; older models need asking for it. */
+export function buildImageRequest(row, s) {
+  const prompt = `${row.image_prompt || row.topic}. Style: ${s.imageStyle}. No text, no logos, no watermarks.`.slice(0, 3800);
+  const body = { model: s.imageModel, prompt, n: 1, size: "1024x1024" };
+  if (!/^gpt-image/.test(String(s.imageModel))) body.response_format = "b64_json";
+  return body;
+}
+
+/** Comments and messages from a Meta (Facebook/Instagram) webhook, without the page's own activity. */
+export function parseMetaEvents(body, pageId, igId) {
+  const out = [];
+  const own = (id) => id && (String(id) === String(pageId) || String(id) === String(igId));
+  const ig = body && body.object === "instagram";
+  for (const entry of (body && body.entry) || []) {
+    for (const ch of entry.changes || []) {
+      const v = ch.value || {};
+      if (!ig && ch.field === "feed" && v.item === "comment" && v.verb === "add" && v.message && !own(v.from && v.from.id)) {
+        out.push({ channel: "facebook_comment", target_id: v.comment_id, text: v.message, author: (v.from && v.from.name) || "", post_id: v.post_id || "" });
+      }
+      if (ig && ch.field === "comments" && v.text && !own(v.from && v.from.id)) {
+        out.push({ channel: "instagram_comment", target_id: v.id, text: v.text, author: (v.from && v.from.username) || "", post_id: (v.media && v.media.id) || "" });
+      }
+    }
+    for (const m of entry.messaging || []) {
+      if (!m.message || !m.message.text || m.message.is_echo || own(m.sender && m.sender.id)) continue;
+      out.push({ channel: ig ? "instagram_dm" : "messenger", target_id: m.sender.id, text: m.message.text, author: "", post_id: "" });
+    }
+  }
+  return out.map((e) => ({ ...e, text: String(e.text).slice(0, 2000) }));
+}
+
+/** OpenAI request that drafts a public reply (comments) or a private answer (messages). */
+export function buildSocialReplyRequest(event, s) {
+  const isPrivate = /dm|messenger/.test(event.channel);
+  const system = [
+    `You answer ${isPrivate ? "private messages" : "public comments"} for ${s.businessName}. ${s.businessDescription}`,
+    `Brand voice: ${s.brandVoice}. Reply in the person's language. Keep it short: 1 to 3 sentences.`,
+    `What you know (use only this, never invent prices, dates or promises): ${s.replyKnowledge}`,
+    "needs_human = true for complaints, refunds, order problems, angry or abusive messages, legal or personal-data requests, or anything you cannot answer from what you know.",
+    "category: question, praise, complaint, spam, other. For spam, reply with an empty string.",
+    'Answer with JSON only: {"reply":"...","needs_human":false,"category":"question","sentiment":"positive|neutral|negative"}',
+  ].join("\n");
+  return {
+    model: s.openAiModel, temperature: 0.4, response_format: { type: "json_object" },
+    messages: [{ role: "system", content: system }, { role: "user", content: JSON.stringify({ channel: event.channel, from: event.author, text: event.text }) }],
+  };
 }

@@ -8,7 +8,7 @@
         "width": 600,
         "color": 4
       },
-      "id": "node-0203",
+      "id": "node-1uuote4-0001",
       "name": "Note 1",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -28,7 +28,7 @@
           ]
         }
       },
-      "id": "node-0204",
+      "id": "node-1uuote4-0002",
       "name": "Every Monday at 8:15",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
@@ -43,37 +43,37 @@
         "assignments": {
           "assignments": [
             {
-              "id": "set-0205",
+              "id": "set-1uuote4-0003",
               "name": "organisationName",
               "value": "Your company",
               "type": "string"
             },
             {
-              "id": "set-0206",
+              "id": "set-1uuote4-0004",
               "name": "emails",
               "value": "ceo@yourcompany.com\nfinance@yourcompany.com\nadmin@yourcompany.com",
               "type": "string"
             },
             {
-              "id": "set-0207",
+              "id": "set-1uuote4-0005",
               "name": "notifyPeople",
               "value": false,
               "type": "boolean"
             },
             {
-              "id": "set-0208",
+              "id": "set-1uuote4-0006",
               "name": "securityTeamEmail",
               "value": "security@yourcompany.com",
               "type": "string"
             },
             {
-              "id": "set-0209",
+              "id": "set-1uuote4-0007",
               "name": "senderName",
               "value": "IT security",
               "type": "string"
             },
             {
-              "id": "set-020a",
+              "id": "set-1uuote4-0008",
               "name": "googleSheetUrl",
               "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
               "type": "string"
@@ -83,7 +83,7 @@
         "includeOtherFields": true,
         "options": {}
       },
-      "id": "node-020b",
+      "id": "node-1uuote4-0009",
       "name": "Settings",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -98,7 +98,7 @@
       "parameters": {
         "jsCode": "return [...new Set(String($('Settings').first().json.emails).split(/[\\n,;]+/).map((e) => e.trim().toLowerCase()).filter((e) => /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(e)))]\n  .map((email) => ({ json: { email }, pairedItem: { item: 0 } }));"
       },
-      "id": "node-020c",
+      "id": "node-1uuote4-000a",
       "name": "Emails to check",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -147,7 +147,7 @@
           }
         }
       },
-      "id": "node-020d",
+      "id": "node-1uuote4-000b",
       "name": "Have I Been Pwned",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -163,7 +163,7 @@
       "parameters": {
         "jsCode": "function newBreaches(email, breaches, store) {\n  store.seen = store.seen || {};\n  const known = new Set(store.seen[email] || []);\n  const fresh = (Array.isArray(breaches) ? breaches : []).filter((b) => b && b.Name && !known.has(b.Name));\n  store.seen[email] = [...known, ...fresh.map((b) => b.Name)];\n  return fresh.map((b) => ({\n    email, breach: b.Title || b.Name, domain: b.Domain || \"\", breach_date: b.BreachDate || \"\", added: b.AddedDate || \"\",\n    data: (b.DataClasses || []).join(\", \"), passwords: (b.DataClasses || []).includes(\"Passwords\"), verified: b.IsVerified !== false,\n  }));\n}\n\nfunction breachAdvice(dataText) {\n  const d = String(dataText).toLowerCase();\n  const steps = [];\n  if (d.includes(\"password\")) steps.push(\"Change the password on that site and anywhere the same password is used, and turn on two-factor authentication.\");\n  if (/email|phone/.test(d)) steps.push(\"Expect targeted phishing that mentions this breach; do not click links in unexpected messages.\");\n  if (/credit card|bank|financial/.test(d)) steps.push(\"Watch bank statements and tell the bank about the breach.\");\n  if (/address|date of birth|government/.test(d)) steps.push(\"Be careful with calls or letters using these personal details.\");\n  if (!steps.length) steps.push(\"No immediate action is required; stay alert to unexpected messages.\");\n  return steps.join(\" \");\n}\n\nconst emails = $('Emails to check').all();\nconst store = $getWorkflowStaticData('global');\nconst now = new Date().toISOString();\nreturn $input.all().flatMap((item, i) => {\n  if (item.json.statusCode && item.json.statusCode !== 200) return [];   // 404 means no breach for this address\n  let breaches = [];\n  try { breaches = JSON.parse(item.json.body || item.json.data || '[]'); } catch { breaches = []; }\n  return newBreaches(emails[i].json.email, breaches, store).map((b) => ({ json: { found_at: now, ...b, advice: breachAdvice(b.data) }, pairedItem: { item: i } }));\n});"
       },
-      "id": "node-020e",
+      "id": "node-1uuote4-000c",
       "name": "New breaches",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -195,7 +195,7 @@
           "handlingExtraData": "ignoreIt"
         }
       },
-      "id": "node-020f",
+      "id": "node-1uuote4-000d",
       "name": "Log breaches",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -215,7 +215,7 @@
           },
           "conditions": [
             {
-              "id": "cond-0210",
+              "id": "cond-1uuote4-000e",
               "leftValue": "={{ $('Settings').first().json.notifyPeople }}",
               "rightValue": "",
               "operator": {
@@ -230,7 +230,7 @@
         "looseTypeValidation": true,
         "options": {}
       },
-      "id": "node-0211",
+      "id": "node-1uuote4-000f",
       "name": "Notify the person?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -250,7 +250,7 @@
           "senderName": "={{ $('Settings').first().json.senderName }}"
         }
       },
-      "id": "node-0212",
+      "id": "node-1uuote4-0010",
       "name": "Notify the person",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
@@ -263,7 +263,7 @@
       "parameters": {
         "jsCode": "const rows = $('New breaches').all().map((i) => i.json);\nconst lines = rows.map((r) => '- ' + r.email + ': ' + r.breach + ' (' + r.breach_date + ')' + (r.passwords ? ' [PASSWORDS EXPOSED]' : '') + '\\n  Data: ' + r.data);\nreturn [{ json: { count: rows.length, people: new Set(rows.map((r) => r.email)).size, passwords: rows.filter((r) => r.passwords).length, text: lines.join('\\n') }, pairedItem: rows.map((_, i) => ({ item: i })) }];"
       },
-      "id": "node-0213",
+      "id": "node-1uuote4-0011",
       "name": "Summary",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -284,7 +284,7 @@
           "senderName": "={{ $('Settings').first().json.senderName }}"
         }
       },
-      "id": "node-0214",
+      "id": "node-1uuote4-0012",
       "name": "Email the security team",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,

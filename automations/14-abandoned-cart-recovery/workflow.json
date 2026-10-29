@@ -8,7 +8,7 @@
         "width": 580,
         "color": 4
       },
-      "id": "node-016c",
+      "id": "node-136c7lw-0001",
       "name": "Note 1",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -22,7 +22,7 @@
         "authentication": "accessToken",
         "topic": "checkouts/create"
       },
-      "id": "node-016e",
+      "id": "node-136c7lw-0003",
       "name": "Checkout created",
       "type": "n8n-nodes-base.shopifyTrigger",
       "typeVersion": 1,
@@ -30,14 +30,14 @@
         -560,
         -40
       ],
-      "webhookId": "hook-016d"
+      "webhookId": "hook-136c7lw-0002"
     },
     {
       "parameters": {
         "authentication": "accessToken",
         "topic": "checkouts/update"
       },
-      "id": "node-0170",
+      "id": "node-136c7lw-0005",
       "name": "Checkout updated",
       "type": "n8n-nodes-base.shopifyTrigger",
       "typeVersion": 1,
@@ -45,14 +45,14 @@
         -560,
         140
       ],
-      "webhookId": "hook-016f"
+      "webhookId": "hook-136c7lw-0004"
     },
     {
       "parameters": {
         "authentication": "accessToken",
         "topic": "orders/create"
       },
-      "id": "node-0172",
+      "id": "node-136c7lw-0007",
       "name": "Order placed",
       "type": "n8n-nodes-base.shopifyTrigger",
       "typeVersion": 1,
@@ -60,7 +60,7 @@
         -560,
         320
       ],
-      "webhookId": "hook-0171"
+      "webhookId": "hook-136c7lw-0006"
     },
     {
       "parameters": {
@@ -73,7 +73,7 @@
           ]
         }
       },
-      "id": "node-0173",
+      "id": "node-136c7lw-0008",
       "name": "Every hour",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
@@ -88,73 +88,73 @@
         "assignments": {
           "assignments": [
             {
-              "id": "set-0174",
+              "id": "set-136c7lw-0009",
               "name": "storeName",
               "value": "Your store",
               "type": "string"
             },
             {
-              "id": "set-0175",
+              "id": "set-136c7lw-000a",
               "name": "brandVoice",
               "value": "friendly and simple",
               "type": "string"
             },
             {
-              "id": "set-0176",
+              "id": "set-136c7lw-000b",
               "name": "language",
               "value": "English",
               "type": "string"
             },
             {
-              "id": "set-0177",
+              "id": "set-136c7lw-000c",
               "name": "firstDelayHours",
               "value": 1,
               "type": "number"
             },
             {
-              "id": "set-0178",
+              "id": "set-136c7lw-000d",
               "name": "repeatHours",
               "value": 24,
               "type": "number"
             },
             {
-              "id": "set-0179",
+              "id": "set-136c7lw-000e",
               "name": "maxReminders",
               "value": 2,
               "type": "number"
             },
             {
-              "id": "set-017a",
+              "id": "set-136c7lw-000f",
               "name": "discountCode",
               "value": "",
               "type": "string"
             },
             {
-              "id": "set-017b",
+              "id": "set-136c7lw-0010",
               "name": "discountText",
               "value": "10% off your order",
               "type": "string"
             },
             {
-              "id": "set-017c",
+              "id": "set-136c7lw-0011",
               "name": "senderName",
               "value": "Your store",
               "type": "string"
             },
             {
-              "id": "set-017d",
+              "id": "set-136c7lw-0012",
               "name": "googleSheetUrl",
               "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
               "type": "string"
             },
             {
-              "id": "set-017e",
+              "id": "set-136c7lw-0013",
               "name": "openAiModel",
               "value": "gpt-4.1-mini",
               "type": "string"
             },
             {
-              "id": "set-017f",
+              "id": "set-136c7lw-0014",
               "name": "openAiBaseUrl",
               "value": "https://api.openai.com/v1",
               "type": "string"
@@ -164,7 +164,7 @@
         "includeOtherFields": true,
         "options": {}
       },
-      "id": "node-0180",
+      "id": "node-136c7lw-0015",
       "name": "Settings",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -189,7 +189,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "cond-0181",
+                    "id": "cond-136c7lw-0016",
                     "leftValue": "={{ $('Checkout created').isExecuted || $('Checkout updated').isExecuted }}",
                     "rightValue": "",
                     "operator": {
@@ -214,7 +214,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "cond-0182",
+                    "id": "cond-136c7lw-0017",
                     "leftValue": "={{ $('Order placed').isExecuted }}",
                     "rightValue": "",
                     "operator": {
@@ -239,7 +239,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "cond-0183",
+                    "id": "cond-136c7lw-0018",
                     "leftValue": "={{ $('Every hour').isExecuted }}",
                     "rightValue": "",
                     "operator": {
@@ -258,7 +258,7 @@
         },
         "options": {}
       },
-      "id": "node-0184",
+      "id": "node-136c7lw-0019",
       "name": "Route",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
@@ -271,7 +271,7 @@
       "parameters": {
         "jsCode": "function checkoutRow(c) {\n  const items = (c.line_items || []).map((l) => `${l.quantity} x ${l.title}`).join(\", \");\n  return {\n    checkout_id: String(c.token || c.id || \"\"), email: c.email || (c.customer && c.customer.email) || \"\",\n    first_name: (c.customer && c.customer.first_name) || (c.billing_address && c.billing_address.first_name) || \"\",\n    items, total: c.total_price || \"\", currency: c.currency || c.presentment_currency || \"\",\n    recovery_url: c.abandoned_checkout_url || \"\", created_at: c.created_at || new Date().toISOString(),\n  };\n}\n\nreturn $input.all().map((item, i) => ({ json: checkoutRow(item.json), pairedItem: { item: i } })).filter((i) => i.json.checkout_id);"
       },
-      "id": "node-0185",
+      "id": "node-136c7lw-001a",
       "name": "Cart row",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -305,7 +305,7 @@
           "handlingExtraData": "ignoreIt"
         }
       },
-      "id": "node-0186",
+      "id": "node-136c7lw-001b",
       "name": "Save cart",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -328,7 +328,7 @@
         },
         "options": {}
       },
-      "id": "node-0187",
+      "id": "node-136c7lw-001c",
       "name": "Read carts (order)",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -343,7 +343,7 @@
       "parameters": {
         "jsCode": "const orders = $('Order placed').all().map((o) => o.json);\nreturn $input.all()\n  .map((item, i) => ({ row: item.json, i }))\n  .filter(({ row }) => row.checkout_id && String(row.status || 'open').toLowerCase() === 'open')\n  .map(({ row, i }) => {\n    const order = orders.find((o) => (o.checkout_token && String(o.checkout_token) === String(row.checkout_id)) || (o.email && row.email && o.email.toLowerCase() === String(row.email).toLowerCase()));\n    return order ? { json: { checkout_id: row.checkout_id, status: 'recovered', recovered_order: String(order.name || order.id) }, pairedItem: { item: i } } : null;\n  })\n  .filter(Boolean);"
       },
-      "id": "node-0188",
+      "id": "node-136c7lw-001d",
       "name": "Recovered carts",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -377,7 +377,7 @@
           "handlingExtraData": "ignoreIt"
         }
       },
-      "id": "node-0189",
+      "id": "node-136c7lw-001e",
       "name": "Mark recovered",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -400,7 +400,7 @@
         },
         "options": {}
       },
-      "id": "node-018a",
+      "id": "node-136c7lw-001f",
       "name": "Read carts",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -414,7 +414,7 @@
       "parameters": {
         "jsCode": "function dueCartReminders(rows, nowIso, firstDelayHours, repeatHours, max) {\n  const now = Date.parse(nowIso);\n  return rows.filter((r) => {\n    // Rows saved from Shopify have no status until a reminder or an order changes it: empty means open.\n    if (String(r.status || \"open\").toLowerCase() !== \"open\" || !r.email || !r.recovery_url) return false;\n    const sent = Number(r.reminders || 0);\n    if (sent >= max) return false;\n    const since = sent === 0 ? Date.parse(r.created_at) : Date.parse(r.last_reminder_at);\n    const wait = (sent === 0 ? firstDelayHours : repeatHours) * 3600000;\n    return Number.isFinite(since) && now - since >= wait;\n  });\n}\n\nfunction buildCartReminderRequest(cart, n, s) {\n  const system = [\n    `You write cart reminder emails for ${s.storeName}. Brand voice: ${s.brandVoice}. Language: ${s.language}.`,\n    `This is reminder ${n}. Under 90 words. Mention the items. Friendly, no pressure, no false urgency, no made-up stock levels.`,\n    s.discountCode && n >= 2 ? `Mention the discount code ${s.discountCode} (${s.discountText}).` : \"Do not mention any discount.\",\n    'Answer with JSON only: {\"subject\":\"...\",\"body\":\"plain text, without the link (it is added after)\"}',\n  ].join(\"\\n\");\n  return {\n    model: s.openAiModel, temperature: 0.6, response_format: { type: \"json_object\" },\n    messages: [{ role: \"system\", content: system }, { role: \"user\", content: JSON.stringify({ first_name: cart.first_name, items: cart.items, total: `${cart.total} ${cart.currency}` }) }],\n  };\n}\n\nconst s = $('Settings').first().json;\nconst input = $input.all();\nconst index = new Map(input.map((it, i) => [it.json, i]));\nconst rows = input.map((i) => i.json).filter((r) => r.checkout_id);\nreturn dueCartReminders(rows, new Date().toISOString(), Number(s.firstDelayHours), Number(s.repeatHours), Number(s.maxReminders)).map((row) => {\n  const n = Number(row.reminders || 0) + 1;\n  return { json: { ...row, reminder_number: n, request: buildCartReminderRequest(row, n, s) }, pairedItem: { item: index.get(row) } };\n});"
       },
-      "id": "node-018b",
+      "id": "node-136c7lw-0020",
       "name": "Carts to remind",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -436,7 +436,7 @@
           "timeout": 120000
         }
       },
-      "id": "node-018c",
+      "id": "node-136c7lw-0021",
       "name": "Write reminder with AI",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -452,7 +452,7 @@
       "parameters": {
         "jsCode": "function readAiJson(response) {\n  const content = response && response.choices && response.choices[0] && response.choices[0].message && response.choices[0].message.content;\n  if (!content) throw new Error(\"OpenAI returned no answer: \" + JSON.stringify(response).slice(0, 300));\n  try {\n    return JSON.parse(content);\n  } catch {\n    throw new Error(\"OpenAI answer was not valid JSON: \" + content.slice(0, 300));\n  }\n}\n\nconst src = $('Carts to remind').all();\nreturn $input.all().map((item, i) => {\n  const c = src[i].json;\n  const ai = readAiJson(item.json);\n  return { json: { checkout_id: c.checkout_id, email: c.email, reminder_number: c.reminder_number, subject: ai.subject || 'You left something in your cart',\n    body: (ai.body || '') + '\\n\\nComplete your order: ' + c.recovery_url }, pairedItem: { item: i } };\n});"
       },
-      "id": "node-018d",
+      "id": "node-136c7lw-0022",
       "name": "Reminder email",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -472,7 +472,7 @@
           "senderName": "={{ $('Settings').first().json.senderName }}"
         }
       },
-      "id": "node-018e",
+      "id": "node-136c7lw-0023",
       "name": "Send reminder",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
@@ -485,7 +485,7 @@
       "parameters": {
         "jsCode": "return $input.all().map((_, i) => {\n  const m = $('Reminder email').all()[i].json;\n  return { json: { checkout_id: m.checkout_id, status: 'open', reminders: m.reminder_number, last_reminder_at: new Date().toISOString() }, pairedItem: { item: i } };\n});"
       },
-      "id": "node-018f",
+      "id": "node-136c7lw-0024",
       "name": "Reminder sent",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -519,7 +519,7 @@
           "handlingExtraData": "ignoreIt"
         }
       },
-      "id": "node-0190",
+      "id": "node-136c7lw-0025",
       "name": "Record reminder",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,

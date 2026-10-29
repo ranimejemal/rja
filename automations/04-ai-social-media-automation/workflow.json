@@ -3,18 +3,18 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## AI Social Media Automation\n1. Fill in **Settings**.\n2. Make a Google Sheet with a **Content plan** tab (columns in `content-plan.csv`). Add one row per post: post_id, publish_at, topic, status = idea.\n3. Every Monday the AI writes the posts and emails the approver. Change status to **approved** in the sheet to publish.\n4. Every hour the next approved post whose time has come is published (one post per hour).\n5. Connect OpenAI, Google Sheets, Gmail, Facebook Graph API (page token) and LinkedIn. X is disabled: enable it if you have API access.",
-        "height": 320,
-        "width": 560,
+        "content": "## AI Social Media Automation\n**Write** (every Monday): the AI writes each planned post for Instagram, Facebook, LinkedIn and X, creates an **AI image** when the row has none, saves the drafts and asks for approval.\n**Publish** (every hour): the next approved post is published (one per hour); the result per network is written back.\n**Reply** (instantly): comments and messages on your Facebook page and Instagram account get an AI reply in your brand voice. Complaints and anything uncertain are sent to you instead; set `autoReply` to false to approve every reply yourself.\n1. Fill in **Settings**. 2. Make a sheet with **Content plan** and **Replies** tabs (CSV files). 3. Connect OpenAI, Google Sheets, Gmail, Facebook Graph API (page token) and LinkedIn; X is disabled. 4. For replies, subscribe your Meta app's webhooks (page: feed, messages; Instagram: comments, messages) to the *Meta events* URL with your verify token.",
+        "height": 400,
+        "width": 640,
         "color": 4
       },
-      "id": "node-006e",
+      "id": "node-1ltg32v-0001",
       "name": "Note 1",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
         -560,
-        -460
+        -560
       ]
     },
     {
@@ -28,7 +28,7 @@
           ]
         }
       },
-      "id": "node-006f",
+      "id": "node-1ltg32v-0002",
       "name": "Every Monday at 8:00",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
@@ -48,14 +48,48 @@
           ]
         }
       },
-      "id": "node-0070",
+      "id": "node-1ltg32v-0003",
       "name": "Every hour",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
         -560,
-        400
+        520
       ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "meta-social-k7q2x9",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-1ltg32v-0005",
+      "name": "Meta webhook check",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        900
+      ],
+      "webhookId": "hook-1ltg32v-0004"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "meta-social-k7q2x9",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "node-1ltg32v-0007",
+      "name": "Meta events",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        1100
+      ],
+      "webhookId": "hook-1ltg32v-0006"
     },
     {
       "parameters": {
@@ -63,85 +97,121 @@
         "assignments": {
           "assignments": [
             {
-              "id": "set-0071",
+              "id": "set-1ltg32v-0008",
               "name": "businessName",
               "value": "Your brand",
               "type": "string"
             },
             {
-              "id": "set-0072",
+              "id": "set-1ltg32v-0009",
               "name": "businessDescription",
               "value": "What the brand does, in one or two sentences.",
               "type": "string"
             },
             {
-              "id": "set-0073",
+              "id": "set-1ltg32v-000a",
               "name": "brandVoice",
               "value": "warm, confident, no jargon",
               "type": "string"
             },
             {
-              "id": "set-0074",
+              "id": "set-1ltg32v-000b",
               "name": "language",
               "value": "English",
               "type": "string"
             },
             {
-              "id": "set-0075",
+              "id": "set-1ltg32v-000c",
               "name": "defaultCallToAction",
               "value": "Send us a message to learn more.",
               "type": "string"
             },
             {
-              "id": "set-0076",
+              "id": "set-1ltg32v-000d",
               "name": "approverEmail",
               "value": "you@yourbrand.com",
               "type": "string"
             },
             {
-              "id": "set-0077",
+              "id": "set-1ltg32v-000e",
               "name": "facebookPageId",
               "value": "YOUR_FACEBOOK_PAGE_ID",
               "type": "string"
             },
             {
-              "id": "set-0078",
+              "id": "set-1ltg32v-000f",
               "name": "instagramAccountId",
               "value": "YOUR_INSTAGRAM_BUSINESS_ACCOUNT_ID",
               "type": "string"
             },
             {
-              "id": "set-0079",
+              "id": "set-1ltg32v-0010",
               "name": "linkedinOrganizationId",
               "value": "YOUR_LINKEDIN_ORGANIZATION_ID",
               "type": "string"
             },
             {
-              "id": "set-007a",
+              "id": "set-1ltg32v-0011",
               "name": "googleSheetUrl",
               "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
               "type": "string"
             },
             {
-              "id": "set-007b",
+              "id": "set-1ltg32v-0012",
               "name": "daysAhead",
               "value": 7,
               "type": "number"
             },
             {
-              "id": "set-007c",
+              "id": "set-1ltg32v-0013",
+              "name": "generateImages",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "set-1ltg32v-0014",
+              "name": "imageModel",
+              "value": "gpt-image-1",
+              "type": "string"
+            },
+            {
+              "id": "set-1ltg32v-0015",
+              "name": "imageStyle",
+              "value": "clean, modern, bright photo with natural light",
+              "type": "string"
+            },
+            {
+              "id": "set-1ltg32v-0016",
+              "name": "autoReply",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "set-1ltg32v-0017",
+              "name": "replyKnowledge",
+              "value": "Opening hours, prices, delivery, services, booking link and anything customers often ask.",
+              "type": "string"
+            },
+            {
+              "id": "set-1ltg32v-0018",
+              "name": "metaVerifyToken",
+              "value": "CHOOSE-A-LONG-RANDOM-TOKEN",
+              "type": "string"
+            },
+            {
+              "id": "set-1ltg32v-0019",
               "name": "senderName",
               "value": "Social media assistant",
               "type": "string"
             },
             {
-              "id": "set-007d",
+              "id": "set-1ltg32v-001a",
               "name": "openAiModel",
               "value": "gpt-4.1-mini",
               "type": "string"
             },
             {
-              "id": "set-007e",
+              "id": "set-1ltg32v-001b",
               "name": "openAiBaseUrl",
               "value": "https://api.openai.com/v1",
               "type": "string"
@@ -151,13 +221,13 @@
         "includeOtherFields": true,
         "options": {}
       },
-      "id": "node-007f",
+      "id": "node-1ltg32v-001c",
       "name": "Settings",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
         -320,
-        200
+        520
       ],
       "notes": "Fill in these values before activating.",
       "color": "#FFD233"
@@ -176,7 +246,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "cond-0080",
+                    "id": "cond-1ltg32v-001d",
                     "leftValue": "={{ $('Every Monday at 8:00').isExecuted }}",
                     "rightValue": "",
                     "operator": {
@@ -201,7 +271,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "cond-0081",
+                    "id": "cond-1ltg32v-001e",
                     "leftValue": "={{ $('Every hour').isExecuted }}",
                     "rightValue": "",
                     "operator": {
@@ -215,18 +285,68 @@
               },
               "renameOutput": true,
               "outputKey": "Publish"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "cond-1ltg32v-001f",
+                    "leftValue": "={{ $('Meta webhook check').isExecuted }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Verify webhook"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "cond-1ltg32v-0020",
+                    "leftValue": "={{ $('Meta events').isExecuted }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Reply"
             }
           ]
         },
         "options": {}
       },
-      "id": "node-0082",
+      "id": "node-1ltg32v-0021",
       "name": "Route",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
       "position": [
         -100,
-        200
+        520
       ]
     },
     {
@@ -243,7 +363,7 @@
         },
         "options": {}
       },
-      "id": "node-0083",
+      "id": "node-1ltg32v-0022",
       "name": "Read content plan",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
@@ -255,9 +375,9 @@
     },
     {
       "parameters": {
-        "jsCode": "function contentToDraft(rows, nowIso, daysAhead) {\n  const now = Date.parse(nowIso);\n  return rows.filter((r) => {\n    const at = Date.parse(r.publish_at);\n    return String(r.status).toLowerCase() === \"idea\" && r.topic && Number.isFinite(at) && at >= now - 86400000 && at <= now + daysAhead * 86400000;\n  });\n}\n\nfunction buildCaptionRequest(row, s) {\n  const system = [\n    `You are the social media writer for ${s.businessName}. ${s.businessDescription}`,\n    `Brand voice: ${s.brandVoice}. Language: ${s.language}.`,\n    \"Write one post per network for the topic. Instagram: hook first line, up to 150 words, line breaks. Facebook: up to 100 words.\",\n    \"LinkedIn: professional, up to 150 words. X: under 260 characters. No made-up facts, prices or statistics.\",\n    'Answer with JSON only: {\"instagram\":\"...\",\"facebook\":\"...\",\"linkedin\":\"...\",\"x\":\"...\",\"hashtags\":\"#tag1 #tag2 ...\"}',\n  ].join(\"\\n\");\n  const user = JSON.stringify({ topic: row.topic, notes: row.notes || \"\", call_to_action: row.call_to_action || s.defaultCallToAction });\n  return {\n    model: s.openAiModel,\n    temperature: 0.7,\n    response_format: { type: \"json_object\" },\n    messages: [{ role: \"system\", content: system }, { role: \"user\", content: user }],\n  };\n}\n\nconst s = $('Settings').first().json;\nconst input = $input.all();\nconst index = new Map(input.map((it, i) => [it.json, i]));\nconst rows = input.map((i) => i.json).filter((r) => r.post_id);\nreturn contentToDraft(rows, new Date().toISOString(), Number(s.daysAhead)).map((row) => ({ json: { ...row, request: buildCaptionRequest(row, s) }, pairedItem: { item: index.get(row) } }));"
+        "jsCode": "function contentToDraft(rows, nowIso, daysAhead) {\n  const now = Date.parse(nowIso);\n  return rows.filter((r) => {\n    const at = Date.parse(r.publish_at);\n    return String(r.status).toLowerCase() === \"idea\" && r.topic && Number.isFinite(at) && at >= now - 86400000 && at <= now + daysAhead * 86400000;\n  });\n}\n\nfunction buildCaptionRequest(row, s) {\n  const system = [\n    `You are the social media writer for ${s.businessName}. ${s.businessDescription}`,\n    `Brand voice: ${s.brandVoice}. Language: ${s.language}.`,\n    \"Write one post per network for the topic. Instagram: hook first line, up to 150 words, line breaks. Facebook: up to 100 words.\",\n    \"LinkedIn: professional, up to 150 words. X: under 260 characters. No made-up facts, prices or statistics.\",\n    \"image_prompt: a description of one eye-catching image for the post (subject, setting, style, colours), with no text, logos or real people's faces in it.\",\n    'Answer with JSON only: {\"instagram\":\"...\",\"facebook\":\"...\",\"linkedin\":\"...\",\"x\":\"...\",\"hashtags\":\"#tag1 #tag2 ...\",\"image_prompt\":\"...\"}',\n  ].join(\"\\n\");\n  const user = JSON.stringify({ topic: row.topic, notes: row.notes || \"\", call_to_action: row.call_to_action || s.defaultCallToAction });\n  return {\n    model: s.openAiModel,\n    temperature: 0.7,\n    response_format: { type: \"json_object\" },\n    messages: [{ role: \"system\", content: system }, { role: \"user\", content: user }],\n  };\n}\n\nconst s = $('Settings').first().json;\nconst input = $input.all();\nconst index = new Map(input.map((it, i) => [it.json, i]));\nconst rows = input.map((i) => i.json).filter((r) => r.post_id);\nreturn contentToDraft(rows, new Date().toISOString(), Number(s.daysAhead)).map((row) => ({ json: { ...row, request: buildCaptionRequest(row, s) }, pairedItem: { item: index.get(row) } }));"
       },
-      "id": "node-0084",
+      "id": "node-1ltg32v-0023",
       "name": "Posts to write",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -279,7 +399,7 @@
           "timeout": 120000
         }
       },
-      "id": "node-0085",
+      "id": "node-1ltg32v-0024",
       "name": "Write posts with AI",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -293,14 +413,184 @@
     },
     {
       "parameters": {
-        "jsCode": "function readAiJson(response) {\n  const content = response && response.choices && response.choices[0] && response.choices[0].message && response.choices[0].message.content;\n  if (!content) throw new Error(\"OpenAI returned no answer: \" + JSON.stringify(response).slice(0, 300));\n  try {\n    return JSON.parse(content);\n  } catch {\n    throw new Error(\"OpenAI answer was not valid JSON: \" + content.slice(0, 300));\n  }\n}\n\nconst rows = $('Posts to write').all();\nreturn $input.all().map((item, i) => {\n  const row = rows[i].json;\n  const ai = readAiJson(item.json);\n  return { json: { post_id: row.post_id, status: 'waiting approval', instagram: ai.instagram || '', facebook: ai.facebook || '',\n    linkedin: ai.linkedin || '', x: ai.x || '', hashtags: ai.hashtags || '', topic: row.topic, publish_at: row.publish_at }, pairedItem: { item: i } };\n});"
+        "jsCode": "function readAiJson(response) {\n  const content = response && response.choices && response.choices[0] && response.choices[0].message && response.choices[0].message.content;\n  if (!content) throw new Error(\"OpenAI returned no answer: \" + JSON.stringify(response).slice(0, 300));\n  try {\n    return JSON.parse(content);\n  } catch {\n    throw new Error(\"OpenAI answer was not valid JSON: \" + content.slice(0, 300));\n  }\n}\n\nconst rows = $('Posts to write').all();\nreturn $input.all().map((item, i) => {\n  const row = rows[i].json;\n  const ai = readAiJson(item.json);\n  return { json: { post_id: row.post_id, status: 'waiting approval', instagram: ai.instagram || '', facebook: ai.facebook || '',\n    linkedin: ai.linkedin || '', x: ai.x || '', hashtags: ai.hashtags || '', image_prompt: ai.image_prompt || '', image_url: row.image_url || '',\n    topic: row.topic, publish_at: row.publish_at }, pairedItem: { item: i } };\n});"
       },
-      "id": "node-0086",
+      "id": "node-1ltg32v-0025",
       "name": "Draft rows",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         820,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-1ltg32v-0026",
+              "leftValue": "={{ $('Settings').first().json.generateImages && !$json.image_url }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "node-1ltg32v-0027",
+      "name": "Needs an AI image?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1040,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "function buildImageRequest(row, s) {\n  const prompt = `${row.image_prompt || row.topic}. Style: ${s.imageStyle}. No text, no logos, no watermarks.`.slice(0, 3800);\n  const body = { model: s.imageModel, prompt, n: 1, size: \"1024x1024\" };\n  if (!/^gpt-image/.test(String(s.imageModel))) body.response_format = \"b64_json\";\n  return body;\n}\n\nreturn { json: { ...$json, request: buildImageRequest($json, $('Settings').first().json) } };"
+      },
+      "id": "node-1ltg32v-0028",
+      "name": "Image request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1260,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Settings').first().json.openAiBaseUrl }}/images/generations",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.request) }}",
+        "options": {
+          "timeout": 180000
+        }
+      },
+      "id": "node-1ltg32v-0029",
+      "name": "Create image with AI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1480,
+        -120
+      ],
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const draft = $('Image request').item.json;\nconst b64 = $json.data && $json.data[0] && $json.data[0].b64_json;\nif (!b64) return { json: { ...draft, image_error: ($json.error && ($json.error.message || $json.error)) || 'no image returned' } };\nconst data = await this.helpers.prepareBinaryData(Buffer.from(b64, 'base64'), draft.post_id + '.png', 'image/png');\nreturn { json: draft, binary: { data } };"
+      },
+      "id": "node-1ltg32v-002a",
+      "name": "Image file",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1700,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "httpRequestMethod": "POST",
+        "graphApiVersion": "v22.0",
+        "node": "={{ $('Settings').first().json.facebookPageId }}",
+        "edge": "photos",
+        "sendBinaryData": true,
+        "binaryPropertyName": "source:data",
+        "options": {
+          "queryParameters": {
+            "parameter": [
+              {
+                "name": "published",
+                "value": "false"
+              }
+            ]
+          }
+        }
+      },
+      "id": "node-1ltg32v-002b",
+      "name": "Store image on Facebook (unpublished)",
+      "type": "n8n-nodes-base.facebookGraphApi",
+      "typeVersion": 1,
+      "position": [
+        1920,
+        -120
+      ],
+      "onError": "continueRegularOutput",
+      "notes": "Hosts the image on your page without posting it, so Instagram can fetch it by URL."
+    },
+    {
+      "parameters": {
+        "httpRequestMethod": "GET",
+        "graphApiVersion": "v22.0",
+        "node": "={{ $json.id || 'missing' }}",
+        "edge": "",
+        "options": {
+          "fields": {
+            "field": [
+              {
+                "name": "images"
+              }
+            ]
+          }
+        }
+      },
+      "id": "node-1ltg32v-002c",
+      "name": "Image link",
+      "type": "n8n-nodes-base.facebookGraphApi",
+      "typeVersion": 1,
+      "position": [
+        2140,
+        -120
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const draft = $('Image file').item.json;\nconst url = ($json.images && $json.images[0] && $json.images[0].source) || '';\nconst { image_error, ...row } = draft;\nreturn { json: { ...row, image_url: url, image_note: url ? 'AI image' : 'Image not created: ' + (image_error || ($json.error && ($json.error.message || $json.error)) || 'upload failed') } };"
+      },
+      "id": "node-1ltg32v-002d",
+      "name": "Draft with image",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2360,
+        -120
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "node-1ltg32v-002e",
+      "name": "All drafts",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        2580,
         0
       ]
     },
@@ -329,25 +619,25 @@
           "handlingExtraData": "ignoreIt"
         }
       },
-      "id": "node-0087",
+      "id": "node-1ltg32v-002f",
       "name": "Save drafts",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
-        1040,
+        2800,
         0
       ]
     },
     {
       "parameters": {
-        "jsCode": "const posts = $('Draft rows').all().map((i) => i.json);\nconst list = posts.map((p) => '- ' + p.publish_at + ': ' + p.topic).join('\\n');\nreturn [{ json: { count: posts.length, list }, pairedItem: $input.all().map((_, i) => ({ item: i })) }];"
+        "jsCode": "const posts = $('All drafts').all().map((i) => i.json);\nconst list = posts.map((p) => '- ' + p.publish_at + ': ' + p.topic + (p.image_url ? ' (image: ' + p.image_url + ')' : p.image_note ? ' (' + p.image_note + ')' : '')).join('\\n');\nreturn [{ json: { count: posts.length, list }, pairedItem: $input.all().map((_, i) => ({ item: i })) }];"
       },
-      "id": "node-0088",
+      "id": "node-1ltg32v-0030",
       "name": "Approval summary",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1260,
+        3020,
         0
       ]
     },
@@ -356,18 +646,18 @@
         "sendTo": "={{ $('Settings').first().json.approverEmail }}",
         "subject": "={{ $json.count }} social posts are ready for approval",
         "emailType": "text",
-        "message": "=Hello,\n\nThe posts for the coming days are written:\n{{ $json.list }}\n\nOpen the content plan, check and edit the texts, then set the status to \"approved\" for each post you want published:\n{{ $('Settings').first().json.googleSheetUrl }}\n\nApproved posts are published automatically at their publish time.",
+        "message": "=Hello,\n\nThe posts for the coming days are written:\n{{ $json.list }}\n\nOpen the content plan, check the texts and images, edit anything you like, then set the status to \"approved\" for each post you want published:\n{{ $('Settings').first().json.googleSheetUrl }}\n\nApproved posts are published automatically at their publish time.",
         "options": {
           "appendAttribution": false,
           "senderName": "={{ $('Settings').first().json.senderName }}"
         }
       },
-      "id": "node-0089",
+      "id": "node-1ltg32v-0031",
       "name": "Ask for approval",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
       "position": [
-        1480,
+        3240,
         0
       ]
     },
@@ -385,13 +675,13 @@
         },
         "options": {}
       },
-      "id": "node-008a",
+      "id": "node-1ltg32v-0032",
       "name": "Read approved posts",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
         160,
-        400
+        520
       ],
       "alwaysOutputData": true
     },
@@ -399,13 +689,13 @@
       "parameters": {
         "jsCode": "function duePosts(rows, nowIso, status = \"approved\") {\n  const now = Date.parse(nowIso);\n  return rows.filter((r) => String(r.status).toLowerCase() === status && Date.parse(r.publish_at) <= now);\n}\n\nconst input = $input.all();\nconst index = new Map(input.map((it, i) => [it.json, i]));\nconst rows = input.map((i) => i.json).filter((r) => r.post_id);\n// One post per run (the trigger runs hourly), so each result clearly belongs to one post.\nreturn duePosts(rows, new Date().toISOString(), \"approved\").slice(0, 1).map((row) => ({ json: row, pairedItem: { item: index.get(row) } }));"
       },
-      "id": "node-008b",
+      "id": "node-1ltg32v-0033",
       "name": "Posts due now",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         380,
-        400
+        520
       ]
     },
     {
@@ -425,13 +715,13 @@
           }
         }
       },
-      "id": "node-008c",
+      "id": "node-1ltg32v-0034",
       "name": "Post to Facebook",
       "type": "n8n-nodes-base.facebookGraphApi",
       "typeVersion": 1,
       "position": [
         600,
-        400
+        520
       ],
       "onError": "continueErrorOutput"
     },
@@ -456,13 +746,13 @@
           }
         }
       },
-      "id": "node-008d",
+      "id": "node-1ltg32v-0035",
       "name": "Instagram: upload image",
       "type": "n8n-nodes-base.facebookGraphApi",
       "typeVersion": 1,
       "position": [
         820,
-        400
+        520
       ],
       "onError": "continueErrorOutput",
       "notes": "Instagram needs an image: put a public image URL in the image_url column."
@@ -484,13 +774,13 @@
           }
         }
       },
-      "id": "node-008e",
+      "id": "node-1ltg32v-0036",
       "name": "Instagram: publish",
       "type": "n8n-nodes-base.facebookGraphApi",
       "typeVersion": 1,
       "position": [
         1040,
-        340
+        460
       ],
       "onError": "continueErrorOutput"
     },
@@ -502,13 +792,13 @@
         "shareMediaCategory": "NONE",
         "additionalFields": {}
       },
-      "id": "node-008f",
+      "id": "node-1ltg32v-0037",
       "name": "Post to LinkedIn",
       "type": "n8n-nodes-base.linkedIn",
       "typeVersion": 1,
       "position": [
         1260,
-        400
+        520
       ],
       "onError": "continueErrorOutput"
     },
@@ -517,13 +807,13 @@
         "text": "={{ $('Posts due now').first().json.x }}",
         "additionalFields": {}
       },
-      "id": "node-0090",
+      "id": "node-1ltg32v-0038",
       "name": "Post to X",
       "type": "n8n-nodes-base.twitter",
       "typeVersion": 2,
       "position": [
         1480,
-        400
+        520
       ],
       "onError": "continueErrorOutput",
       "disabled": true,
@@ -533,13 +823,13 @@
       "parameters": {
         "jsCode": "function publishOutcome(results) {\n  const failed = results.filter((r) => r.enabled && r.error).map((r) => `${r.network}: ${r.error}`);\n  const done = results.filter((r) => r.enabled && !r.error).map((r) => r.network);\n  return {\n    status: failed.length === 0 ? \"published\" : done.length ? \"partly published\" : \"failed\",\n    published_to: done.join(\", \"),\n    errors: failed.join(\" | \").slice(0, 1000),\n  };\n}\n\n// Each network node sends failures to its error output. A disabled node passes its input through unchanged,\n// so a network only counts as published when its node returned a new response without an error.\nconst post = $('Posts due now').first();\nconst steps = [\n  ['facebook', 'Post to Facebook'], ['instagram', 'Instagram: upload image'], ['instagram', 'Instagram: publish'],\n  ['linkedin', 'Post to LinkedIn'], ['x', 'Post to X'],\n];\nconst emitted = (node) => {\n  try { if (!$(node).isExecuted) return null; } catch { return null; }\n  let failed = [];\n  try { failed = $(node).all(1); } catch { failed = []; }\n  if (failed.length) return { json: failed[0].json, failed: true };\n  const ok = $(node).all(0);\n  return ok.length ? { json: ok[0].json, failed: false } : null;\n};\nconst status = {};\nlet previous = JSON.stringify(post.json);\nfor (const [network, node] of steps) {\n  const out = emitted(node);\n  if (!out) { status[network] = status[network] || { network, enabled: false }; continue; }\n  const now = JSON.stringify(out.json);\n  const passedThrough = !out.failed && now === previous;\n  previous = now;\n  if (status[network] && status[network].error) continue;\n  if (passedThrough) { status[network] = status[network] || { network, enabled: false }; continue; }\n  const e = out.json.error;\n  const message = out.failed ? (e && (e.message || e.description || e)) || 'failed' : out.json.statusCode ? out.json.message || 'HTTP ' + out.json.statusCode : '';\n  status[network] = { network, enabled: true, error: message ? String(message).slice(0, 200) : '' };\n}\nreturn [{ json: { post_id: post.json.post_id, ...publishOutcome(Object.values(status)), published_at: new Date().toISOString() }, pairedItem: { item: 0 } }];"
       },
-      "id": "node-0091",
+      "id": "node-1ltg32v-0039",
       "name": "Publishing result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         1700,
-        400
+        520
       ]
     },
     {
@@ -567,13 +857,409 @@
           "handlingExtraData": "ignoreIt"
         }
       },
-      "id": "node-0092",
+      "id": "node-1ltg32v-003a",
       "name": "Record publishing",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
         1920,
-        400
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-1ltg32v-003b",
+              "leftValue": "={{ $('Meta webhook check').first().json.query['hub.verify_token'] === $('Settings').first().json.metaVerifyToken }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "node-1ltg32v-003c",
+      "name": "Verify token matches?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        160,
+        900
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $('Meta webhook check').first().json.query['hub.challenge'] }}",
+        "options": {}
+      },
+      "id": "node-1ltg32v-003d",
+      "name": "Confirm webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        380,
+        840
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "noData",
+        "options": {
+          "responseCode": 403
+        }
+      },
+      "id": "node-1ltg32v-003e",
+      "name": "Refuse webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        380,
+        980
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function parseMetaEvents(body, pageId, igId) {\n  const out = [];\n  const own = (id) => id && (String(id) === String(pageId) || String(id) === String(igId));\n  const ig = body && body.object === \"instagram\";\n  for (const entry of (body && body.entry) || []) {\n    for (const ch of entry.changes || []) {\n      const v = ch.value || {};\n      if (!ig && ch.field === \"feed\" && v.item === \"comment\" && v.verb === \"add\" && v.message && !own(v.from && v.from.id)) {\n        out.push({ channel: \"facebook_comment\", target_id: v.comment_id, text: v.message, author: (v.from && v.from.name) || \"\", post_id: v.post_id || \"\" });\n      }\n      if (ig && ch.field === \"comments\" && v.text && !own(v.from && v.from.id)) {\n        out.push({ channel: \"instagram_comment\", target_id: v.id, text: v.text, author: (v.from && v.from.username) || \"\", post_id: (v.media && v.media.id) || \"\" });\n      }\n    }\n    for (const m of entry.messaging || []) {\n      if (!m.message || !m.message.text || m.message.is_echo || own(m.sender && m.sender.id)) continue;\n      out.push({ channel: ig ? \"instagram_dm\" : \"messenger\", target_id: m.sender.id, text: m.message.text, author: \"\", post_id: \"\" });\n    }\n  }\n  return out.map((e) => ({ ...e, text: String(e.text).slice(0, 2000) }));\n}\n\nfunction buildSocialReplyRequest(event, s) {\n  const isPrivate = /dm|messenger/.test(event.channel);\n  const system = [\n    `You answer ${isPrivate ? \"private messages\" : \"public comments\"} for ${s.businessName}. ${s.businessDescription}`,\n    `Brand voice: ${s.brandVoice}. Reply in the person's language. Keep it short: 1 to 3 sentences.`,\n    `What you know (use only this, never invent prices, dates or promises): ${s.replyKnowledge}`,\n    \"needs_human = true for complaints, refunds, order problems, angry or abusive messages, legal or personal-data requests, or anything you cannot answer from what you know.\",\n    \"category: question, praise, complaint, spam, other. For spam, reply with an empty string.\",\n    'Answer with JSON only: {\"reply\":\"...\",\"needs_human\":false,\"category\":\"question\",\"sentiment\":\"positive|neutral|negative\"}',\n  ].join(\"\\n\");\n  return {\n    model: s.openAiModel, temperature: 0.4, response_format: { type: \"json_object\" },\n    messages: [{ role: \"system\", content: system }, { role: \"user\", content: JSON.stringify({ channel: event.channel, from: event.author, text: event.text }) }],\n  };\n}\n\nconst s = $('Settings').first().json;\nreturn parseMetaEvents($('Meta events').first().json.body, s.facebookPageId, s.instagramAccountId)\n  .map((e) => ({ json: { ...e, received_at: new Date().toISOString(), request: buildSocialReplyRequest(e, s) }, pairedItem: { item: 0 } }));"
+      },
+      "id": "node-1ltg32v-003f",
+      "name": "Comments and messages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        160,
+        1160
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Settings').first().json.openAiBaseUrl }}/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.request) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "node-1ltg32v-0040",
+      "name": "Write reply with AI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        380,
+        1160
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "function readAiJson(response) {\n  const content = response && response.choices && response.choices[0] && response.choices[0].message && response.choices[0].message.content;\n  if (!content) throw new Error(\"OpenAI returned no answer: \" + JSON.stringify(response).slice(0, 300));\n  try {\n    return JSON.parse(content);\n  } catch {\n    throw new Error(\"OpenAI answer was not valid JSON: \" + content.slice(0, 300));\n  }\n}\n\nconst s = $('Settings').first().json;\nconst src = $('Comments and messages').all();\nreturn $input.all().map((item, i) => {\n  const e = src[i].json;\n  let a;\n  try { a = readAiJson(item.json); } catch { a = { reply: '', needs_human: true, category: 'other', sentiment: '' }; }\n  const spam = a.category === 'spam';\n  const human = !spam && (a.needs_human === true || !a.reply);\n  const send = !spam && !human && s.autoReply === true;\n  return { json: { received_at: e.received_at, channel: e.channel, target_id: e.target_id, author: e.author, post_id: e.post_id, text: e.text,\n    category: a.category || '', sentiment: a.sentiment || '', reply: spam ? '' : (a.reply || ''),\n    status: spam ? 'ignored (spam)' : send ? 'replied automatically' : 'sent to you for review', send, human: !spam && !send }, pairedItem: { item: i } };\n});"
+      },
+      "id": "node-1ltg32v-0041",
+      "name": "Reply decision",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        600,
+        1160
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Settings').first().json.googleSheetUrl }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Replies"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "node-1ltg32v-0042",
+      "name": "Log reply",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        820,
+        1160
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-1ltg32v-0043",
+              "leftValue": "={{ $('Reply decision').item.json.send }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "node-1ltg32v-0044",
+      "name": "Reply automatically?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1040,
+        1160
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "cond-1ltg32v-0045",
+                    "leftValue": "={{ $('Reply decision').item.json.channel }}",
+                    "rightValue": "facebook_comment",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Facebook comment"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "cond-1ltg32v-0046",
+                    "leftValue": "={{ $('Reply decision').item.json.channel }}",
+                    "rightValue": "instagram_comment",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Instagram comment"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Message"
+        }
+      },
+      "id": "node-1ltg32v-0047",
+      "name": "Where to reply",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1260,
+        1100
+      ]
+    },
+    {
+      "parameters": {
+        "httpRequestMethod": "POST",
+        "graphApiVersion": "v22.0",
+        "node": "={{ $('Reply decision').item.json.target_id }}",
+        "edge": "comments",
+        "options": {
+          "queryParameters": {
+            "parameter": [
+              {
+                "name": "message",
+                "value": "={{ $('Reply decision').item.json.reply }}"
+              }
+            ]
+          }
+        }
+      },
+      "id": "node-1ltg32v-0048",
+      "name": "Reply to Facebook comment",
+      "type": "n8n-nodes-base.facebookGraphApi",
+      "typeVersion": 1,
+      "position": [
+        1480,
+        1000
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "httpRequestMethod": "POST",
+        "graphApiVersion": "v22.0",
+        "node": "={{ $('Reply decision').item.json.target_id }}",
+        "edge": "replies",
+        "options": {
+          "queryParameters": {
+            "parameter": [
+              {
+                "name": "message",
+                "value": "={{ $('Reply decision').item.json.reply }}"
+              }
+            ]
+          }
+        }
+      },
+      "id": "node-1ltg32v-0049",
+      "name": "Reply to Instagram comment",
+      "type": "n8n-nodes-base.facebookGraphApi",
+      "typeVersion": 1,
+      "position": [
+        1480,
+        1140
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "httpRequestMethod": "POST",
+        "graphApiVersion": "v22.0",
+        "node": "={{ $('Settings').first().json.facebookPageId }}",
+        "edge": "messages",
+        "options": {
+          "queryParameters": {
+            "parameter": [
+              {
+                "name": "recipient",
+                "value": "={{ JSON.stringify({ id: $('Reply decision').item.json.target_id }) }}"
+              },
+              {
+                "name": "message",
+                "value": "={{ JSON.stringify({ text: $('Reply decision').item.json.reply }) }}"
+              },
+              {
+                "name": "messaging_type",
+                "value": "RESPONSE"
+              }
+            ]
+          }
+        }
+      },
+      "id": "node-1ltg32v-004a",
+      "name": "Answer the message",
+      "type": "n8n-nodes-base.facebookGraphApi",
+      "typeVersion": 1,
+      "position": [
+        1480,
+        1280
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-1ltg32v-004b",
+              "leftValue": "={{ $('Reply decision').item.json.human }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "node-1ltg32v-004c",
+      "name": "Needs you?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1260,
+        1300
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Settings').first().json.approverEmail }}",
+        "subject": "=New {{ $('Reply decision').item.json.channel.replace('_', ' ') }} to answer ({{ $('Reply decision').item.json.category }}, {{ $('Reply decision').item.json.sentiment }})",
+        "emailType": "text",
+        "message": "=From: {{ $('Reply decision').item.json.author || 'a customer' }}\n\n\"{{ $('Reply decision').item.json.text }}\"\n\nSuggested reply:\n{{ $('Reply decision').item.json.reply || '(none)' }}\n\nAnswer it from your Facebook or Instagram inbox.",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "={{ $('Settings').first().json.senderName }}"
+        }
+      },
+      "id": "node-1ltg32v-004d",
+      "name": "Ask you to reply",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1480,
+        1420
       ]
     }
   ],
@@ -590,6 +1276,28 @@
       ]
     },
     "Every hour": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Meta webhook check": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Meta events": {
       "main": [
         [
           {
@@ -623,6 +1331,20 @@
         [
           {
             "node": "Read approved posts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Verify token matches?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Comments and messages",
             "type": "main",
             "index": 0
           }
@@ -663,6 +1385,101 @@
       ]
     },
     "Draft rows": {
+      "main": [
+        [
+          {
+            "node": "Needs an AI image?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs an AI image?": {
+      "main": [
+        [
+          {
+            "node": "Image request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "All drafts",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Image request": {
+      "main": [
+        [
+          {
+            "node": "Create image with AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create image with AI": {
+      "main": [
+        [
+          {
+            "node": "Image file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image file": {
+      "main": [
+        [
+          {
+            "node": "Store image on Facebook (unpublished)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store image on Facebook (unpublished)": {
+      "main": [
+        [
+          {
+            "node": "Image link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image link": {
+      "main": [
+        [
+          {
+            "node": "Draft with image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft with image": {
+      "main": [
+        [
+          {
+            "node": "All drafts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "All drafts": {
       "main": [
         [
           {
@@ -812,6 +1629,122 @@
         [
           {
             "node": "Record publishing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify token matches?": {
+      "main": [
+        [
+          {
+            "node": "Confirm webhook",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Refuse webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Comments and messages": {
+      "main": [
+        [
+          {
+            "node": "Write reply with AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write reply with AI": {
+      "main": [
+        [
+          {
+            "node": "Reply decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reply decision": {
+      "main": [
+        [
+          {
+            "node": "Log reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log reply": {
+      "main": [
+        [
+          {
+            "node": "Reply automatically?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reply automatically?": {
+      "main": [
+        [
+          {
+            "node": "Where to reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Needs you?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Where to reply": {
+      "main": [
+        [
+          {
+            "node": "Reply to Facebook comment",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reply to Instagram comment",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Answer the message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs you?": {
+      "main": [
+        [
+          {
+            "node": "Ask you to reply",
             "type": "main",
             "index": 0
           }
