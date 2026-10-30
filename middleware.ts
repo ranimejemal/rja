@@ -39,5 +39,5 @@ function toLogin(request: NextRequest) {
 
 export const config = {
   runtime: "nodejs",
-  matcher: ["/((?!_next/static|_next/image|images/|favicon.ico|api/webhooks).*)"],
+  matcher: ["/((?!_next/static|_next/image|images/|email/|favicon.ico|api/webhooks).*)"],
 };
