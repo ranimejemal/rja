@@ -101,14 +101,46 @@ export async function resendEmailCode(_: AuthState, form: FormData): Promise<Aut
   return { notice: "If this email needs confirming, a new code is on its way. Check your inbox (and spam)." };
 }
 
-export async function requestPasswordReset(_: AuthState, form: FormData): Promise<AuthState> {
+async function sendResetCode(form: FormData): Promise<{ email?: string; error?: string }> {
   if (!rateLimit(await clientKey("reset"), 5, 60 * 60_000).ok) return { error: "Too many requests. Try again later." };
   const email = z.email().max(254).safeParse(form.get("email"));
   if (!email.success) return { error: "Enter a valid email address." };
   const supabase = await createClient();
+  // The email holds a code ({{ .Token }}); the link fallback still works through /auth/callback.
   await supabase.auth.resetPasswordForEmail(email.data, { redirectTo: `${await siteOrigin()}/auth/callback?next=/reset-password` });
-  // Same answer whether or not the account exists, so the form cannot be used to find accounts.
-  return { notice: "If an account exists for this email, a link to choose a new password is on its way. Check your inbox (and spam)." };
+  return { email: email.data };
+}
+
+export async function requestPasswordReset(_: AuthState, form: FormData): Promise<AuthState> {
+  const sent = await sendResetCode(form);
+  if (sent.error) return { error: sent.error };
+  // Same result whether or not the account exists, so the form cannot be used to find accounts.
+  redirect(`/reset-password?${new URLSearchParams({ email: sent.email! })}`);
+}
+
+export async function resendResetCode(_: AuthState, form: FormData): Promise<AuthState> {
+  const sent = await sendResetCode(form);
+  if (sent.error) return { error: sent.error };
+  return { notice: "If an account exists for this email, a new code is on its way. Check your inbox (and spam)." };
+}
+
+const newPassword = z.object({
+  password: z.string().min(10, "Use at least 10 characters.").max(128, "Use at most 128 characters."),
+  confirm: z.string(),
+}).refine((v) => v.password === v.confirm, { message: "The two passwords do not match." });
+
+export async function resetPasswordWithCode(_: AuthState, form: FormData): Promise<AuthState> {
+  if (!rateLimit(await clientKey("reset-code"), 10, 10 * 60_000).ok) return { error: "Too many attempts. Try again in a few minutes." };
+  const code = codeForm.safeParse({ email: form.get("email"), token: form.get("token") });
+  if (!code.success) return { error: "Enter your email and the 6-digit code from the email." };
+  const pw = newPassword.safeParse({ password: form.get("password"), confirm: form.get("confirm") });
+  if (!pw.success) return { error: pw.error.issues[0].message };
+  const supabase = await createClient();
+  const { error } = await supabase.auth.verifyOtp({ email: code.data.email, token: code.data.token, type: "recovery" });
+  if (error) return { error: "This code is wrong or has expired. Check the latest email, or send a new code." };
+  const { error: updateError } = await supabase.auth.updateUser({ password: pw.data.password });
+  if (updateError) return { error: updateError.message.includes("different") ? "Choose a password different from the old one." : "Could not update the password. Try again." };
+  redirect("/dashboard?notice=Your+password+was+updated.");
 }
 
 export async function updatePassword(_: AuthState, form: FormData): Promise<AuthState> {

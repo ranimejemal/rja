@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
-import { ResetPasswordForm } from "@/app/auth/PasswordForms";
+import { ResetPasswordForm, ResetWithCodeForm } from "@/app/auth/PasswordForms";
 
 export const metadata: Metadata = { title: "Choose a new password" };
 
-// Reached from the reset email: the link signs the user in (via /auth/callback), then they pick a new password.
-export default async function ResetPasswordPage() {
+// After "Forgot your password?": enter the code from the email and a new password.
+// Someone already signed in (or arriving through an older reset link) just picks the new password.
+export default async function ResetPasswordPage({ searchParams }: { searchParams: Promise<{ email?: string }> }) {
+  const { email } = await searchParams;
   const session = await getSession();
   return (
     <section className="section">
@@ -15,7 +17,12 @@ export default async function ResetPasswordPage() {
           <span className="tag">(Account)</span>
           <h1 className="h1">Choose a new <span className="serif">password.</span></h1>
         </div>
-        {session ? (
+        {email !== undefined ? (
+          <>
+            <p className="muted">If an account exists for <strong>{email}</strong>, we sent it a 6-digit code. Enter it with your new password.</p>
+            <ResetWithCodeForm email={email} />
+          </>
+        ) : session ? (
           <>
             <p className="muted">For {session.email}.</p>
             <ResetPasswordForm />
@@ -23,7 +30,7 @@ export default async function ResetPasswordPage() {
         ) : (
           <div className="card stack" style={{ maxWidth: "28rem" }}>
             <p>This link has expired or was already used.</p>
-            <Link className="btn accent" href="/forgot-password">Send me a new link</Link>
+            <Link className="btn accent" href="/forgot-password">Send me a code</Link>
           </div>
         )}
       </div>

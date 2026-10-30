@@ -10,7 +10,7 @@ export default function ForgotPasswordPage() {
         <div className="stack">
           <span className="tag">(Account)</span>
           <h1 className="h1">Forgot your <span className="serif">password?</span></h1>
-          <p className="muted">Enter your email and we will send you a link to choose a new one.</p>
+          <p className="muted">Enter your email and we will send you a 6-digit code to choose a new one.</p>
         </div>
         <ForgotPasswordForm />
       </div>
