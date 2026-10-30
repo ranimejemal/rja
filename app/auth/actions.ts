@@ -38,8 +38,13 @@ export async function signIn(_: AuthState, form: FormData): Promise<AuthState> {
   if (!parsed.success) return { error: "Email or password is incorrect." };
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
+  if (error?.code === "email_not_confirmed") {
+    // Right password, unconfirmed email: send a fresh code and go to the code page.
+    await supabase.auth.resend({ type: "signup", email: parsed.data.email });
+    redirect(verifyUrl(parsed.data.email, form.get("next")));
+  }
   // Same message for unknown email and wrong password.
-  if (error) return { error: error.message.includes("confirm") ? "Confirm your email address first." : "Email or password is incorrect." };
+  if (error) return { error: "Email or password is incorrect." };
   redirect(safeNext(form.get("next")));
 }
 
@@ -61,7 +66,39 @@ export async function signUp(_: AuthState, form: FormData): Promise<AuthState> {
   });
   if (error) return { error: error.message };
   if (data.session) redirect(safeNext(form.get("next")));
-  return { notice: "Check your inbox to confirm your email address, then log in." };
+  redirect(verifyUrl(parsed.data.email, form.get("next")));
+}
+
+function verifyUrl(email: string, next: FormDataEntryValue | null) {
+  return `/verify?${new URLSearchParams({ email, next: safeNext(next) })}`;
+}
+
+const codeForm = z.object({
+  email: z.email().max(254),
+  // Supabase codes are 6 digits by default (up to 10 if changed in the dashboard).
+  token: z.string().transform((t) => t.replace(/\s/g, "")).pipe(z.string().regex(/^\d{6,10}$/)),
+});
+
+export async function verifyEmailCode(_: AuthState, form: FormData): Promise<AuthState> {
+  if (!rateLimit(await clientKey("verify"), 10, 10 * 60_000).ok) return { error: "Too many attempts. Try again in a few minutes." };
+  const parsed = codeForm.safeParse({ email: form.get("email"), token: form.get("token") });
+  if (!parsed.success) return { error: "Enter the 6-digit code from the email." };
+  const supabase = await createClient();
+  const { error } = await supabase.auth.verifyOtp({ email: parsed.data.email, token: parsed.data.token, type: "email" });
+  if (error) return { error: "This code is wrong or has expired. Check the latest email, or send a new code." };
+  const next = safeNext(form.get("next"));
+  redirect(`${next}${next.includes("?") ? "&" : "?"}notice=${encodeURIComponent("Your email is confirmed. Welcome!")}`);
+}
+
+export async function resendEmailCode(_: AuthState, form: FormData): Promise<AuthState> {
+  if (!rateLimit(await clientKey("resend"), 3, 15 * 60_000).ok) return { error: "Please wait a few minutes before asking for another code." };
+  const email = z.email().max(254).safeParse(form.get("email"));
+  if (!email.success) return { error: "Enter a valid email address." };
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resend({ type: "signup", email: email.data });
+  if (error?.status === 429) return { error: "Please wait a minute before asking for another code." };
+  // Same answer whether or not the account exists or is already confirmed.
+  return { notice: "If this email needs confirming, a new code is on its way. Check your inbox (and spam)." };
 }
 
 export async function requestPasswordReset(_: AuthState, form: FormData): Promise<AuthState> {

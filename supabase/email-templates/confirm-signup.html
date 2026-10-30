@@ -1,0 +1,9 @@
+<!-- Supabase → Authentication → Emails → Templates → "Confirm signup".
+     Subject: Your Ranime Jemal Agency code: {{ .Token }} -->
+<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;color:#111">
+  <p style="font-size:14px;letter-spacing:2px;margin:0 0 24px"><strong>RANIME JEMAL AGENCY</strong></p>
+  <h1 style="font-size:22px;margin:0 0 12px">Confirm your email</h1>
+  <p style="font-size:15px;line-height:1.5;margin:0 0 20px">Enter this code on the confirmation page to finish creating your account:</p>
+  <p style="font-size:32px;font-weight:bold;letter-spacing:8px;background:#f2f2f2;border-radius:8px;padding:16px;text-align:center;margin:0 0 20px">{{ .Token }}</p>
+  <p style="font-size:13px;line-height:1.5;color:#555;margin:0">The code expires in one hour. If you did not sign up, you can ignore this email.</p>
+</div>
