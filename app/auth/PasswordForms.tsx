@@ -39,7 +39,7 @@ export function ResetPasswordForm() {
   );
 }
 
-/** Reset with the 6-digit code from the email: code and new password in one step. */
+/** Reset with the code from the email: code and new password in one step. */
 export function ResetWithCodeForm({ email }: { email: string }) {
   const [state, action] = useActionState<AuthState, FormData>(resetPasswordWithCode, {});
   const [resendState, resend] = useActionState<AuthState, FormData>(resendResetCode, {});
@@ -54,7 +54,7 @@ export function ResetWithCodeForm({ email }: { email: string }) {
           <label htmlFor="token">Code from the email</label>
           <input
             id="token" name="token" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9 ]*"
-            maxLength={12} placeholder="123456" required autoFocus
+            maxLength={12} placeholder="12345678" required autoFocus
             style={{ letterSpacing: "0.3em", fontSize: "1.25rem" }}
           />
           <span className="hint">It expires after one hour.</span>

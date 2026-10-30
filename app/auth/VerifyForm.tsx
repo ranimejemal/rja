@@ -20,10 +20,10 @@ export function VerifyForm({ email, next }: { email: string; next: string }) {
           <label htmlFor="token">Verification code</label>
           <input
             id="token" name="token" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9 ]*"
-            maxLength={12} placeholder="123456" required autoFocus
+            maxLength={12} placeholder="12345678" required autoFocus
             style={{ letterSpacing: "0.3em", fontSize: "1.25rem" }}
           />
-          <span className="hint">The 6-digit code in the email we just sent. It expires after one hour.</span>
+          <span className="hint">The code in the email we just sent. It expires after one hour.</span>
         </div>
         {state.error && <div className="notice danger" role="alert">{state.error}</div>}
         <SubmitButton className="btn accent" pendingText="Checking…">Confirm my email</SubmitButton>

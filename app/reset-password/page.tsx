@@ -19,7 +19,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
         </div>
         {email !== undefined ? (
           <>
-            <p className="muted">If an account exists for <strong>{email}</strong>, we sent it a 6-digit code. Enter it with your new password.</p>
+            <p className="muted">If an account exists for <strong>{email}</strong>, we sent it a code. Enter it with your new password.</p>
             <ResetWithCodeForm email={email} />
           </>
         ) : session ? (

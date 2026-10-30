@@ -75,14 +75,14 @@ function verifyUrl(email: string, next: FormDataEntryValue | null) {
 
 const codeForm = z.object({
   email: z.email().max(254),
-  // Supabase codes are 6 digits by default (up to 10 if changed in the dashboard).
+  // Supabase codes are 6 to 10 digits (this project sends 8).
   token: z.string().transform((t) => t.replace(/\s/g, "")).pipe(z.string().regex(/^\d{6,10}$/)),
 });
 
 export async function verifyEmailCode(_: AuthState, form: FormData): Promise<AuthState> {
   if (!rateLimit(await clientKey("verify"), 10, 10 * 60_000).ok) return { error: "Too many attempts. Try again in a few minutes." };
   const parsed = codeForm.safeParse({ email: form.get("email"), token: form.get("token") });
-  if (!parsed.success) return { error: "Enter the 6-digit code from the email." };
+  if (!parsed.success) return { error: "Enter the code from the email." };
   const supabase = await createClient();
   const { error } = await supabase.auth.verifyOtp({ email: parsed.data.email, token: parsed.data.token, type: "email" });
   if (error) return { error: "This code is wrong or has expired. Check the latest email, or send a new code." };
@@ -132,7 +132,7 @@ const newPassword = z.object({
 export async function resetPasswordWithCode(_: AuthState, form: FormData): Promise<AuthState> {
   if (!rateLimit(await clientKey("reset-code"), 10, 10 * 60_000).ok) return { error: "Too many attempts. Try again in a few minutes." };
   const code = codeForm.safeParse({ email: form.get("email"), token: form.get("token") });
-  if (!code.success) return { error: "Enter your email and the 6-digit code from the email." };
+  if (!code.success) return { error: "Enter your email and the code from the email." };
   const pw = newPassword.safeParse({ password: form.get("password"), confirm: form.get("confirm") });
   if (!pw.success) return { error: pw.error.issues[0].message };
   const supabase = await createClient();
