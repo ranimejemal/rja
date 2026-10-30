@@ -56,8 +56,29 @@ export function PowerScene({ before, after, label, tagline, columns, extra }: {
     // Browsers only autoplay muted inline video; set it on the element itself, not just as a JSX prop.
     vid.muted = true; vid.defaultMuted = true; vid.playsInline = true;
     vid.setAttribute("muted", ""); vid.setAttribute("playsinline", "");
-    vid.src = window.matchMedia("(max-width: 900px)").matches ? CLIP.sd : CLIP.hd;
-    vid.load();
+    // Download the whole clip before it starts, so it never stalls half-way on a slow connection: as a blob
+    // when the host allows it (instant seeks), otherwise streamed and started once the browser has enough of it.
+    const url = window.matchMedia("(max-width: 900px)").matches ? CLIP.sd : CLIP.hd;
+    let blobUrl = "";
+    let cancelled = false;
+    const ready = (async () => {
+      try {
+        const res = await fetch(url, { mode: "cors" });
+        if (!res.ok) throw new Error(String(res.status));
+        blobUrl = URL.createObjectURL(await res.blob());
+        if (cancelled) return;
+        vid.src = blobUrl;
+      } catch {
+        if (cancelled) return;
+        vid.src = url;
+      }
+      vid.load();
+      await new Promise<void>((resolve) => {
+        if (vid.readyState >= 4) return resolve();
+        vid.addEventListener("canplaythrough", () => resolve(), { once: true });
+        window.setTimeout(resolve, 8000); // some phones never report canplaythrough before playback
+      });
+    })();
     let mode: Mode = "standby";
     let stopAt = Infinity;
     // The flying dot: null until launched; "landed" keeps it from launching twice in one switch-off.
@@ -110,7 +131,7 @@ export function PowerScene({ before, after, label, tagline, columns, extra }: {
       if (!entries.some((e) => e.isIntersecting)) return;
       io.disconnect();
       el.classList.add("is-in");
-      boot();
+      ready.then(() => { if (!cancelled) boot(); });
     }, { threshold: 0.35 });
     io.observe(el);
 
@@ -226,6 +247,7 @@ export function PowerScene({ before, after, label, tagline, columns, extra }: {
     raf = requestAnimationFrame(frame);
 
     return () => {
+      cancelled = true; if (blobUrl) URL.revokeObjectURL(blobUrl);
       cancelAnimationFrame(raf); window.clearTimeout(autoTimer); io.disconnect(); ro.disconnect(); btn.onclick = null; vid.onended = null; vid.pause();
       document.removeEventListener("pointerdown", onFirstGesture); document.removeEventListener("keydown", onFirstGesture);
     };
