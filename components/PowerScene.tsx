@@ -18,6 +18,8 @@ const FRAME_W = 1920, FRAME_H = 1080;
 const SCREEN = { x0: 806, y0: 505, x1: 1077, y1: 724 };
 const LAST_LIGHT = { x: 945, y: 594 };
 const FLIGHT_MS = 780, LIT_MS = 900;
+// Until the visitor presses the button, the scene runs the cycle by itself: colour bars, night, back on.
+const AUTO_ONLINE_MS = 3500, AUTO_OFFLINE_MS = 3200;
 
 // Sky glint positions (clip frame), the first 10 shown by day, all 22 at night.
 const GLINTS = [
@@ -64,8 +66,13 @@ export function PowerScene({ before, after, label, tagline, columns, extra }: {
     let raf = 0;
     const ctx = cv.getContext("2d")!, skyCtx = skyCv.getContext("2d")!;
 
+    let auto = true; // the visitor has not taken over yet
+    let autoTimer = 0;
     const setMode = (m: Mode) => {
       mode = m;
+      window.clearTimeout(autoTimer);
+      if (auto && m === "online") autoTimer = window.setTimeout(() => mode === "online" && switchOff(), AUTO_ONLINE_MS);
+      if (auto && m === "offline") autoTimer = window.setTimeout(() => mode === "offline" && switchOn(), AUTO_OFFLINE_MS);
       btn.setAttribute("aria-pressed", String(m === "online" || m === "booting"));
       el.dataset.mode = m;
     };
@@ -88,10 +95,13 @@ export function PowerScene({ before, after, label, tagline, columns, extra }: {
     document.addEventListener("pointerdown", onFirstGesture);
     document.addEventListener("keydown", onFirstGesture);
 
+    const switchOff = () => { setMode("shutting"); playFrom(T_IDLE, Infinity); };
+    const switchOn = () => { flight = null; boot(); };
     btn.onclick = () => {
-      if (mode === "online") { setMode("shutting"); playFrom(T_IDLE, Infinity); }
-      else if (mode === "offline") { flight = null; boot(); }
-      // booting and shutting: ignore clicks mid-transition (standby is handled by the first-gesture listener).
+      // Booting and shutting: ignore clicks mid-transition (standby is handled by the first-gesture listener).
+      if (mode !== "online" && mode !== "offline") return;
+      auto = false; // the visitor has the button now: stop the automatic cycle
+      if (mode === "online") switchOff(); else switchOn();
     };
     vid.onended = () => { if (mode === "shutting") setMode("offline"); };
 
@@ -216,7 +226,7 @@ export function PowerScene({ before, after, label, tagline, columns, extra }: {
     raf = requestAnimationFrame(frame);
 
     return () => {
-      cancelAnimationFrame(raf); io.disconnect(); ro.disconnect(); btn.onclick = null; vid.onended = null; vid.pause();
+      cancelAnimationFrame(raf); window.clearTimeout(autoTimer); io.disconnect(); ro.disconnect(); btn.onclick = null; vid.onended = null; vid.pause();
       document.removeEventListener("pointerdown", onFirstGesture); document.removeEventListener("keydown", onFirstGesture);
     };
   }, []);
