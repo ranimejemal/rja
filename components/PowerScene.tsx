@@ -51,7 +51,11 @@ export function PowerScene({ before, after, label, tagline, columns, extra }: {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduced || !vid) { el.classList.add("is-in"); return; }
 
+    // Browsers only autoplay muted inline video; set it on the element itself, not just as a JSX prop.
+    vid.muted = true; vid.defaultMuted = true; vid.playsInline = true;
+    vid.setAttribute("muted", ""); vid.setAttribute("playsinline", "");
     vid.src = window.matchMedia("(max-width: 900px)").matches ? CLIP.sd : CLIP.hd;
+    vid.load();
     let mode: Mode = "standby";
     let stopAt = Infinity;
     // The flying dot: null until launched; "landed" keeps it from launching twice in one switch-off.
@@ -65,17 +69,29 @@ export function PowerScene({ before, after, label, tagline, columns, extra }: {
       btn.setAttribute("aria-pressed", String(m === "online" || m === "booting"));
       el.dataset.mode = m;
     };
+    let blocked = false; // autoplay refused (power saving, data saver…): start on the visitor's first tap instead
     const playFrom = (t: number, until: number) => {
       stopAt = until;
-      vid.currentTime = t;
-      vid.play().catch(() => { /* autoplay refused: stay on the poster frame */ });
+      const start = () => {
+        vid.currentTime = t;
+        vid.play().catch(() => {
+          if (mode !== "booting") return;
+          blocked = true;
+          setMode("standby");
+        });
+      };
+      // Seeking before the metadata is loaded is ignored by some browsers (Safari).
+      if (vid.readyState >= 1) start(); else vid.addEventListener("loadedmetadata", start, { once: true });
     };
     const boot = () => { setMode("booting"); playFrom(T_BOOT, T_IDLE); };
+    const onFirstGesture = () => { if (blocked && mode === "standby") { blocked = false; boot(); } };
+    document.addEventListener("pointerdown", onFirstGesture);
+    document.addEventListener("keydown", onFirstGesture);
 
     btn.onclick = () => {
       if (mode === "online") { setMode("shutting"); playFrom(T_IDLE, Infinity); }
       else if (mode === "offline") { flight = null; boot(); }
-      // standby, booting and shutting: ignore clicks mid-transition.
+      // booting and shutting: ignore clicks mid-transition (standby is handled by the first-gesture listener).
     };
     vid.onended = () => { if (mode === "shutting") setMode("offline"); };
 
@@ -199,7 +215,10 @@ export function PowerScene({ before, after, label, tagline, columns, extra }: {
     };
     raf = requestAnimationFrame(frame);
 
-    return () => { cancelAnimationFrame(raf); io.disconnect(); ro.disconnect(); btn.onclick = null; vid.onended = null; vid.pause(); };
+    return () => {
+      cancelAnimationFrame(raf); io.disconnect(); ro.disconnect(); btn.onclick = null; vid.onended = null; vid.pause();
+      document.removeEventListener("pointerdown", onFirstGesture); document.removeEventListener("keydown", onFirstGesture);
+    };
   }, []);
 
   let i = 0;
