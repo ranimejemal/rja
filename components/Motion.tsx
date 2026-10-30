@@ -18,6 +18,7 @@ const SCRAMBLE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
  *  data-split="rolling"   heading lines roll up into view
  *  data-scramble-loop     mono labels scramble when they enter the viewport
  *  data-scramble-hover    text scrambles on hover
+ *  data-roll              .roll lines of a heading roll up into view (for headings with inline icons)
  *  data-reveal            fades and rises into view
  * Everything is skipped for users who prefer reduced motion. The layout's boot script hides [data-split] and
  * [data-reveal] from the first paint (until `data-animated` is set here), so nothing flashes before it animates.
@@ -63,6 +64,15 @@ export function Motion() {
         });
         el.dataset.animated = "";
         cleanups.push(() => split.revert());
+      });
+
+      // Headings built from .roll lines (they may hold icons, so they are not split): each line rolls up.
+      document.querySelectorAll<HTMLElement>("[data-roll]").forEach((el) => {
+        gsap.from(el.querySelectorAll(".roll > span"), {
+          yPercent: 110, duration: 1.1, ease: "expo.out", stagger: 0.1,
+          scrollTrigger: { trigger: el, start: "top 88%", once: true },
+        });
+        el.dataset.animated = "";
       });
 
       document.querySelectorAll<HTMLElement>("[data-scramble-loop]").forEach((el) => {

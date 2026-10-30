@@ -6,6 +6,7 @@ import { ProductGrid } from "@/components/ProductCard";
 import { EmptyState, SectionHead, SellerBadge } from "@/components/ui";
 import { NewsletterForm } from "@/components/NewsletterForm";
 import { HomeIntro } from "@/components/HomeIntro";
+import { HeroHeadline } from "@/components/HeroHeadline";
 import { thumbnailUrl } from "@/lib/catalog";
 
 export default async function HomePage() {
@@ -26,15 +27,19 @@ export default async function HomePage() {
   return (
     <>
       <HomeIntro images={[...top, ...featured, ...best, ...recent].map((p) => thumbnailUrl(p.thumbnail_path)).filter((v, i, a) => a.indexOf(v) === i)} />
-      <section className="hero">
-        <div className="container stack" style={{ "--gap": "1.75rem" } as React.CSSProperties}>
+      <section className="hero hero-v2">
+        <div className="container stack" style={{ "--gap": "1.6rem" } as React.CSSProperties}>
           <span className="tag" data-scramble-loop="">(AI automation marketplace)</span>
-          <h1 className="display" data-split="rolling">Automate more. <span className="serif accent">Build less.</span> Grow faster.</h1>
-          <p className="lead">
-            Discover ready-to-use AI automations and workflows built by creators to help businesses save time,
-            streamline operations, and work smarter.
+          <HeroHeadline />
+          <p className="hero-lead" data-reveal="">
+            Ready-to-use AI automations and workflows, set up for your business by Ranime Jemal Agency and
+            independent creators. Save time, streamline operations, and work smarter.
           </p>
-          <form action="/explore" className="search-bar" role="search">
+          <div className="hero-actions" data-reveal="">
+            <Link className="btn-glow" href="/explore">Explore automations</Link>
+            <Link className="btn ghost" href="/quote">Request a quote</Link>
+          </div>
+          <form action="/explore" className="search-bar hero-search" role="search" data-reveal="">
             <label htmlFor="hero-q" className="sr-only">Search automations</label>
             <input id="hero-q" name="q" placeholder="What do you want to automate?" />
             <button className="btn accent" type="submit">Search</button>
