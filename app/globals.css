@@ -447,3 +447,21 @@ body:has(.power-scene) .site-footer { display: none; }
   .power-scene video { display: none; }
   .power-poster { display: block; }
 }
+
+/* ---------- Buyer setup guide ---------- */
+.setup-intro { border-color: rgba(200, 255, 61, 0.35); }
+.setup-toc { margin: 0; padding-left: 1.2rem; columns: 2; column-gap: 2rem; }
+.setup-toc a { color: var(--text-2); }
+.setup-step h2 { display: flex; align-items: center; gap: 0.7rem; margin: 0; }
+.setup-num {
+  display: inline-grid; place-items: center; flex: none; width: 1.9rem; height: 1.9rem; border-radius: 50%;
+  background: var(--surface-2); border: 1px solid var(--line); font-family: var(--font-mono); font-size: 0.8rem;
+}
+.setup-step ol { margin: 0; padding-left: 1.2rem; display: grid; gap: 0.45rem; }
+.setup-account { border: 1px solid var(--line); border-radius: var(--radius-s); padding: 0.85rem 1rem; background: var(--surface); }
+.setup-account summary { cursor: pointer; display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; }
+.setup-account[open] summary { margin-bottom: 0.5rem; }
+.setup-more summary { cursor: pointer; }
+.setup-more[open] summary { margin-bottom: 0.75rem; }
+code { font-family: var(--font-mono); font-size: 0.85em; background: var(--surface-2); padding: 0.1em 0.35em; border-radius: 4px; word-break: break-all; }
+@media (max-width: 600px) { .setup-toc { columns: 1; } }

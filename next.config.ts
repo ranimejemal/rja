@@ -16,6 +16,12 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [{ protocol: "https", hostname: "zdppasosborxodhglqwo.supabase.co", pathname: "/storage/v1/object/public/**" }],
   },
+  // The agency's automations (workflow, setup form, sheet templates, guide) are read from the repository at runtime.
+  outputFileTracingIncludes: {
+    "/api/configurations/[id]/workflow": ["./automations/*/workflow.json"],
+    "/api/automations/[slug]/sheets/[file]": ["./automations/*/*.{csv,json}"],
+    "/dashboard/products/[id]": ["./automations/*/*.{json,csv,md}"],
+  },
   experimental: {
     serverActions: { bodySizeLimit: "6mb" },
   },

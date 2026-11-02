@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "productType": "n8n-workflow",
+  "workflowVersion": "1.0.0",
+  "settings": [
+    {
+      "key": "sites",
+      "label": "Websites to check",
+      "help": "One website per line. Example: https://www.yourcompany.com",
+      "type": "textarea",
+      "required": true,
+      "maxLength": 2000
+    },
+    {
+      "key": "report_email",
+      "label": "Send the reports to",
+      "help": "Where the weekly security report is emailed.",
+      "type": "email",
+      "required": true
+    },
+    {
+      "key": "cert_warning_days",
+      "label": "Warn this many days before a certificate expires",
+      "help": "21 days gives you time to renew.",
+      "type": "number",
+      "required": false,
+      "min": 1,
+      "max": 90,
+      "default": 21
+    },
+    {
+      "key": "sender_name",
+      "label": "Sender name on emails",
+      "help": "The name people see in their inbox. Example: Sarah from Maison Lina",
+      "type": "text",
+      "required": true,
+      "maxLength": 300
+    },
+    {
+      "key": "google_sheet_url",
+      "label": "Google Sheet link",
+      "help": "Create an empty Google Sheet, add the tabs from the guide, then copy the link from your browser's address bar and paste it here.",
+      "type": "url",
+      "required": true
+    }
+  ]
+}

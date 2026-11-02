@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "productType": "n8n-workflow",
+  "workflowVersion": "1.0.0",
+  "settings": [
+    {
+      "key": "facebook_page_id",
+      "label": "Facebook Page ID",
+      "help": "On your Facebook Page: About, Page transparency, Page ID. Leave empty if you do not post on Facebook.",
+      "type": "text",
+      "required": false,
+      "maxLength": 300
+    },
+    {
+      "key": "instagram_account_id",
+      "label": "Instagram business account ID",
+      "help": "In Meta Business Suite: Settings, Instagram accounts. Leave empty if you do not post on Instagram.",
+      "type": "text",
+      "required": false,
+      "maxLength": 300
+    },
+    {
+      "key": "linkedin_organization_id",
+      "label": "LinkedIn company page ID",
+      "help": "The number in your company page's admin link (linkedin.com/company/12345678/admin). Leave empty if you do not post on LinkedIn.",
+      "type": "text",
+      "required": false,
+      "maxLength": 300
+    },
+    {
+      "key": "google_sheet_url",
+      "label": "Google Sheet link",
+      "help": "Create an empty Google Sheet, add the tabs from the guide, then copy the link from your browser's address bar and paste it here.",
+      "type": "url",
+      "required": true
+    }
+  ]
+}

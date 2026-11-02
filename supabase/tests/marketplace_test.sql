@@ -150,11 +150,13 @@ select test.fails('license type must be offered',
 select test.act_as(null);
 insert into products (seller_id, slug, name, price_minor, status, is_demo, license_types)
 values ((select id from seller_profiles where is_platform), 'demo-only-item', 'Demo only item', 5000, 'published', true, '{single_business}');
+insert into products (seller_id, slug, name, price_minor, status, quote_only, license_types)
+values ((select id from seller_profiles where is_platform), 'quote-only-item', 'Quote only item', 5000, 'published', true, '{single_business}');
 select test.act_as('buyer');
 select test.fails('demo products cannot be bought',
   $q$select create_order(('[{"product_id":"' || (select id from products where slug = 'demo-only-item') || '","license_type":"single_business"}]')::jsonb, current_agreement('buyer_license'), 'stripe')$q$, 'demo');
 select test.fails('quote-only products cannot be checked out',
-  $q$select create_order(('[{"product_id":"' || (select id from products where quote_only limit 1) || '","license_type":"single_business"}]')::jsonb, current_agreement('buyer_license'), 'stripe')$q$, 'sold by quote');
+  $q$select create_order(('[{"product_id":"' || (select id from products where slug = 'quote-only-item') || '","license_type":"single_business"}]')::jsonb, current_agreement('buyer_license'), 'stripe')$q$, 'sold by quote');
 create temp table o1 as select create_order(
   ('[{"product_id":"' || test.id('p1') || '","license_type":"commercial"},{"product_id":"' || test.id('p2') || '","license_type":"single_business"}]')::jsonb,
   current_agreement('buyer_license'), 'stripe') as id;
@@ -192,6 +194,17 @@ select test.ok('seller credited 3920, platform 980 + 2000 - fee',
   (select sum(amount_minor) from ledger_entries where account = 'seller' and seller_id = test.id('seller_profile')) = 3920
   and (select sum(amount_minor) from ledger_entries where account = 'platform') = 980 + 2000 - 230);
 select test.ok('buyer entitled to both products', (select count(*) from entitlements where user_id = test.id('buyer')) = 2);
+
+-- setup answers
+select test.act_as('buyer');
+select save_configuration(test.id('p2'), '{"business_name":"Maison Lina"}'::jsonb);
+select save_configuration(test.id('p2'), '{"business_name":"Maison Lina SARL"}'::jsonb);
+select test.ok('owner saves setup answers as numbered revisions',
+  (select array_agg(revision order by revision) from product_configurations where user_id = test.id('buyer') and product_id = test.id('p2')) = array[1, 2]);
+select test.fails('setup answers must be an object', $q$select save_configuration(test.id('p2'), '[1]'::jsonb)$q$, 'invalid configuration');
+select test.act_as('buyer2');
+select test.fails('only owners save setup answers', $q$select save_configuration(test.id('p2'), '{}'::jsonb)$q$, 'do not own');
+select test.act_as(null);
 
 -- amount mismatch is refused
 select test.act_as('buyer2');
@@ -286,7 +299,15 @@ select test.act_as(null);
 -- ---------------------------------------------------------------- real catalog
 select test.act_as(null);
 select test.ok('catalog has no sample listings left', not exists (select 1 from products where is_demo and status = 'published' and slug <> 'demo-only-item'));
-select test.ok('security suite listed', (select count(*) from products where slug in ('phishing-email-analyzer','website-security-ssl-scanner','vulnerability-watch-cve-kev','data-breach-monitor','lookalike-domain-monitor') and status = 'published' and quote_only) = 5);
+select test.ok('security suite listed', (select count(*) from products where slug in ('phishing-email-analyzer','website-security-ssl-scanner','vulnerability-watch-cve-kev','data-breach-monitor','lookalike-domain-monitor') and status = 'published') = 5);
+select test.ok('every agency automation can be bought and set up by the customer',
+  (select count(*) from products p join product_versions v on v.id = p.current_version_id join product_manifests m on m.version_id = v.id
+   where p.ownership = 'platform' and p.status = 'published' and not p.quote_only and v.status = 'approved'
+     and p.customization_mode = 'configurable' and p.currency = 'USD' and p.price_minor > 0
+     and jsonb_array_length(m.manifest -> 'settings') > 0) = 22);
+select test.ok('self-serve price is the lowest of the done-for-you range',
+  (select price_minor from products where slug = 'ai-lead-generation-follow-up') = 30000
+  and (select price_label from products where slug = 'ai-lead-generation-follow-up') like '$300%');
 select test.ok('sample creators removed', not exists (select 1 from seller_profiles where is_demo and not is_platform));
 
 -- ---------------------------------------------------------------- quote requests

@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "productType": "n8n-workflow",
+  "workflowVersion": "1.0.0",
+  "settings": [
+    {
+      "key": "business_name",
+      "label": "Business name",
+      "help": "As your customers know it. Example: Ranime Jemal Agency",
+      "type": "text",
+      "required": true,
+      "maxLength": 300
+    },
+    {
+      "key": "business_description",
+      "label": "What your business does",
+      "help": "One or two sentences the AI uses to write in your name. Example: We build AI automations for small businesses in France and Tunisia.",
+      "type": "textarea",
+      "required": true,
+      "maxLength": 2000
+    },
+    {
+      "key": "brand_voice",
+      "label": "Your brand's voice",
+      "help": "How you talk to customers. Example: warm, confident, no jargon",
+      "type": "text",
+      "required": false,
+      "maxLength": 300,
+      "default": "warm, confident, no jargon"
+    },
+    {
+      "key": "language",
+      "label": "Language",
+      "help": "Example: English, French, Arabic",
+      "type": "text",
+      "required": false,
+      "maxLength": 300,
+      "default": "English"
+    },
+    {
+      "key": "default_call_to_action",
+      "label": "Default call to action",
+      "help": "Added at the end of posts when nothing else is planned. Example: Book your free consultation today.",
+      "type": "text",
+      "required": false,
+      "maxLength": 300,
+      "default": "Send us a message to learn more."
+    },
+    {
+      "key": "approver_email",
+      "label": "Who approves the posts",
+      "help": "This person gets the drafts to approve before anything is published.",
+      "type": "email",
+      "required": true
+    },
+    {
+      "key": "facebook_page_id",
+      "label": "Facebook Page ID",
+      "help": "On your Facebook Page: About, Page transparency, Page ID. Leave empty if you do not post on Facebook.",
+      "type": "text",
+      "required": false,
+      "maxLength": 300
+    },
+    {
+      "key": "instagram_account_id",
+      "label": "Instagram business account ID",
+      "help": "In Meta Business Suite: Settings, Instagram accounts. Leave empty if you do not post on Instagram.",
+      "type": "text",
+      "required": false,
+      "maxLength": 300
+    },
+    {
+      "key": "linkedin_organization_id",
+      "label": "LinkedIn company page ID",
+      "help": "The number in your company page's admin link (linkedin.com/company/12345678/admin). Leave empty if you do not post on LinkedIn.",
+      "type": "text",
+      "required": false,
+      "maxLength": 300
+    },
+    {
+      "key": "google_sheet_url",
+      "label": "Google Sheet link",
+      "help": "Create an empty Google Sheet, add the tabs from the guide, then copy the link from your browser's address bar and paste it here.",
+      "type": "url",
+      "required": true
+    },
+    {
+      "key": "days_ahead",
+      "label": "Plan posts this many days ahead",
+      "help": "Every Monday the AI writes the posts planned for the coming days.",
+      "type": "number",
+      "required": false,
+      "min": 1,
+      "max": 31,
+      "default": 7
+    },
+    {
+      "key": "generate_images",
+      "label": "Create an AI image for each post",
+      "help": "On: posts without a picture get one made by AI.",
+      "type": "boolean",
+      "required": false,
+      "default": true
+    },
+    {
+      "key": "image_style",
+      "label": "Style of the AI images",
+      "help": "Example: clean, modern, bright photo with natural light",
+      "type": "text",
+      "required": false,
+      "maxLength": 300,
+      "default": "clean, modern, bright photo with natural light"
+    },
+    {
+      "key": "auto_reply",
+      "label": "Reply to comments and messages automatically",
+      "help": "On: simple questions get an AI reply at once; complaints always come to you. Off: every reply waits for your approval.",
+      "type": "boolean",
+      "required": false,
+      "default": true
+    },
+    {
+      "key": "reply_knowledge",
+      "label": "What the AI may tell customers",
+      "help": "Opening hours, prices, delivery, services, booking link: anything customers often ask.",
+      "type": "textarea",
+      "required": true,
+      "maxLength": 2000
+    },
+    {
+      "key": "sender_name",
+      "label": "Sender name on emails",
+      "help": "The name people see in their inbox. Example: Sarah from Maison Lina",
+      "type": "text",
+      "required": true,
+      "maxLength": 300
+    }
+  ]
+}

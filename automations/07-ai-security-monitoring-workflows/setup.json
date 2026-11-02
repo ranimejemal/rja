@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "productType": "n8n-workflow",
+  "workflowVersion": "1.0.0",
+  "settings": [
+    {
+      "key": "organisation_name",
+      "label": "Company name",
+      "help": "Used in the reports and alerts. Example: Acme SARL",
+      "type": "text",
+      "required": true,
+      "maxLength": 300
+    },
+    {
+      "key": "alert_email",
+      "label": "Email for alerts",
+      "help": "Where urgent alerts are sent. Use an address someone reads every day.",
+      "type": "email",
+      "required": true
+    },
+    {
+      "key": "google_sheet_url",
+      "label": "Google Sheet link",
+      "help": "Create an empty Google Sheet, add the tabs from the guide, then copy the link from your browser's address bar and paste it here.",
+      "type": "url",
+      "required": true
+    },
+    {
+      "key": "mute_repeats_minutes",
+      "label": "Ignore repeats of the same alert for (minutes)",
+      "help": "Stops the same alert from flooding your inbox. 30 is a good start.",
+      "type": "number",
+      "required": false,
+      "min": 0,
+      "max": 1440,
+      "default": 30
+    },
+    {
+      "key": "sender_name",
+      "label": "Sender name on emails",
+      "help": "The name people see in their inbox. Example: Sarah from Maison Lina",
+      "type": "text",
+      "required": true,
+      "maxLength": 300
+    }
+  ]
+}

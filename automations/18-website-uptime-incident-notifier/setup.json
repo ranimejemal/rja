@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "productType": "n8n-workflow",
+  "workflowVersion": "1.0.0",
+  "settings": [
+    {
+      "key": "sites",
+      "label": "Websites to check",
+      "help": "One per line. To also check that a page shows some text, add | and the text. Example: https://www.yourshop.com | Add to cart",
+      "type": "textarea",
+      "required": true,
+      "maxLength": 2000
+    },
+    {
+      "key": "confirm_failures",
+      "label": "Failed checks before alerting",
+      "help": "2 avoids false alarms from a single slow response.",
+      "type": "number",
+      "required": false,
+      "min": 1,
+      "max": 10,
+      "default": 2
+    },
+    {
+      "key": "alert_email",
+      "label": "Email for alerts",
+      "help": "Where urgent alerts are sent. Use an address someone reads every day.",
+      "type": "email",
+      "required": true
+    },
+    {
+      "key": "sender_name",
+      "label": "Sender name on emails",
+      "help": "The name people see in their inbox. Example: Sarah from Maison Lina",
+      "type": "text",
+      "required": true,
+      "maxLength": 300
+    },
+    {
+      "key": "google_sheet_url",
+      "label": "Google Sheet link",
+      "help": "Create an empty Google Sheet, add the tabs from the guide, then copy the link from your browser's address bar and paste it here.",
+      "type": "url",
+      "required": true
+    }
+  ]
+}

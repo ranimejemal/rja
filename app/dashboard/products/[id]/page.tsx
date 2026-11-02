@@ -8,6 +8,9 @@ import { parseManifest, type ConfigValues } from "@/lib/manifest";
 import { features } from "@/lib/env";
 import { formatMoney } from "@/lib/money";
 import { ConfigForm } from "@/components/ConfigForm";
+import { SetupGuide } from "@/components/SetupGuide";
+import { credentialsUsed, extraFiles, loadReadme, loadSetupForm, sheetTemplates, verifyToken } from "@/lib/automations";
+import { accountGuides, readmeSections } from "@/lib/setup-guide";
 import { SubmitButton } from "@/components/client";
 import { EmptyState, LICENSE_LABEL, Notice, SellerBadge, StatusPill } from "@/components/ui";
 import { openTicket, requestRefund, submitReview } from "./actions";
@@ -45,6 +48,15 @@ export default async function PurchasedProduct({ params }: { params: Promise<{ i
   const current = versions?.[0];
   const updateAvailable = current && purchased && current.id !== purchased.id;
   const lastRefund = refunds?.[0];
+  // The agency's own automations get the guided setup: form, personal workflow file and step-by-step guide.
+  const setupForm = await loadSetupForm(p.slug);
+  const latest = configs?.[0] ? { ...configs[0], values: configs[0].values as ConfigValues } : null;
+  const guide = setupForm && {
+    sheets: await sheetTemplates(p.slug),
+    extras: await extraFiles(p.slug),
+    accounts: accountGuides(p.slug, await credentialsUsed(p.slug), session.userId),
+    readme: readmeSections((await loadReadme(p.slug)) ?? ""),
+  };
 
   return (
     <>
@@ -55,62 +67,74 @@ export default async function PurchasedProduct({ params }: { params: Promise<{ i
         <p className="small muted">by {p.seller?.display_name} · purchased {new Date(ent.granted_at).toLocaleDateString("en-GB")} · <Link className="link" href={`/products/${p.slug}`}>Product page</Link></p>
       </div>
 
-      {updateAvailable && <Notice tone="warn">Version {current.version} is available (you bought {purchased.version}). Downloads below are the latest approved version. {current.changelog}</Notice>}
+      {setupForm && guide ? (
+        <SetupGuide
+          product={{ id: p.id, slug: p.slug, name: p.name }}
+          form={setupForm}
+          latest={latest}
+          {...guide}
+          metaVerifyToken={latest && p.slug === "ai-social-media-automation" ? verifyToken(latest.id) : undefined}
+        />
+      ) : (
+        <>
+        {updateAvailable && <Notice tone="warn">Version {current.version} is available (you bought {purchased.version}). Downloads below are the latest approved version. {current.changelog}</Notice>}
 
-      <section className="card stack" aria-labelledby="files-h">
-        <h2 id="files-h" className="h3">Files</h2>
-        {!features.serverAdmin ? (
-          <Notice tone="warn">Downloads are not available yet: the file service is being configured.</Notice>
-        ) : files?.length ? (
-          <div className="table-wrap">
-            <table>
-              <thead><tr><th>File</th><th>Type</th><th className="num">Size</th><th /></tr></thead>
-              <tbody>{files.map((f) => (
-                <tr key={f.id}><td>{f.file_name}</td><td>{KIND_LABEL[f.kind]}</td><td className="num">{Math.max(1, Math.round(f.size_bytes / 1024))} KB</td>
-                  <td><a className="btn small" href={`/api/downloads/${f.id}`}>Download</a></td></tr>
-              ))}</tbody>
-            </table>
-          </div>
-        ) : (
-          <EmptyState title="No files">The seller has not attached files to this version yet. Contact them below.</EmptyState>
-        )}
-        <p className="tiny muted">Download links are created for you on request and expire after 60 seconds.</p>
-      </section>
+        <section className="card stack" aria-labelledby="files-h">
+          <h2 id="files-h" className="h3">Files</h2>
+          {!features.serverAdmin ? (
+            <Notice tone="warn">Downloads are not available yet: the file service is being configured.</Notice>
+          ) : files?.length ? (
+            <div className="table-wrap">
+              <table>
+                <thead><tr><th>File</th><th>Type</th><th className="num">Size</th><th /></tr></thead>
+                <tbody>{files.map((f) => (
+                  <tr key={f.id}><td>{f.file_name}</td><td>{KIND_LABEL[f.kind]}</td><td className="num">{Math.max(1, Math.round(f.size_bytes / 1024))} KB</td>
+                    <td><a className="btn small" href={`/api/downloads/${f.id}`}>Download</a></td></tr>
+                ))}</tbody>
+              </table>
+            </div>
+          ) : (
+            <EmptyState title="No files">The seller has not attached files to this version yet. Contact them below.</EmptyState>
+          )}
+          <p className="tiny muted">Download links are created for you on request and expire after 60 seconds.</p>
+        </section>
 
-      <section className="card stack" aria-labelledby="setup-h">
-        <h2 id="setup-h" className="h3">Setup instructions</h2>
-        <p className="small muted">Requirements: {p.prerequisites || "see the installation guide"}</p>
-        <div className="prose" style={{ whiteSpace: "pre-line" }}>{p.install_instructions || "See the installation guide in the files above."}</div>
-        <Notice>Test the workflow in your own n8n before connecting it to live data. The marketplace does not run or monitor your workflows.</Notice>
-      </section>
+        <section className="card stack" aria-labelledby="setup-h">
+          <h2 id="setup-h" className="h3">Setup instructions</h2>
+          <p className="small muted">Requirements: {p.prerequisites || "see the installation guide"}</p>
+          <div className="prose" style={{ whiteSpace: "pre-line" }}>{p.install_instructions || "See the installation guide in the files above."}</div>
+          <Notice>Test the workflow in your own n8n before connecting it to live data. The marketplace does not run or monitor your workflows.</Notice>
+        </section>
 
-      <section className="card stack" aria-labelledby="cfg-h" id="configure">
-        <h2 id="cfg-h" className="h3">Customize</h2>
-        {manifest?.ok && manifest.manifest.settings.length ? (
-          <>
-            <p className="small muted">Only the settings the creator made configurable can be changed. Each save creates a new configuration version.</p>
-            <ConfigForm productId={p.id} manifest={manifest.manifest} initial={configs?.[0]?.values as ConfigValues | undefined} />
-            {configs?.length ? (
-              <div className="table-wrap">
-                <table>
-                  <thead><tr><th>Version</th><th>Saved</th><th /></tr></thead>
-                  <tbody>{configs.map((c) => (
-                    <tr key={c.id}><td>r{c.revision}</td><td>{new Date(c.created_at).toLocaleString("en-GB")}</td>
-                      <td><a className="btn small ghost" href={`/api/configurations/${c.id}`}>Download package</a></td></tr>
-                  ))}</tbody>
-                </table>
-              </div>
-            ) : null}
-          </>
-        ) : (
-          <p className="muted small">This automation is ready to use and has no buyer settings. Connect your own app credentials in n8n.</p>
-        )}
-      </section>
+        <section className="card stack" aria-labelledby="cfg-h" id="configure">
+          <h2 id="cfg-h" className="h3">Customize</h2>
+          {manifest?.ok && manifest.manifest.settings.length ? (
+            <>
+              <p className="small muted">Only the settings the creator made configurable can be changed. Each save creates a new configuration version.</p>
+              <ConfigForm productId={p.id} manifest={manifest.manifest} initial={configs?.[0]?.values as ConfigValues | undefined} />
+              {configs?.length ? (
+                <div className="table-wrap">
+                  <table>
+                    <thead><tr><th>Version</th><th>Saved</th><th /></tr></thead>
+                    <tbody>{configs.map((c) => (
+                      <tr key={c.id}><td>r{c.revision}</td><td>{new Date(c.created_at).toLocaleString("en-GB")}</td>
+                        <td><a className="btn small ghost" href={`/api/configurations/${c.id}`}>Download package</a></td></tr>
+                    ))}</tbody>
+                  </table>
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <p className="muted small">This automation is ready to use and has no buyer settings. Connect your own app credentials in n8n.</p>
+          )}
+        </section>
 
-      <section className="card stack" aria-labelledby="ver-h">
-        <h2 id="ver-h" className="h3">Versions</h2>
-        <ul className="prose">{(versions ?? []).map((v) => <li key={v.id}><strong>{v.version}</strong>{v.id === purchased?.id ? " (purchased)" : ""} — {v.changelog || "No notes."}</li>)}</ul>
-      </section>
+        <section className="card stack" aria-labelledby="ver-h">
+          <h2 id="ver-h" className="h3">Versions</h2>
+          <ul className="prose">{(versions ?? []).map((v) => <li key={v.id}><strong>{v.version}</strong>{v.id === purchased?.id ? " (purchased)" : ""} — {v.changelog || "No notes."}</li>)}</ul>
+        </section>
+        </>
+      )}
 
       <div className="grid" style={{ "--cols": 2 } as React.CSSProperties}>
         <form action={submitReview} className="card stack" id="review">

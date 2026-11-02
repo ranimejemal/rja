@@ -1,49 +1,42 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { coerceFormValues, parseManifest, validateConfig } from "@/lib/manifest";
+import { coerceFormValues, validateConfig } from "@/lib/manifest";
+import { setupFormFor } from "@/lib/setup-form";
 import { rateLimit } from "@/lib/rate-limit";
-import { features } from "@/lib/env";
 
 function back(id: string, kind: "notice" | "error", msg: string, hash = ""): never {
   redirect(`/dashboard/products/${id}?${kind}=${encodeURIComponent(msg)}${hash}`);
 }
 
-export type ConfigState = { errors?: Record<string, string>; message?: string; ok?: boolean };
+export type ConfigState = { errors?: Record<string, string>; message?: string; ok?: boolean; configId?: string };
 
-/** Saves a new configuration revision. Values are validated again here against the product's manifest. */
+/**
+ * Saves a new configuration revision. Values are validated here against the product's setup form: the
+ * agency's own automations use the form generated from their workflow, other products the creator's manifest.
+ */
 export async function saveConfiguration(_: ConfigState, form: FormData): Promise<ConfigState> {
   const productId = String(form.get("product_id") ?? "");
   const session = await requireUser(`/dashboard/products/${productId}`);
   if (!rateLimit(`config:${session.userId}`, 30, 60 * 60_000).ok) return { message: "Too many saves. Try again later." };
-  if (!features.serverAdmin) return { message: "Saving configurations is not available yet." };
   const supabase = await createClient();
   const { data: owns } = await supabase.rpc("owns_product", { p_product_id: productId });
   if (!owns) return { message: "You do not own this product." };
-  const { data: product } = await supabase.from("products").select("current_version_id").eq("id", productId).single();
+  const { data: product } = await supabase.from("products").select("slug, current_version_id").eq("id", productId).single();
   if (!product?.current_version_id) return { message: "This product has no published version." };
-  const { data: row } = await supabase.from("product_manifests").select("manifest").eq("version_id", product.current_version_id).maybeSingle();
-  const parsed = row ? parseManifest(row.manifest) : null;
-  if (!parsed?.ok) return { message: "This product has no configuration form." };
+  const manifest = await setupFormFor(supabase, product.slug, product.current_version_id);
+  if (!manifest) return { message: "This product has no configuration form." };
 
-  const result = validateConfig(parsed.manifest, coerceFormValues(parsed.manifest, form));
+  const result = validateConfig(manifest, coerceFormValues(manifest, form));
   if (!result.ok) return { errors: result.errors, message: "Please fix the highlighted fields." };
 
-  const admin = createAdminClient();
-  const { data: last } = await admin.from("product_configurations").select("revision")
-    .eq("user_id", session.userId).eq("product_id", productId).order("revision", { ascending: false }).limit(1);
-  const { error } = await admin.from("product_configurations").insert({
-    user_id: session.userId, product_id: productId, version_id: product.current_version_id,
-    revision: (last?.[0]?.revision ?? 0) + 1, values: result.values,
-  });
-  if (error) return { message: "Could not save the configuration." };
-  revalidatePath(`/dashboard/products/${productId}`);
-  return { ok: true, message: "Configuration saved as a new version." };
+  const { data: configId, error } = await supabase.rpc("save_configuration", { p_product_id: productId, p_values: result.values });
+  if (error || !configId) return { message: "Could not save your answers. Please try again." };
+  // The form shows the download right away and refreshes the page (see ConfigForm).
+  return { ok: true, configId, message: "Saved. Your automation is ready, with your details filled in." };
 }
 
 export async function submitReview(form: FormData) {

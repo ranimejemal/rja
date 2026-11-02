@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "productType": "n8n-workflow",
+  "workflowVersion": "1.0.0",
+  "settings": [
+    {
+      "key": "business_name",
+      "label": "Business name",
+      "help": "As your customers know it. Example: Ranime Jemal Agency",
+      "type": "text",
+      "required": true,
+      "maxLength": 300
+    },
+    {
+      "key": "google_place_id",
+      "label": "Google Place ID of your business",
+      "help": "Search your business on Google's \"Place ID Finder\" page and copy the ID it shows. Example: ChIJN1t_tDeuEmsRUsoyG83frY4",
+      "type": "text",
+      "required": true,
+      "maxLength": 300
+    },
+    {
+      "key": "reply_tone",
+      "label": "Tone of review replies",
+      "help": "Example: warm, professional, short",
+      "type": "text",
+      "required": false,
+      "maxLength": 300,
+      "default": "warm, professional, short"
+    },
+    {
+      "key": "contact_email",
+      "label": "Contact email shown in replies",
+      "help": "Customers are invited to write here when a review needs a follow-up.",
+      "type": "email",
+      "required": true
+    },
+    {
+      "key": "alert_email",
+      "label": "Email for alerts",
+      "help": "Where urgent alerts are sent. Use an address someone reads every day.",
+      "type": "email",
+      "required": true
+    },
+    {
+      "key": "low_rating",
+      "label": "Alert me for reviews of this many stars or fewer",
+      "help": "You get an email at once for these. 3 is a good start.",
+      "type": "number",
+      "required": false,
+      "min": 1,
+      "max": 5,
+      "default": 3
+    },
+    {
+      "key": "sender_name",
+      "label": "Sender name on emails",
+      "help": "The name people see in their inbox. Example: Sarah from Maison Lina",
+      "type": "text",
+      "required": true,
+      "maxLength": 300
+    },
+    {
+      "key": "google_sheet_url",
+      "label": "Google Sheet link",
+      "help": "Create an empty Google Sheet, add the tabs from the guide, then copy the link from your browser's address bar and paste it here.",
+      "type": "url",
+      "required": true
+    }
+  ]
+}

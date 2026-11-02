@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "productType": "n8n-workflow",
+  "workflowVersion": "1.0.0",
+  "settings": [
+    {
+      "key": "business_name",
+      "label": "Business name",
+      "help": "As your customers know it. Example: Ranime Jemal Agency",
+      "type": "text",
+      "required": true,
+      "maxLength": 300
+    },
+    {
+      "key": "calendar_id",
+      "label": "Google Calendar to use",
+      "help": "Leave \"primary\" to use your main calendar. For another calendar: Google Calendar, Settings, the calendar, Integrate calendar, Calendar ID.",
+      "type": "text",
+      "required": true,
+      "maxLength": 300,
+      "default": "primary"
+    },
+    {
+      "key": "timezone",
+      "label": "Time zone",
+      "help": "Example: Africa/Tunis, Europe/Paris, Europe/London, America/New_York",
+      "type": "text",
+      "required": true,
+      "maxLength": 300,
+      "default": "Europe/Paris"
+    },
+    {
+      "key": "open_days",
+      "label": "Open days",
+      "help": "Day numbers separated by commas: 1 = Monday, 2 = Tuesday … 7 = Sunday. Example: 1,2,3,4,5 for Monday to Friday.",
+      "type": "text",
+      "required": true,
+      "maxLength": 300,
+      "default": "1,2,3,4,5,6"
+    },
+    {
+      "key": "open_time",
+      "label": "Opening time",
+      "help": "24-hour format. Example: 09:00",
+      "type": "text",
+      "required": true,
+      "maxLength": 300,
+      "default": "09:00"
+    },
+    {
+      "key": "close_time",
+      "label": "Closing time",
+      "help": "24-hour format. Example: 18:00",
+      "type": "text",
+      "required": true,
+      "maxLength": 300,
+      "default": "18:00"
+    },
+    {
+      "key": "slot_minutes",
+      "label": "Length of an appointment (minutes)",
+      "help": "Example: 30 or 60",
+      "type": "number",
+      "required": false,
+      "min": 5,
+      "max": 480,
+      "default": 60
+    },
+    {
+      "key": "team_email",
+      "label": "Your team's email",
+      "help": "Where alerts and copies are sent. Example: hello@yourbusiness.com",
+      "type": "email",
+      "required": true
+    },
+    {
+      "key": "google_sheet_url",
+      "label": "Google Sheet link",
+      "help": "Create an empty Google Sheet, add the tabs from the guide, then copy the link from your browser's address bar and paste it here.",
+      "type": "url",
+      "required": true
+    },
+    {
+      "key": "sender_name",
+      "label": "Sender name on emails",
+      "help": "The name people see in their inbox. Example: Sarah from Maison Lina",
+      "type": "text",
+      "required": true,
+      "maxLength": 300
+    }
+  ]
+}

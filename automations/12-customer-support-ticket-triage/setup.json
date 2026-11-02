@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "productType": "n8n-workflow",
+  "workflowVersion": "1.0.0",
+  "settings": [
+    {
+      "key": "business_name",
+      "label": "Business name",
+      "help": "As your customers know it. Example: Ranime Jemal Agency",
+      "type": "text",
+      "required": true,
+      "maxLength": 300
+    },
+    {
+      "key": "business_description",
+      "label": "What your business does",
+      "help": "One or two sentences the AI uses to write in your name. Example: We build AI automations for small businesses in France and Tunisia.",
+      "type": "textarea",
+      "required": true,
+      "maxLength": 2000
+    },
+    {
+      "key": "categories",
+      "label": "Categories to sort into",
+      "help": "Separated by commas. Example: quote request, product question, support, partnership",
+      "type": "textarea",
+      "required": true,
+      "maxLength": 2000,
+      "default": "order status, delivery problem, refund or return, billing, technical problem, account, product question, complaint, other"
+    },
+    {
+      "key": "policies",
+      "label": "Your policies",
+      "help": "Returns, refunds, delivery, warranty: the AI uses them to draft correct replies. Example: Returns within 30 days. Delivery in 2 to 4 days.",
+      "type": "textarea",
+      "required": true,
+      "maxLength": 2000
+    },
+    {
+      "key": "sender_name",
+      "label": "Sender name on emails",
+      "help": "The name people see in their inbox. Example: Sarah from Maison Lina",
+      "type": "text",
+      "required": true,
+      "maxLength": 300
+    },
+    {
+      "key": "urgent_email",
+      "label": "Email for urgent tickets",
+      "help": "The person or inbox on duty for urgent customer problems.",
+      "type": "email",
+      "required": true
+    },
+    {
+      "key": "google_sheet_url",
+      "label": "Google Sheet link",
+      "help": "Create an empty Google Sheet, add the tabs from the guide, then copy the link from your browser's address bar and paste it here.",
+      "type": "url",
+      "required": true
+    }
+  ]
+}

@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "productType": "n8n-workflow",
+  "workflowVersion": "1.0.0",
+  "settings": [
+    {
+      "key": "store_name",
+      "label": "Shop name",
+      "help": "As it appears on your website. Example: Maison Lina",
+      "type": "text",
+      "required": true,
+      "maxLength": 300
+    },
+    {
+      "key": "brand_voice",
+      "label": "Your brand's voice",
+      "help": "How you talk to customers. Example: warm, confident, no jargon",
+      "type": "text",
+      "required": false,
+      "maxLength": 300,
+      "default": "friendly and simple"
+    },
+    {
+      "key": "language",
+      "label": "Language",
+      "help": "Example: English, French, Arabic",
+      "type": "text",
+      "required": false,
+      "maxLength": 300,
+      "default": "English"
+    },
+    {
+      "key": "first_delay_hours",
+      "label": "First reminder after (hours)",
+      "help": "How long after the cart was left. 1 is a good start.",
+      "type": "number",
+      "required": false,
+      "min": 1,
+      "max": 72,
+      "default": 1
+    },
+    {
+      "key": "repeat_hours",
+      "label": "Then every (hours)",
+      "help": "Time between the next reminders.",
+      "type": "number",
+      "required": false,
+      "min": 1,
+      "max": 168,
+      "default": 24
+    },
+    {
+      "key": "max_reminders",
+      "label": "Maximum reminders per cart",
+      "help": "2 is enough for most shops.",
+      "type": "number",
+      "required": false,
+      "min": 1,
+      "max": 5,
+      "default": 2
+    },
+    {
+      "key": "discount_code",
+      "label": "Discount code (optional)",
+      "help": "Offered from the second reminder. Create it in Shopify first. Leave empty for no discount.",
+      "type": "text",
+      "required": false,
+      "maxLength": 300
+    },
+    {
+      "key": "discount_text",
+      "label": "What the discount gives",
+      "help": "Example: 10% off your order",
+      "type": "text",
+      "required": false,
+      "maxLength": 300,
+      "default": "10% off your order"
+    },
+    {
+      "key": "sender_name",
+      "label": "Sender name on emails",
+      "help": "The name people see in their inbox. Example: Sarah from Maison Lina",
+      "type": "text",
+      "required": true,
+      "maxLength": 300
+    },
+    {
+      "key": "google_sheet_url",
+      "label": "Google Sheet link",
+      "help": "Create an empty Google Sheet, add the tabs from the guide, then copy the link from your browser's address bar and paste it here.",
+      "type": "url",
+      "required": true
+    }
+  ]
+}

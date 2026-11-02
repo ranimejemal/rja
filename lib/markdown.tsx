@@ -1,11 +1,14 @@
 import { Fragment, type ReactNode } from "react";
 
-// Minimal, safe Markdown renderer for agreement texts: headings, lists, paragraphs and **bold**.
+// Minimal, safe Markdown renderer for agreement texts and setup guides: headings, lists, paragraphs, **bold**
+// and `code`.
 // Text is rendered as React nodes, never as raw HTML.
 
 function inline(text: string): ReactNode[] {
-  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
-    part.startsWith("**") && part.endsWith("**") ? <strong key={i}>{part.slice(2, -2)}</strong> : <Fragment key={i}>{part}</Fragment>);
+  return text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((part, i) =>
+    part.startsWith("**") && part.endsWith("**") ? <strong key={i}>{part.slice(2, -2)}</strong>
+      : part.startsWith("`") && part.endsWith("`") && part.length > 2 ? <code key={i}>{part.slice(1, -1)}</code>
+        : <Fragment key={i}>{part}</Fragment>);
 }
 
 export function Markdown({ source }: { source: string }) {

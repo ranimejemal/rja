@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "productType": "n8n-workflow",
+  "workflowVersion": "1.0.0",
+  "settings": [
+    {
+      "key": "processed_folder_id",
+      "label": "Google Drive folder ID (processed documents)",
+      "help": "Open the folder where finished documents should go and copy the last part of the link, after /folders/.",
+      "type": "text",
+      "required": true,
+      "maxLength": 300
+    },
+    {
+      "key": "team_email",
+      "label": "Your team's email",
+      "help": "Where alerts and copies are sent. Example: hello@yourbusiness.com",
+      "type": "email",
+      "required": true
+    },
+    {
+      "key": "sender_name",
+      "label": "Sender name on emails",
+      "help": "The name people see in their inbox. Example: Sarah from Maison Lina",
+      "type": "text",
+      "required": true,
+      "maxLength": 300
+    },
+    {
+      "key": "google_sheet_url",
+      "label": "Google Sheet link",
+      "help": "Create an empty Google Sheet, add the tabs from the guide, then copy the link from your browser's address bar and paste it here.",
+      "type": "url",
+      "required": true
+    }
+  ]
+}

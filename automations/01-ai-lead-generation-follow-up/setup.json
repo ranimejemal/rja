@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "productType": "n8n-workflow",
+  "workflowVersion": "1.0.0",
+  "settings": [
+    {
+      "key": "business_name",
+      "label": "Business name",
+      "help": "As your customers know it. Example: Ranime Jemal Agency",
+      "type": "text",
+      "required": true,
+      "maxLength": 300
+    },
+    {
+      "key": "business_description",
+      "label": "What your business does",
+      "help": "One or two sentences the AI uses to write in your name. Example: We build AI automations for small businesses in France and Tunisia.",
+      "type": "textarea",
+      "required": true,
+      "maxLength": 2000
+    },
+    {
+      "key": "ideal_customer",
+      "label": "Your ideal customer",
+      "help": "Who is a good fit: industry, size, need, budget. Example: Real-estate agencies with 5 to 50 agents that want more qualified buyers.",
+      "type": "textarea",
+      "required": true,
+      "maxLength": 2000
+    },
+    {
+      "key": "sender_name",
+      "label": "Sender name on emails",
+      "help": "The name people see in their inbox. Example: Sarah from Maison Lina",
+      "type": "text",
+      "required": true,
+      "maxLength": 300
+    },
+    {
+      "key": "booking_link",
+      "label": "Booking link",
+      "help": "Where leads book a call with you, e.g. your Calendly or Google Calendar booking page.",
+      "type": "url",
+      "required": true
+    },
+    {
+      "key": "team_email",
+      "label": "Your team's email",
+      "help": "Where alerts and copies are sent. Example: hello@yourbusiness.com",
+      "type": "email",
+      "required": true
+    },
+    {
+      "key": "google_sheet_url",
+      "label": "Google Sheet link",
+      "help": "Create an empty Google Sheet, add the tabs from the guide, then copy the link from your browser's address bar and paste it here.",
+      "type": "url",
+      "required": true
+    },
+    {
+      "key": "auto_send_replies",
+      "label": "Send the first reply automatically",
+      "help": "On: the AI's reply is sent right away. Off: it is saved as a Gmail draft for you to check first (recommended for the first days).",
+      "type": "boolean",
+      "required": false,
+      "default": true
+    },
+    {
+      "key": "follow_up_days",
+      "label": "Days between follow-ups",
+      "help": "How long to wait before reminding a lead who has not answered.",
+      "type": "number",
+      "required": false,
+      "min": 1,
+      "max": 30,
+      "default": 2
+    },
+    {
+      "key": "max_follow_ups",
+      "label": "Maximum follow-ups per lead",
+      "help": "After this many reminders, the lead is left alone.",
+      "type": "number",
+      "required": false,
+      "min": 0,
+      "max": 10,
+      "default": 3
+    }
+  ]
+}

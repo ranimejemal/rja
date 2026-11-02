@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "productType": "n8n-workflow",
+  "workflowVersion": "1.0.0",
+  "settings": [
+    {
+      "key": "business_name",
+      "label": "Business name",
+      "help": "As your customers know it. Example: Ranime Jemal Agency",
+      "type": "text",
+      "required": true,
+      "maxLength": 300
+    },
+    {
+      "key": "ideal_customer",
+      "label": "Your ideal customer",
+      "help": "Who is a good fit: industry, size, need, budget. Example: Real-estate agencies with 5 to 50 agents that want more qualified buyers.",
+      "type": "textarea",
+      "required": true,
+      "maxLength": 2000
+    },
+    {
+      "key": "min_fit_score",
+      "label": "Minimum fit score (0 to 100)",
+      "help": "Leads scoring at least this are sent to a salesperson. 60 is a good start.",
+      "type": "number",
+      "required": false,
+      "min": 0,
+      "max": 100,
+      "default": 60
+    },
+    {
+      "key": "routing_rules",
+      "label": "Who gets which leads",
+      "help": "One rule per line: a keyword, then = and the salesperson's email. Example: real estate = alice@yourbusiness.com. Leave empty to send every qualified lead to the default salesperson.",
+      "type": "textarea",
+      "required": false,
+      "maxLength": 2000
+    },
+    {
+      "key": "default_owner",
+      "label": "Default salesperson email",
+      "help": "Qualified leads that match no routing rule are sent here.",
+      "type": "email",
+      "required": true
+    },
+    {
+      "key": "sender_name",
+      "label": "Sender name on emails",
+      "help": "The name people see in their inbox. Example: Sarah from Maison Lina",
+      "type": "text",
+      "required": true,
+      "maxLength": 300
+    },
+    {
+      "key": "google_sheet_url",
+      "label": "Google Sheet link",
+      "help": "Create an empty Google Sheet, add the tabs from the guide, then copy the link from your browser's address bar and paste it here.",
+      "type": "url",
+      "required": true
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "productType": "n8n-workflow",
+  "workflowVersion": "1.0.0",
+  "settings": [
+    {
+      "key": "team_name",
+      "label": "Team name",
+      "help": "Shown at the top of the meeting notes. Example: Sales team",
+      "type": "text",
+      "required": true,
+      "maxLength": 300
+    },
+    {
+      "key": "notes_email",
+      "label": "Send the notes to",
+      "help": "The meeting notes are emailed here (you can forward them to the attendees).",
+      "type": "email",
+      "required": true
+    },
+    {
+      "key": "sender_name",
+      "label": "Sender name on emails",
+      "help": "The name people see in their inbox. Example: Sarah from Maison Lina",
+      "type": "text",
+      "required": true,
+      "maxLength": 300
+    },
+    {
+      "key": "google_sheet_url",
+      "label": "Google Sheet link",
+      "help": "Create an empty Google Sheet, add the tabs from the guide, then copy the link from your browser's address bar and paste it here.",
+      "type": "url",
+      "required": true
+    }
+  ]
+}

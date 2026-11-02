@@ -1717,6 +1717,10 @@ export type Database = {
         Args: { p_company: string; p_email: string; p_message: string; p_name: string; p_phone: string; p_product_slug: string }
         Returns: string
       }
+      save_configuration: {
+        Args: { p_product_id: string; p_values: Json }
+        Returns: string
+      }
     }
     Enums: {
       agreement_kind:

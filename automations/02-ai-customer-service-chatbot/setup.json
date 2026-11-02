@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "productType": "n8n-workflow",
+  "workflowVersion": "1.0.0",
+  "settings": [
+    {
+      "key": "business_name",
+      "label": "Business name",
+      "help": "As your customers know it. Example: Ranime Jemal Agency",
+      "type": "text",
+      "required": true,
+      "maxLength": 300
+    },
+    {
+      "key": "business_description",
+      "label": "What your business does",
+      "help": "One or two sentences the AI uses to write in your name. Example: We build AI automations for small businesses in France and Tunisia.",
+      "type": "textarea",
+      "required": true,
+      "maxLength": 2000
+    },
+    {
+      "key": "opening_hours",
+      "label": "Opening hours",
+      "help": "Example: Monday to Friday, 9:00 to 18:00",
+      "type": "text",
+      "required": true,
+      "maxLength": 300,
+      "default": "Monday to Friday, 9:00 to 18:00"
+    },
+    {
+      "key": "contact_details",
+      "label": "How customers can reach a person",
+      "help": "Email and/or phone the chatbot gives when it hands over. Example: support@yourbusiness.com, +216 00 000 000",
+      "type": "text",
+      "required": true,
+      "maxLength": 300
+    },
+    {
+      "key": "tone",
+      "label": "Tone of the answers",
+      "help": "Example: friendly, short and clear",
+      "type": "text",
+      "required": false,
+      "maxLength": 300,
+      "default": "friendly, short and clear"
+    },
+    {
+      "key": "team_email",
+      "label": "Your team's email",
+      "help": "Where alerts and copies are sent. Example: hello@yourbusiness.com",
+      "type": "email",
+      "required": true
+    },
+    {
+      "key": "google_sheet_url",
+      "label": "Google Sheet link",
+      "help": "Create an empty Google Sheet, add the tabs from the guide, then copy the link from your browser's address bar and paste it here.",
+      "type": "url",
+      "required": true
+    }
+  ]
+}

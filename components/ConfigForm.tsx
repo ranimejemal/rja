@@ -1,13 +1,21 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { coerceFormValues, validateConfig, type ConfigValues, type Manifest } from "@/lib/manifest";
 import { saveConfiguration, type ConfigState } from "@/app/dashboard/products/[id]/actions";
 import { SubmitButton } from "./client";
 
 /** Form generated from the creator's manifest. Validated here for fast feedback and again on the server. */
-export function ConfigForm({ productId, manifest, initial }: { productId: string; manifest: Manifest; initial?: ConfigValues }) {
+export function ConfigForm({ productId, manifest, initial, workflowDownload = false }: {
+  productId: string; manifest: Manifest; initial?: ConfigValues;
+  /** The product has a personalized workflow file: offer it as soon as the answers are saved. */
+  workflowDownload?: boolean;
+}) {
   const [state, action] = useActionState<ConfigState, FormData>(saveConfiguration, {});
+  const router = useRouter();
+  // Show what depends on the saved answers (the download button) right away.
+  useEffect(() => { if (state.ok) router.refresh(); }, [state, router]);
   const [clientErrors, setClientErrors] = useState<Record<string, string>>({});
   const errors = { ...state.errors, ...clientErrors };
 
@@ -57,8 +65,15 @@ export function ConfigForm({ productId, manifest, initial }: { productId: string
           </div>
         );
       })}
-      {state.message && <div className={`notice ${state.ok ? "ok" : "danger"}`} role="status">{state.message}</div>}
-      <SubmitButton className="btn accent" pendingText="Saving…">Save configuration</SubmitButton>
+      {state.message && (
+        <div className={`notice ${state.ok ? "ok" : "danger"}`} role="status">
+          {state.message}
+          {state.ok && state.configId && workflowDownload && (
+            <> <a className="btn small accent" style={{ marginLeft: "0.5rem" }} href={`/api/configurations/${state.configId}/workflow`}>Download my automation</a></>
+          )}
+        </div>
+      )}
+      <SubmitButton className="btn accent" pendingText="Saving…">Save my details</SubmitButton>
     </form>
   );
 }

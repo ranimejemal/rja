@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSession } from "@/lib/auth";
 import { thumbnailUrl } from "@/lib/catalog";
-import { parseManifest } from "@/lib/manifest";
+import { setupFormFor } from "@/lib/setup-form";
 import { features } from "@/lib/env";
 import { Badge, CUSTOMIZATION_LABEL, LICENSE_LABEL, Price, Rating, SellerBadge } from "@/components/ui";
 import { SubmitButton } from "@/components/client";
@@ -43,10 +43,7 @@ export default async function ProductPage({ params }: Params) {
     supabase.from("agreements").select("id, title, version").eq("kind", "buyer_license").eq("is_current", true).maybeSingle(),
     session ? supabase.rpc("owns_product", { p_product_id: p.id }).then((r) => r.data === true) : Promise.resolve(false),
   ]);
-  const { data: manifestRow } = p.current_version_id
-    ? await supabase.from("product_manifests").select("manifest").eq("version_id", p.current_version_id).maybeSingle()
-    : { data: null };
-  const manifest = manifestRow ? parseManifest(manifestRow.manifest) : null;
+  const setupForm = await setupFormFor(supabase, p.slug, p.current_version_id);
   const isPlatform = p.ownership === "platform";
   const seller = p.seller as { slug: string; display_name: string; bio: string; is_platform: boolean; is_demo: boolean } | null;
   const category = p.category as { slug: string; name: string } | null;
@@ -92,7 +89,8 @@ export default async function ProductPage({ params }: Params) {
                 <table>
                   <tbody>
                     {p.audience && <tr><th scope="row">Who buys it</th><td>{p.audience}</td></tr>}
-                    {p.price_label && <tr><th scope="row">Price</th><td>{p.price_label}</td></tr>}
+                    {!p.quote_only && <tr><th scope="row">Do it yourself</th><td><Price minor={p.price_minor} currency={p.currency} /> one-time, with the guided setup</td></tr>}
+                    {p.price_label && <tr><th scope="row">Done for you</th><td>{p.price_label}, set up in your accounts by our team</td></tr>}
                     <tr><th scope="row">Platform</th><td>{p.platforms.join(", ")}</td></tr>
                     <tr><th scope="row">Required apps</th><td><div className="badges">{p.integrations.map((i) => <Badge key={i}>{i}</Badge>)}</div></td></tr>
                     <tr><th scope="row">Prerequisites</th><td>{p.prerequisites || "—"}</td></tr>
@@ -107,11 +105,14 @@ export default async function ProductPage({ params }: Params) {
             </div>
 
             {!p.quote_only && <div className="stack">
-              <span className="tag">(What you can customize)</span>
-              {manifest?.ok && manifest.manifest.settings.length ? (
-                <ul className="prose">
-                  {manifest.manifest.settings.map((s) => <li key={s.key}><strong>{s.label}</strong>{s.required ? " (required)" : ""}{s.help ? ` — ${s.help}` : ""}</li>)}
-                </ul>
+              <span className="tag">(What you fill in)</span>
+              {setupForm?.settings.length ? (
+                <>
+                  <p className="small">After buying, you fill in a short form with these details and download your automation with them already filled in, plus a step-by-step guide:</p>
+                  <ul className="prose">
+                    {setupForm.settings.map((s) => <li key={s.key}><strong>{s.label}</strong>{s.required ? "" : " (optional)"}</li>)}
+                  </ul>
+                </>
               ) : (
                 <p className="muted">This automation is ready to use; it has no buyer-editable settings beyond your own app connections.</p>
               )}
@@ -145,7 +146,7 @@ export default async function ProductPage({ params }: Params) {
             <form action={startCheckout} className="card stack" id="buy">
               <input type="hidden" name="slug" value={p.slug} />
               <input type="hidden" name="agreement_id" value={license?.id ?? ""} />
-              <span className="tag">(Purchase)</span>
+              <span className="tag">(Do it yourself)</span>
               <div className="row between"><Price minor={p.price_minor} currency={p.currency} /><span className="tiny muted">one-time · VAT may apply</span></div>
               <fieldset>
                 <legend>License</legend>
@@ -156,7 +157,7 @@ export default async function ProductPage({ params }: Params) {
                 </div>
               </fieldset>
               <div className="small muted stack" style={{ "--gap": "0.35rem" } as React.CSSProperties}>
-                <span>You receive: the n8n workflow file, documentation and updates for this product.</span>
+                <span>You receive: your automation with your details already filled in, a step-by-step setup guide written for non-technical people, the Google Sheet templates, updates and email support.</span>
                 <span>Not included: hosted execution, third-party app subscriptions and API costs.</span>
                 <span>Redistribution or resale of the files is not allowed. <Link className="link" href="/legal/refund-policy">Refund policy</Link>.</span>
               </div>
@@ -172,13 +173,26 @@ export default async function ProductPage({ params }: Params) {
                 <Link className="btn accent" href={`/login?next=/products/${p.slug}`}>Log in to buy</Link>
               ) : p.price_minor > 0 && !features.payments ? (
                 <>
-                  <button className="btn" type="button" disabled>Checkout opening soon</button>
-                  <p className="tiny muted">Payments are being set up. Contact ranimejmal@gmail.com to buy now.</p>
+                  <button className="btn" type="button" disabled>Card payment opening soon</button>
+                  <p className="tiny muted">Online payment is being set up. To buy now, <Link className="link" href={`/quote?product=${p.slug}`}>send us a request</Link> and we will send you a secure payment link.</p>
                 </>
               ) : (
                 <SubmitButton className="btn accent" pendingText="Opening checkout…">{p.price_minor === 0 ? "Get it free" : "Buy now"}</SubmitButton>
               )}
             </form>
+            )}
+
+            {!p.quote_only && p.price_label && (
+              <details className="card" id="done-for-you">
+                <summary className="stack" style={{ "--gap": "0.3rem", cursor: "pointer" } as React.CSSProperties}>
+                  <span className="tag">(Done for you)</span>
+                  <strong>Prefer we set it up for you?</strong>
+                  <span className="small muted">{p.price_label}. Fixed quote before any work starts.</span>
+                </summary>
+                <div style={{ marginTop: "1rem" }}>
+                  <QuoteCard slug={p.slug} name={p.name} priceLabel={null} audience={p.audience} defaults={{ name: session?.displayName, email: session?.email }} />
+                </div>
+              </details>
             )}
 
             {seller && (

@@ -10,7 +10,7 @@ export default async function QuotePage({ searchParams }: { searchParams: Promis
   const supabase = await createClient();
   const [session, { data: products }, { product }] = await Promise.all([
     getSession(),
-    supabase.from("products").select("slug, name").eq("status", "published").eq("quote_only", true).order("top_rank", { nullsFirst: false }).order("name"),
+    supabase.from("products").select("slug, name").eq("status", "published").not("price_label", "is", null).order("top_rank", { nullsFirst: false }).order("name"),
     searchParams,
   ]);
   const options = (products ?? []).map((p) => ({ slug: p.slug, name: p.name }));

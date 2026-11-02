@@ -29,7 +29,7 @@ export function ProductCard({ p }: { p: ProductCardData }) {
             <Rating avg={p.rating_avg} count={p.rating_count} />
           </div>
           <div className="stack" style={{ "--gap": "0.1rem", alignItems: "flex-end" } as React.CSSProperties}>
-            {p.price_label ? <span className="price">{p.price_label}</span> : <Price minor={p.price_minor} currency={p.currency} />}
+            {p.quote_only && p.price_label ? <span className="price">{p.price_label}</span> : <Price minor={p.price_minor} currency={p.currency} />}
             {p.sales_count > 0 && !p.is_demo && <span className="tiny muted">{p.sales_count} sales</span>}
           </div>
         </div>
