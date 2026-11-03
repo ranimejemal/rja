@@ -204,6 +204,12 @@ select test.ok('owner saves setup answers as numbered revisions',
 select test.fails('setup answers must be an object', $q$select save_configuration(test.id('p2'), '[1]'::jsonb)$q$, 'invalid configuration');
 select test.act_as('buyer2');
 select test.fails('only owners save setup answers', $q$select save_configuration(test.id('p2'), '{}'::jsonb)$q$, 'do not own');
+select test.ok('a buyer cannot use the setup tool of a product they did not buy', not can_use_product(test.id('p2')));
+select test.act_as('admin');
+select test.ok('admins can use every setup tool for free', can_use_product(test.id('p2')) and not owns_product(test.id('p2')));
+select save_configuration(test.id('p2'), '{"business_name":"Admin test"}'::jsonb);
+select test.ok('admin setup answers are saved like a buyer''s',
+  exists (select 1 from product_configurations where user_id = test.id('admin') and product_id = test.id('p2')));
 select test.act_as(null);
 
 -- amount mismatch is refused

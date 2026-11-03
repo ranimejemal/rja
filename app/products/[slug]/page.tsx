@@ -44,6 +44,8 @@ export default async function ProductPage({ params }: Params) {
     session ? supabase.rpc("owns_product", { p_product_id: p.id }).then((r) => r.data === true) : Promise.resolve(false),
   ]);
   const setupForm = await setupFormFor(supabase, p.slug, p.current_version_id);
+  // Admins use the agency's own automations for free: straight to the setup tool, no checkout.
+  const adminTool = Boolean(session?.roles.includes("admin") && p.ownership === "platform" && setupForm);
   const isPlatform = p.ownership === "platform";
   const seller = p.seller as { slug: string; display_name: string; bio: string; is_platform: boolean; is_demo: boolean } | null;
   const category = p.category as { slug: string; name: string } | null;
@@ -167,14 +169,19 @@ export default async function ProductPage({ params }: Params) {
               </label>
               {owned ? (
                 <Link className="btn accent" href={`/dashboard/products/${p.id}`}>Open in my automations</Link>
+              ) : adminTool ? (
+                <>
+                  <Link className="btn accent" href={`/dashboard/products/${p.id}`}>Open the setup tool</Link>
+                  <p className="tiny muted">Free for you as an admin. Customers see a Buy now button here.</p>
+                </>
               ) : p.is_demo || !published ? (
                 <button className="btn" type="button" disabled>Not available for purchase</button>
               ) : !session ? (
                 <Link className="btn accent" href={`/login?next=/products/${p.slug}`}>Log in to buy</Link>
               ) : p.price_minor > 0 && !features.payments ? (
                 <>
-                  <button className="btn" type="button" disabled>Card payment opening soon</button>
-                  <p className="tiny muted">Online payment is being set up. To buy now, <Link className="link" href={`/quote?product=${p.slug}`}>send us a request</Link> and we will send you a secure payment link.</p>
+                  <button className="btn accent" type="button" disabled>Buy now</button>
+                  <p className="tiny muted">Card payment opens very soon.</p>
                 </>
               ) : (
                 <SubmitButton className="btn accent" pendingText="Opening checkout…">{p.price_minor === 0 ? "Get it free" : "Buy now"}</SubmitButton>
@@ -190,7 +197,7 @@ export default async function ProductPage({ params }: Params) {
                   <span className="small muted">{p.price_label}. Fixed quote before any work starts.</span>
                 </summary>
                 <div style={{ marginTop: "1rem" }}>
-                  <QuoteCard slug={p.slug} name={p.name} priceLabel={null} audience={p.audience} defaults={{ name: session?.displayName, email: session?.email }} />
+                  <QuoteCard id="quote" slug={p.slug} name={p.name} priceLabel={null} audience={p.audience} defaults={{ name: session?.displayName, email: session?.email }} />
                 </div>
               </details>
             )}
@@ -232,9 +239,9 @@ export default async function ProductPage({ params }: Params) {
 }
 
 /** Done-for-you setups are priced by scope, so buyers ask for a quote instead of checking out. */
-function QuoteCard({ slug, name, priceLabel, audience, defaults }: { slug: string; name: string; priceLabel: string | null; audience: string; defaults: { name?: string; email?: string } }) {
+function QuoteCard({ slug, name, priceLabel, audience, defaults, id = "buy" }: { slug: string; name: string; priceLabel: string | null; audience: string; defaults: { name?: string; email?: string }; id?: string }) {
   return (
-    <div className="card stack" id="buy">
+    <div className="card stack" id={id}>
       <span className="tag">(Done-for-you setup)</span>
       {priceLabel && <span className="price">{priceLabel}</span>}
       {audience && <p className="small muted">Best for: {audience}.</p>}

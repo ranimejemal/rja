@@ -87,8 +87,18 @@ where s.slug = p.slug and v.product_id = p.id and v.version = '1.0.0';
 
 drop table self_serve;
 
+-- Who may use an automation's setup tool (form, personal download, sheet templates): its buyers, and the
+-- platform's admins, who can open every automation for free (to test and to set up clients' automations).
+-- owns_product itself stays "has bought it": it also decides who may leave a review.
+create or replace function can_use_product(p_product_id uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select owns_product(p_product_id) or is_admin()
+$$;
+revoke all on function can_use_product(uuid) from public, anon;
+grant execute on function can_use_product(uuid) to authenticated;
+
 -- Buyers save their setup answers themselves (no server secret needed). The server validates the answers against
--- the setup form first; this function only enforces ownership, size and the revision number.
+-- the setup form first; this function only enforces access, size and the revision number.
 create or replace function save_configuration(p_product_id uuid, p_values jsonb)
 returns uuid language plpgsql security definer set search_path = public as $$
 declare
@@ -98,7 +108,7 @@ declare
   cid uuid;
 begin
   if uid is null then raise exception 'sign in first' using errcode = '42501'; end if;
-  if not owns_product(p_product_id) then raise exception 'you do not own this product' using errcode = '42501'; end if;
+  if not can_use_product(p_product_id) then raise exception 'you do not own this product' using errcode = '42501'; end if;
   if jsonb_typeof(p_values) <> 'object' or length(p_values::text) > 32000 then raise exception 'invalid configuration'; end if;
   select current_version_id into vid from products where id = p_product_id;
   if vid is null then raise exception 'this product has no published version'; end if;

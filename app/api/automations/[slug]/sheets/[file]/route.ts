@@ -11,7 +11,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
   const { slug, file } = await params;
   const supabase = await createClient();
   const { data: product } = await supabase.from("products").select("id").eq("slug", slug).maybeSingle();
-  const { data: owns } = product ? await supabase.rpc("owns_product", { p_product_id: product.id }) : { data: false };
+  const { data: owns } = product ? await supabase.rpc("can_use_product", { p_product_id: product.id }) : { data: false };
   const csv = owns ? await readSheetTemplate(slug, file) : null;
   if (!csv) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return new NextResponse(csv, {

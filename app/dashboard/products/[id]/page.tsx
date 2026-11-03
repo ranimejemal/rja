@@ -29,14 +29,16 @@ export default async function PurchasedProduct({ params }: { params: Promise<{ i
   const { data: ent } = await supabase.from("entitlements")
     .select("license_type, granted_at, order_item_id, item:order_items(id, version_id, unit_price_minor, currency, refunded_minor, order_id)")
     .eq("user_id", session.userId).eq("product_id", id).is("revoked_at", null).order("granted_at", { ascending: false }).limit(1).maybeSingle();
-  if (!ent) notFound();
+  // Admins open every agency automation's setup tool for free, to test it or to set it up for a client.
+  const adminAccess = !ent && session.roles.includes("admin");
+  if (!ent && !adminAccess) notFound();
 
   const [{ data: p }, { data: versions }, { data: configs }, { data: review }, { data: refunds }] = await Promise.all([
     supabase.from("products").select("id, slug, name, install_instructions, prerequisites, integrations, current_version_id, ownership, support_policy, seller:seller_profiles!products_seller_id_fkey(display_name, slug)").eq("id", id).single(),
     supabase.from("product_versions").select("id, version, changelog, created_at").eq("product_id", id).eq("status", "approved").order("created_at", { ascending: false }),
     supabase.from("product_configurations").select("id, revision, values, created_at").eq("user_id", session.userId).eq("product_id", id).order("revision", { ascending: false }),
     supabase.from("product_reviews").select("rating, body").eq("product_id", id).eq("user_id", session.userId).maybeSingle(),
-    supabase.from("refunds").select("status, created_at").eq("order_item_id", ent.order_item_id).order("created_at", { ascending: false }).limit(1),
+    ent ? supabase.from("refunds").select("status, created_at").eq("order_item_id", ent.order_item_id).order("created_at", { ascending: false }).limit(1) : Promise.resolve({ data: [] }),
   ]);
   if (!p) notFound();
   const { data: manifestRow } = p.current_version_id
@@ -44,12 +46,13 @@ export default async function PurchasedProduct({ params }: { params: Promise<{ i
     : { data: null };
   const manifest = manifestRow ? parseManifest(manifestRow.manifest) : null;
   const files = features.serverAdmin ? await filesForBuyer(session.userId, id) : null;
-  const purchased = versions?.find((v) => v.id === ent.item?.version_id);
+  const purchased = versions?.find((v) => v.id === ent?.item?.version_id);
   const current = versions?.[0];
   const updateAvailable = current && purchased && current.id !== purchased.id;
   const lastRefund = refunds?.[0];
   // The agency's own automations get the guided setup: form, personal workflow file and step-by-step guide.
   const setupForm = await loadSetupForm(p.slug);
+  if (adminAccess && !setupForm) notFound();
   const latest = configs?.[0] ? { ...configs[0], values: configs[0].values as ConfigValues } : null;
   const guide = setupForm && {
     sheets: await sheetTemplates(p.slug),
@@ -62,9 +65,9 @@ export default async function PurchasedProduct({ params }: { params: Promise<{ i
     <>
       <div className="stack">
         <Link className="tag" href="/dashboard">← My automations</Link>
-        <div className="badges"><SellerBadge isPlatform={p.ownership === "platform"} /><span className="badge">{LICENSE_LABEL[ent.license_type]} license</span></div>
+        <div className="badges"><SellerBadge isPlatform={p.ownership === "platform"} /><span className="badge">{ent ? `${LICENSE_LABEL[ent.license_type]} license` : "Free admin access"}</span></div>
         <h1 className="h2">{p.name}</h1>
-        <p className="small muted">by {p.seller?.display_name} · purchased {new Date(ent.granted_at).toLocaleDateString("en-GB")} · <Link className="link" href={`/products/${p.slug}`}>Product page</Link></p>
+        <p className="small muted">by {p.seller?.display_name} · {ent ? `purchased ${new Date(ent.granted_at).toLocaleDateString("en-GB")}` : "free for you as an admin"} · <Link className="link" href={`/products/${p.slug}`}>Product page</Link></p>
       </div>
 
       {setupForm && guide ? (
@@ -136,42 +139,46 @@ export default async function PurchasedProduct({ params }: { params: Promise<{ i
         </>
       )}
 
-      <div className="grid" style={{ "--cols": 2 } as React.CSSProperties}>
-        <form action={submitReview} className="card stack" id="review">
-          <h2 className="h3">{review ? "Update your review" : "Review this automation"}</h2>
-          <input type="hidden" name="product_id" value={p.id} />
-          <div className="field">
-            <label htmlFor="rating">Rating</label>
-            <select id="rating" name="rating" defaultValue={review?.rating ?? 5}>{[5, 4, 3, 2, 1].map((n) => <option key={n} value={n}>{n} star{n > 1 ? "s" : ""}</option>)}</select>
+      {ent && (
+        <>
+          <div className="grid" style={{ "--cols": 2 } as React.CSSProperties}>
+            <form action={submitReview} className="card stack" id="review">
+              <h2 className="h3">{review ? "Update your review" : "Review this automation"}</h2>
+              <input type="hidden" name="product_id" value={p.id} />
+              <div className="field">
+                <label htmlFor="rating">Rating</label>
+                <select id="rating" name="rating" defaultValue={review?.rating ?? 5}>{[5, 4, 3, 2, 1].map((n) => <option key={n} value={n}>{n} star{n > 1 ? "s" : ""}</option>)}</select>
+              </div>
+              <div className="field"><label htmlFor="body">Comment (optional)</label><textarea id="body" name="body" maxLength={2000} defaultValue={review?.body ?? ""} /></div>
+              <SubmitButton className="btn small">Save review</SubmitButton>
+            </form>
+
+            <form action={openTicket} className="card stack" id="support">
+              <h2 className="h3">Ask the seller</h2>
+              <input type="hidden" name="product_id" value={p.id} />
+              <p className="tiny muted">{p.support_policy}</p>
+              <div className="field"><label htmlFor="subject">Subject</label><input id="subject" name="subject" required maxLength={160} /></div>
+              <div className="field"><label htmlFor="msg">Message</label><textarea id="msg" name="body" required minLength={10} maxLength={5000} /></div>
+              <SubmitButton className="btn small">Send request</SubmitButton>
+            </form>
           </div>
-          <div className="field"><label htmlFor="body">Comment (optional)</label><textarea id="body" name="body" maxLength={2000} defaultValue={review?.body ?? ""} /></div>
-          <SubmitButton className="btn small">Save review</SubmitButton>
-        </form>
 
-        <form action={openTicket} className="card stack" id="support">
-          <h2 className="h3">Ask the seller</h2>
-          <input type="hidden" name="product_id" value={p.id} />
-          <p className="tiny muted">{p.support_policy}</p>
-          <div className="field"><label htmlFor="subject">Subject</label><input id="subject" name="subject" required maxLength={160} /></div>
-          <div className="field"><label htmlFor="msg">Message</label><textarea id="msg" name="body" required minLength={10} maxLength={5000} /></div>
-          <SubmitButton className="btn small">Send request</SubmitButton>
-        </form>
-      </div>
-
-      <section className="card stack" id="refund">
-        <h2 className="h3">Refund</h2>
-        {lastRefund ? (
-          <p className="small">Refund request: <StatusPill status={lastRefund.status} /></p>
-        ) : ent.item ? (
-          <form action={requestRefund} className="stack">
-            <input type="hidden" name="product_id" value={p.id} />
-            <input type="hidden" name="order_item_id" value={ent.item.id} />
-            <p className="small muted">Paid {formatMoney(ent.item.unit_price_minor, ent.item.currency)}. See the <Link className="link" href="/legal/refund-policy">Refund Policy</Link>. An approved refund removes access to this product.</p>
-            <div className="field"><label htmlFor="reason">Why do you want a refund?</label><textarea id="reason" name="reason" required minLength={10} maxLength={2000} /></div>
-            <SubmitButton className="btn ghost small">Request refund</SubmitButton>
-          </form>
-        ) : null}
-      </section>
+          <section className="card stack" id="refund">
+            <h2 className="h3">Refund</h2>
+            {lastRefund ? (
+              <p className="small">Refund request: <StatusPill status={lastRefund.status} /></p>
+            ) : ent.item ? (
+              <form action={requestRefund} className="stack">
+                <input type="hidden" name="product_id" value={p.id} />
+                <input type="hidden" name="order_item_id" value={ent.item.id} />
+                <p className="small muted">Paid {formatMoney(ent.item.unit_price_minor, ent.item.currency)}. See the <Link className="link" href="/legal/refund-policy">Refund Policy</Link>. An approved refund removes access to this product.</p>
+                <div className="field"><label htmlFor="reason">Why do you want a refund?</label><textarea id="reason" name="reason" required minLength={10} maxLength={2000} /></div>
+                <SubmitButton className="btn ghost small">Request refund</SubmitButton>
+              </form>
+            ) : null}
+          </section>
+        </>
+      )}
     </>
   );
 }

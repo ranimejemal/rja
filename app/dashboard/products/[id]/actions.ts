@@ -23,7 +23,7 @@ export async function saveConfiguration(_: ConfigState, form: FormData): Promise
   const session = await requireUser(`/dashboard/products/${productId}`);
   if (!rateLimit(`config:${session.userId}`, 30, 60 * 60_000).ok) return { message: "Too many saves. Try again later." };
   const supabase = await createClient();
-  const { data: owns } = await supabase.rpc("owns_product", { p_product_id: productId });
+  const { data: owns } = await supabase.rpc("can_use_product", { p_product_id: productId });
   if (!owns) return { message: "You do not own this product." };
   const { data: product } = await supabase.from("products").select("slug, current_version_id").eq("id", productId).single();
   if (!product?.current_version_id) return { message: "This product has no published version." };

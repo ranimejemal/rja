@@ -18,7 +18,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const { data: cfg } = await supabase.from("product_configurations")
     .select("id, values, product_id, product:products(slug)").eq("id", id).maybeSingle();
   if (!cfg?.product) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  const { data: owns } = await supabase.rpc("owns_product", { p_product_id: cfg.product_id });
+  const { data: owns } = await supabase.rpc("can_use_product", { p_product_id: cfg.product_id });
   if (!owns) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const out = await personalizedWorkflow(cfg.product.slug, cfg.values as ConfigValues, cfg.id);
   if (!out) return NextResponse.json({ error: "This automation has no ready-made workflow file." }, { status: 404 });
