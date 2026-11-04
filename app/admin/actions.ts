@@ -172,3 +172,63 @@ export async function updateQuote(form: FormData) {
     .eq("id", text(form, "id"));
   go("/admin/quotes", error?.message, "Quote request updated.");
 }
+
+export async function deleteReview(form: FormData) {
+  await requireRole("admin");
+  const supabase = await createClient();
+  const { error } = await supabase.from("product_reviews").delete().eq("id", text(form, "id"));
+  go("/admin/reviews", error?.message, "Review removed. The product's rating was recalculated.");
+}
+
+const promotionForm = z.object({
+  name: z.string().trim().min(2).max(120),
+  subject: z.string().trim().min(3).max(150),
+  message: z.string().trim().min(10).max(4000),
+  cta_label: z.string().trim().min(2).max(60),
+  cta_path: z.string().trim().regex(/^\/[^\s]*$/, "The button link must be a page of the site, starting with /").max(300),
+  min_minutes: z.coerce.number().int().min(1).max(120),
+  ends_at: z.string().trim().optional(),
+});
+
+export async function savePromotion(form: FormData) {
+  const session = await requireRole("admin");
+  const parsed = promotionForm.safeParse(Object.fromEntries(form));
+  if (!parsed.success) go("/admin/promotions", parsed.error.issues[0].message, "");
+  const p = parsed.data;
+  const row = {
+    name: p.name, subject: p.subject, message: p.message, cta_label: p.cta_label, cta_path: p.cta_path,
+    min_seconds: p.min_minutes * 60, ends_at: p.ends_at ? new Date(`${p.ends_at}T23:59:59Z`).toISOString() : null,
+    updated_at: new Date().toISOString(),
+  };
+  const supabase = await createClient();
+  const id = text(form, "id");
+  const { error } = id
+    ? await supabase.from("promotions").update(row).eq("id", id)
+    : await supabase.from("promotions").insert({ ...row, created_by: session.userId });
+  go("/admin/promotions", error?.message, id ? "Promotion saved." : "Promotion created. Switch it on when it is ready.");
+}
+
+export async function setPromotionActive(form: FormData) {
+  await requireRole("admin");
+  const active = form.get("active") === "true";
+  const supabase = await createClient();
+  // One promotion runs at a time: switching one on switches the others off.
+  if (active) await supabase.from("promotions").update({ active: false }).neq("id", text(form, "id"));
+  const { error } = await supabase.from("promotions").update({ active, updated_at: new Date().toISOString() }).eq("id", text(form, "id"));
+  go("/admin/promotions", error?.message, active ? "Promotion switched on." : "Promotion switched off.");
+}
+
+export async function sendPromotionTest(form: FormData) {
+  const session = await requireRole("admin");
+  const supabase = await createClient();
+  const { data: p } = await supabase.from("promotions").select("subject, message, cta_label, cta_path").eq("id", text(form, "id")).single();
+  if (!p) go("/admin/promotions", "Promotion not found.", "");
+  const { brandedEmail, sendMail } = await import("@/lib/mailer");
+  const { env } = await import("@/lib/env");
+  const mail = brandedEmail({
+    title: p.subject, paragraphs: p.message.split(/\n{2,}/).map((x) => x.trim()).filter(Boolean),
+    cta: { label: p.cta_label, url: `${env.NEXT_PUBLIC_SITE_URL}${p.cta_path}` }, footerNote: "Test email: only you received it.",
+  });
+  const sent = await sendMail(session.email, `[Test] ${p.subject}`, mail.html, mail.text);
+  go("/admin/promotions", sent.ok ? null : sent.error, `Test email sent to ${session.email}.`);
+}

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import "./globals.css";
 import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
+import { EngagementTracker } from "@/components/EngagementTracker";
 import { Toast } from "@/components/client";
 import { Motion } from "@/components/Motion";
 import { SITE_URL } from "@/lib/public-env";
@@ -34,6 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SiteHeader />
         <main id="main">{children}</main>
         <SiteFooter />
+        <EngagementTracker />
         <Suspense><Toast /></Suspense>
         <Suspense><Motion /></Suspense>
       </body>

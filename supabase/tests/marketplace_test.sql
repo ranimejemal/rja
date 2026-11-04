@@ -327,6 +327,52 @@ select test.act_as('admin');
 select test.ok('admins read quote requests with normalized email', (select email from quote_requests limit 1) = 'ana@example.com');
 select test.act_as(null);
 
+-- ---------------------------------------------------------------- analytics, consent and promotions
+set role anon;
+select test.ok('visitors who are not signed in are counted without an identifier',
+  record_page_view('00000000-0000-0000-0000-00000000a001', '/explore', 40) = 0);
+reset role;
+select test.ok('anonymous page view stored with no user', (select user_id is null and seconds = 40 from page_views where id = '00000000-0000-0000-0000-00000000a001'));
+select test.act_as('buyer2');
+select record_page_view('00000000-0000-0000-0000-00000000a002', '/products/x', 120);
+select test.ok('time on a page grows with each report of the same view',
+  record_page_view('00000000-0000-0000-0000-00000000a002', '/products/x', 200) = 200);
+select test.ok('a later, smaller report never lowers the time', record_page_view('00000000-0000-0000-0000-00000000a002', '/products/x', 10) = 200);
+select test.ok('time today adds up across pages', record_page_view('00000000-0000-0000-0000-00000000a003', '/pricing', 150) = 350);
+select test.fails('page views need a site path', $q$select record_page_view(gen_random_uuid(), 'https://evil.example', 5)$q$, 'invalid path');
+select test.ok('customers cannot read page views', (select count(*) from page_views) = 0);
+select test.fails('customers cannot list users', $q$select * from admin_users()$q$, 'admins only');
+select test.fails('customers cannot read analytics', $q$select admin_analytics(30)$q$, 'admins only');
+select test.fails('customers cannot create promotions',
+  $q$insert into promotions (name, subject, message, active) values ('x', 'Hello there', 'A long enough message.', true)$q$, 'row-level security');
+select test.ok('no promotion email without consent', not exists (select 1 from claim_promotion()));
+select set_marketing_opt_in(true);
+select test.ok('no promotion email when no promotion runs', not exists (select 1 from claim_promotion()));
+select test.act_as('admin');
+insert into promotions (name, subject, message, min_seconds, active)
+values ('November', '10% off this week', 'Thanks for visiting: this week every automation is 10% off.', 300, true);
+select test.act_as('buyer2');
+create temp table claim1 as select * from claim_promotion();
+select test.ok('promotion email reserved after 5 minutes on the site with consent', (select count(*) from claim1) = 1);
+select test.ok('only one promotion email per customer', not exists (select 1 from claim_promotion()));
+select finish_promotion_send((select send_id from claim1), true, null);
+select test.act_as('admin');
+select test.ok('admins see the email as sent', (select status = 'sent' from promotion_sends limit 1));
+select test.ok('admins list every user with email and roles',
+  (select count(*) from admin_users() where email is not null and array_length(roles, 1) >= 1) >= 3);
+select test.ok('admins see the customer''s time on the site', (select seconds_30d from admin_users() where id = test.id('buyer2')) = 350);
+select test.ok('admins read traffic', (admin_analytics(30) ->> 'views')::int >= 3 and (admin_analytics(30) ->> 'engaged_customers')::int = 1);
+select test.act_as('buyer');
+select test.ok('a customer who did not reach 5 minutes gets nothing', not exists (select 1 from claim_promotion()));
+select test.act_as(null);
+create temp table token1 as select unsubscribe_token as t from profiles where id = test.id('buyer2');
+grant select on token1 to anon;
+set role anon;
+select test.ok('one-click unsubscribe works without signing in', unsubscribe_marketing((select t from token1)));
+reset role;
+select test.ok('unsubscribed customer no longer receives offers', not (select marketing_opt_in from profiles where id = test.id('buyer2')));
+select test.ok('sign-up consent is recorded from the form', (select marketing_opt_in is not null from profiles limit 1));
+
 -- ---------------------------------------------------------------- report
 \o
 select name, ok, detail from test.results where not ok;

@@ -9,13 +9,15 @@ export const metadata: Metadata = { title: "Admin" };
 
 export default async function AdminOverview() {
   const supabase = await createClient();
-  const count = async (table: "profiles" | "seller_profiles" | "seller_applications" | "products" | "orders" | "product_reports" | "refunds" | "payouts" | "quote_requests", f?: (q: any) => any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+  const count = async (table: "profiles" | "seller_profiles" | "seller_applications" | "products" | "orders" | "product_reports" | "refunds" | "payouts" | "quote_requests" | "product_reviews", f?: (q: any) => any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
     let q = supabase.from(table).select("id", { count: "exact", head: true });
     if (f) q = f(q);
     const { count: n } = await q;
     return n ?? 0;
   };
-  const [newQuotes, users, sellers, pendingApps, published, awaiting, orders, reports, openRefunds, openPayouts, { data: paid }, { data: platformLedger }, { data: audit }] = await Promise.all([
+  const [{ data: traffic }, reviews, newQuotes, users, sellers, pendingApps, published, awaiting, orders, reports, openRefunds, openPayouts, { data: paid }, { data: platformLedger }, { data: audit }] = await Promise.all([
+    supabase.rpc("admin_analytics", { p_days: 30 }),
+    count("product_reviews"),
     count("quote_requests", (q) => q.eq("status", "new")),
     count("profiles"),
     count("seller_profiles", (q) => q.eq("status", "approved").eq("is_demo", false)),
@@ -32,9 +34,12 @@ export default async function AdminOverview() {
   ]);
   const gmv = (paid ?? []).reduce((a, o) => a + o.total_minor, 0);
   const commission = (platformLedger ?? []).filter((l) => ["commission", "commission_reversal"].includes(l.entry_type)).reduce((a, l) => a + l.amount_minor, 0);
+  const t = (traffic ?? {}) as { views?: number; engaged_customers?: number };
   const kpis: [string, string | number, string?][] = [
-    ["New quote requests", newQuotes, "/admin/quotes"], ["Total users", users], ["Active sellers", sellers], ["Pending applications", pendingApps, "/admin/applications"],
-    ["Published products", published], ["Awaiting review", awaiting, "/admin/products"], ["Paid orders", orders],
+    ["Page views (30 days)", t.views ?? 0, "/admin/analytics"], ["Stayed 5 min or more (30 days)", t.engaged_customers ?? 0, "/admin/analytics"],
+    ["Reviews", reviews, "/admin/reviews"],
+    ["New quote requests", newQuotes, "/admin/quotes"], ["Total users", users, "/admin/customers"], ["Active sellers", sellers], ["Pending applications", pendingApps, "/admin/applications"],
+    ["Published products", published], ["Awaiting review", awaiting, "/admin/products"], ["Paid orders", orders, "/admin/orders"],
     ["Gross merchandise value", formatMoney(gmv)], ["Commission revenue (net)", formatMoney(commission)],
     ["Open refunds", openRefunds, "/admin/finance"], ["Open payouts", openPayouts, "/admin/finance"], ["Open reports", reports, "/admin/reports"],
   ];

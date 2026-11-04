@@ -964,6 +964,44 @@ export type Database = {
           },
         ]
       }
+      page_views: {
+        Row: { created_at: string; id: string; path: string; seconds: number; updated_at: string; user_id: string | null }
+        Insert: { created_at?: string; id: string; path: string; seconds?: number; updated_at?: string; user_id?: string | null }
+        Update: { created_at?: string; id?: string; path?: string; seconds?: number; updated_at?: string; user_id?: string | null }
+        Relationships: []
+      }
+      promotions: {
+        Row: {
+          active: boolean; created_at: string; created_by: string | null; cta_label: string; cta_path: string; ends_at: string | null
+          id: string; message: string; min_seconds: number; name: string; starts_at: string | null; subject: string; updated_at: string
+        }
+        Insert: {
+          active?: boolean; created_at?: string; created_by?: string | null; cta_label?: string; cta_path?: string; ends_at?: string | null
+          id?: string; message: string; min_seconds?: number; name: string; starts_at?: string | null; subject: string; updated_at?: string
+        }
+        Update: {
+          active?: boolean; created_at?: string; created_by?: string | null; cta_label?: string; cta_path?: string; ends_at?: string | null
+          id?: string; message?: string; min_seconds?: number; name?: string; starts_at?: string | null; subject?: string; updated_at?: string
+        }
+        Relationships: []
+      }
+      promotion_sends: {
+        Row: {
+          created_at: string; error: string | null; id: string; promotion_id: string; sent_at: string | null
+          status: Database["public"]["Enums"]["promotion_send_status"]; user_id: string
+        }
+        Insert: {
+          created_at?: string; error?: string | null; id?: string; promotion_id: string; sent_at?: string | null
+          status?: Database["public"]["Enums"]["promotion_send_status"]; user_id: string
+        }
+        Update: {
+          created_at?: string; error?: string | null; id?: string; promotion_id?: string; sent_at?: string | null
+          status?: Database["public"]["Enums"]["promotion_send_status"]; user_id?: string
+        }
+        Relationships: [
+          { foreignKeyName: "promotion_sends_promotion_id_fkey"; columns: ["promotion_id"]; isOneToOne: false; referencedRelation: "promotions"; referencedColumns: ["id"] },
+        ]
+      }
       quote_requests: {
         Row: {
           admin_note: string
@@ -1164,6 +1202,9 @@ export type Database = {
           created_at: string
           display_name: string
           id: string
+          marketing_opt_in: boolean
+          marketing_opt_in_at: string | null
+          unsubscribe_token: string
           updated_at: string
         }
         Insert: {
@@ -1718,6 +1759,22 @@ export type Database = {
         Returns: string
       }
       can_use_product: { Args: { p_product_id: string }; Returns: boolean }
+      set_marketing_opt_in: { Args: { p_opt_in: boolean }; Returns: undefined }
+      unsubscribe_marketing: { Args: { p_token: string }; Returns: boolean }
+      record_page_view: { Args: { p_id: string; p_path: string; p_seconds: number }; Returns: number }
+      claim_promotion: {
+        Args: Record<PropertyKey, never>
+        Returns: { send_id: string; subject: string; message: string; cta_label: string; cta_path: string; unsubscribe_token: string }[]
+      }
+      finish_promotion_send: { Args: { p_send_id: string; p_ok: boolean; p_error: string | null }; Returns: undefined }
+      admin_users: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string; email: string; display_name: string | null; roles: string[]; created_at: string; last_sign_in_at: string | null
+          email_confirmed: boolean; marketing_opt_in: boolean; paid_orders: number; spent_minor: number; seconds_30d: number
+        }[]
+      }
+      admin_analytics: { Args: { p_days?: number }; Returns: Json }
       save_configuration: {
         Args: { p_product_id: string; p_values: Json }
         Returns: string
@@ -1780,6 +1837,7 @@ export type Database = {
         | "canceled"
       product_ownership: "platform" | "third_party"
       quote_status: "new" | "contacted" | "won" | "lost" | "spam"
+      promotion_send_status: "sending" | "sent" | "failed"
       product_status:
         | "draft"
         | "submitted"
@@ -1997,6 +2055,7 @@ export const Constants = {
       ],
       product_ownership: ["platform", "third_party"],
       quote_status: ["new", "contacted", "won", "lost", "spam"],
+      promotion_send_status: ["sending", "sent", "failed"],
       product_status: [
         "draft",
         "submitted",

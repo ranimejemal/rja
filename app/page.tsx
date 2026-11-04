@@ -11,13 +11,15 @@ import { thumbnailUrl } from "@/lib/catalog";
 
 export default async function HomePage() {
   const supabase = await createClient();
-  const [top, featuredAll, best, recent, categories, { data: creators }] = await Promise.all([
+  const [top, featuredAll, best, recent, categories, { data: creators }, { data: reviews }] = await Promise.all([
     listTopAutomations(),
     listProducts({ featured: true, sort: "recent" }, 12),
     listProducts({ sort: "popular" }, 3),
     listProducts({ sort: "recent" }, 3),
     listCategories(),
     supabase.from("seller_profiles").select("slug, display_name, bio, is_platform, is_demo").eq("status", "approved").order("is_platform", { ascending: false }).limit(6),
+    // Real reviews only: they can only be written by customers who bought the automation.
+    supabase.from("product_reviews").select("id, rating, body, created_at, product:products(name, slug)").gte("rating", 4).neq("body", "").order("created_at", { ascending: false }).limit(6),
   ]);
   // The ranked automations have their own section, so "Featured" shows the rest.
   const featured = featuredAll.filter((p) => !p.top_rank).slice(0, 3);
@@ -172,6 +174,23 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      {reviews && reviews.length > 0 && (
+        <section className="section">
+          <div className="container">
+            <SectionHead tag="Reviews" title={<>What our customers <span className="serif">say.</span></>} />
+            <div className="grid" style={{ "--cols": 3 } as React.CSSProperties}>
+              {reviews.map((r) => (
+                <figure key={r.id} className="card stack" style={{ margin: 0, "--gap": "0.75rem" } as React.CSSProperties}>
+                  <span className="accent" aria-label={`${r.rating} out of 5 stars`}>{"★".repeat(r.rating)}<span className="muted">{"★".repeat(5 - r.rating)}</span></span>
+                  <blockquote className="small" style={{ margin: 0 }}>{r.body}</blockquote>
+                  <figcaption className="tiny muted">Verified buyer{r.product ? <> of <Link className="link" href={`/products/${r.product.slug}`}>{r.product.name}</Link></> : null}</figcaption>
+                </figure>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="section" style={{ paddingTop: 0 }}>
         <div className="container split">

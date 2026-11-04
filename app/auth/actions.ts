@@ -60,7 +60,7 @@ export async function signUp(_: AuthState, form: FormData): Promise<AuthState> {
     email: parsed.data.email,
     password: parsed.data.password,
     options: {
-      data: { display_name: parsed.data.displayName },
+      data: { display_name: parsed.data.displayName, marketing_opt_in: form.get("marketing") === "on" },
       emailRedirectTo: `${await siteOrigin()}/auth/callback?next=${encodeURIComponent(safeNext(form.get("next")))}`,
     },
   });

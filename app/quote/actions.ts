@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/rate-limit";
-import { env } from "@/lib/env";
+import { env, features } from "@/lib/env";
 
 export type QuoteState = { error?: string; sent?: boolean };
 
@@ -42,5 +42,22 @@ export async function submitQuote(_: QuoteState, form: FormData): Promise<QuoteS
       body: JSON.stringify({ ...q, source: "quote request" }), signal: AbortSignal.timeout(4000),
     }).catch(() => undefined);
   }
+  await notifyAdmin(q);
   return { sent: true };
+}
+
+/** Emails the agency about the new request (to SMTP_USER, the agency's own mailbox), with a reply link. */
+async function notifyAdmin(q: { product: string; name: string; email: string; phone: string; company: string; message: string }) {
+  if (!features.email || !env.SMTP_USER) return;
+  const { brandedEmail, sendMail } = await import("@/lib/mailer");
+  const mail = brandedEmail({
+    title: `New quote request from ${q.name}`,
+    paragraphs: [
+      `Automation: ${q.product || "general enquiry"}`,
+      `Email: ${q.email}${q.phone ? ` · Phone: ${q.phone}` : ""}${q.company ? ` · Company: ${q.company}` : ""}`,
+      q.message,
+    ],
+    cta: { label: "Open quote requests", url: `${env.NEXT_PUBLIC_SITE_URL}/admin/quotes` },
+  });
+  await sendMail(env.SMTP_USER, `New quote request: ${q.name}${q.company ? ` (${q.company})` : ""}`, mail.html, mail.text);
 }

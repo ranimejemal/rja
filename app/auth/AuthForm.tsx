@@ -34,6 +34,12 @@ export function AuthForm({ mode, next }: { mode: "login" | "signup"; next: strin
           <span>I accept the <Link className="link" href="/legal/terms">Terms of Service</Link> and <Link className="link" href="/legal/privacy">Privacy Policy</Link>.</span>
         </label>
       )}
+      {mode === "signup" && (
+        <label className="check">
+          <input type="checkbox" name="marketing" />
+          <span>Send me promotions and new automations by email (optional, unsubscribe anytime).</span>
+        </label>
+      )}
       {state.error && <div className="notice danger" role="alert">{state.error}</div>}
       {state.notice && <div className="notice ok" role="status">{state.notice}</div>}
       <SubmitButton className="btn accent">{mode === "login" ? "Log in" : "Create account"}</SubmitButton>
