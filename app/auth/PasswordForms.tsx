@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import Link from "next/link";
-import { requestPasswordReset, resendResetCode, resetPasswordWithCode, updatePassword, type AuthState } from "./actions";
+import { requestPasswordReset, resendResetCode, updatePassword, verifyResetCode, type AuthState } from "./actions";
 import { PasswordInput, SubmitButton } from "@/components/client";
 
 export function ForgotPasswordForm() {
@@ -39,17 +39,14 @@ export function ResetPasswordForm() {
   );
 }
 
-/** Reset with the code from the email: code and new password in one step. */
-export function ResetWithCodeForm({ email }: { email: string }) {
-  const [state, action] = useActionState<AuthState, FormData>(resetPasswordWithCode, {});
+/** Step 2 of "forgot password": only the code from the email. */
+export function ResetCodeForm({ email }: { email: string }) {
+  const [state, action] = useActionState<AuthState, FormData>(verifyResetCode, {});
   const [resendState, resend] = useActionState<AuthState, FormData>(resendResetCode, {});
   return (
     <div className="stack card" style={{ maxWidth: "28rem" }}>
       <form action={action} className="stack" noValidate>
-        <div className="field">
-          <label htmlFor="email">Email</label>
-          <input id="email" name="email" type="email" autoComplete="email" defaultValue={email} required />
-        </div>
+        <input type="hidden" name="email" value={email} />
         <div className="field">
           <label htmlFor="token">Code from the email</label>
           <input
@@ -59,17 +56,8 @@ export function ResetWithCodeForm({ email }: { email: string }) {
           />
           <span className="hint">It expires after one hour.</span>
         </div>
-        <div className="field">
-          <label htmlFor="password">New password</label>
-          <PasswordInput id="password" name="password" autoComplete="new-password" />
-          <span className="hint">At least 10 characters.</span>
-        </div>
-        <div className="field">
-          <label htmlFor="confirm">Repeat the new password</label>
-          <PasswordInput id="confirm" name="confirm" autoComplete="new-password" />
-        </div>
         {state.error && <div className="notice danger" role="alert">{state.error}</div>}
-        <SubmitButton className="btn accent" pendingText="Saving…">Save the new password</SubmitButton>
+        <SubmitButton className="btn accent" pendingText="Checking…">Confirm the code</SubmitButton>
       </form>
       <form action={resend} className="stack">
         <input type="hidden" name="email" value={email} />
@@ -77,6 +65,7 @@ export function ResetWithCodeForm({ email }: { email: string }) {
         {resendState.notice && <div className="notice ok" role="status">{resendState.notice}</div>}
         <p className="small muted">
           No email? Check your spam folder, or <SubmitButton className="link small" pendingText="Sending…">send a new code</SubmitButton>.
+          {" "}Wrong address? <Link className="link" href="/forgot-password">Change it</Link>.
         </p>
       </form>
     </div>

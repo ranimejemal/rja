@@ -8,7 +8,7 @@ export default function ForgotPasswordPage() {
     <section className="section">
       <div className="container stack" style={{ "--gap": "2rem" } as React.CSSProperties}>
         <div className="stack">
-          <span className="tag">(Account)</span>
+          <span className="tag">(Account · step 1 of 3)</span>
           <h1 className="h1">Forgot your <span className="serif">password?</span></h1>
           <p className="muted">Enter your email and we will send you a code to choose a new one.</p>
         </div>

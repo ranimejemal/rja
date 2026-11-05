@@ -124,23 +124,15 @@ export async function resendResetCode(_: AuthState, form: FormData): Promise<Aut
   return { notice: "If an account exists for this email, a new code is on its way. Check your inbox (and spam)." };
 }
 
-const newPassword = z.object({
-  password: z.string().min(10, "Use at least 10 characters.").max(128, "Use at most 128 characters."),
-  confirm: z.string(),
-}).refine((v) => v.password === v.confirm, { message: "The two passwords do not match." });
-
-export async function resetPasswordWithCode(_: AuthState, form: FormData): Promise<AuthState> {
+/** Step 2 of "forgot password": checks the code from the email. A correct code signs the person in for the reset. */
+export async function verifyResetCode(_: AuthState, form: FormData): Promise<AuthState> {
   if (!rateLimit(await clientKey("reset-code"), 10, 10 * 60_000).ok) return { error: "Too many attempts. Try again in a few minutes." };
   const code = codeForm.safeParse({ email: form.get("email"), token: form.get("token") });
-  if (!code.success) return { error: "Enter your email and the code from the email." };
-  const pw = newPassword.safeParse({ password: form.get("password"), confirm: form.get("confirm") });
-  if (!pw.success) return { error: pw.error.issues[0].message };
+  if (!code.success) return { error: "Enter the code from the email." };
   const supabase = await createClient();
   const { error } = await supabase.auth.verifyOtp({ email: code.data.email, token: code.data.token, type: "recovery" });
   if (error) return { error: "This code is wrong or has expired. Check the latest email, or send a new code." };
-  const { error: updateError } = await supabase.auth.updateUser({ password: pw.data.password });
-  if (updateError) return { error: updateError.message.includes("different") ? "Choose a password different from the old one." : "Could not update the password. Try again." };
-  redirect("/dashboard?notice=Your+password+was+updated.");
+  redirect("/reset-password?step=new");
 }
 
 export async function updatePassword(_: AuthState, form: FormData): Promise<AuthState> {
