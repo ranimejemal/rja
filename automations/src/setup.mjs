@@ -18,6 +18,7 @@ export function setupForm(workflow, slug) {
   const node = workflow.nodes.find((n) => n.name === "Settings");
   if (!node) throw new Error(`${workflow.name}: no Settings node`);
   const settings = [];
+  if (node.parameters.assignments.assignments.some((a) => a.name === "openAiModel")) settings.push(AI_PROVIDER_FIELD);
   for (const a of node.parameters.assignments.assignments) {
     const f = FIELDS[a.name] && { ...FIELDS[a.name], ...OVERRIDES[slug]?.[a.name] };
     if (!f) throw new Error(`${workflow.name}: no description for Settings value "${a.name}" in setup-fields.mjs`);
@@ -31,6 +32,17 @@ export function setupForm(workflow, slug) {
   }
   return { schemaVersion: 1, productType: "n8n-workflow", workflowVersion: WORKFLOW_VERSION, settings };
 }
+
+// Which AI the customer uses. Not a Settings value itself: the download writes the matching address and model
+// (lib/ai-providers.ts) into openAiBaseUrl and openAiModel.
+export const AI_PROVIDER_FIELD = {
+  key: "ai_provider", label: "Which AI do you want to use?", type: "select", required: true, default: "gemini",
+  help: "Google Gemini is free (a free key from Google, no card). Choose OpenAI if you already pay for ChatGPT's API: a little more reliable at busy hours.",
+  options: [
+    { value: "gemini", label: "Google Gemini: free" },
+    { value: "openai", label: "OpenAI (ChatGPT): my own paid key" },
+  ],
+};
 
 // Apps a workflow really uses, from its nodes: shown as "Required apps" on the listing. Disabled nodes are optional.
 const APP_BY_NODE = {

@@ -75,7 +75,7 @@ export const FIELDS = {
   instagramAccountId: { label: "Instagram business account ID", help: "In Meta Business Suite: Settings, Instagram accounts. Leave empty if you do not post on Instagram.", type: "text" },
   linkedinOrganizationId: { label: "LinkedIn company page ID", help: "The number in your company page's admin link (linkedin.com/company/12345678/admin). Leave empty if you do not post on LinkedIn.", type: "text" },
   daysAhead: { label: "Plan posts this many days ahead", help: "Every Monday the AI writes the posts planned for the coming days.", type: "number", keep: true, min: 1, max: 31 },
-  generateImages: { label: "Create an AI image for each post", help: "On: posts without a picture get one made by AI.", type: "boolean", keep: true },
+  generateImages: { label: "Create an AI image for each post", help: "On: posts without a picture get one made by AI. Needs OpenAI (Google Gemini makes no pictures, so it stays off with Gemini).", type: "boolean", keep: true },
   imageStyle: { label: "Style of the AI images", help: "Example: clean, modern, bright photo with natural light", type: "text", keep: true },
   autoReply: { label: "Reply to comments and messages automatically", help: "On: simple questions get an AI reply at once; complaints always come to you. Off: every reply waits for your approval.", type: "boolean", keep: true },
   replyKnowledge: { label: "What the AI may tell customers", help: "Opening hours, prices, delivery, services, booking link: anything customers often ask.", type: "textarea", required: true },

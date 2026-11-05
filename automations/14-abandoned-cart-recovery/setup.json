@@ -4,6 +4,24 @@
   "workflowVersion": "1.0.0",
   "settings": [
     {
+      "key": "ai_provider",
+      "label": "Which AI do you want to use?",
+      "type": "select",
+      "required": true,
+      "default": "gemini",
+      "help": "Google Gemini is free (a free key from Google, no card). Choose OpenAI if you already pay for ChatGPT's API: a little more reliable at busy hours.",
+      "options": [
+        {
+          "value": "gemini",
+          "label": "Google Gemini: free"
+        },
+        {
+          "value": "openai",
+          "label": "OpenAI (ChatGPT): my own paid key"
+        }
+      ]
+    },
+    {
       "key": "store_name",
       "label": "Shop name",
       "help": "As it appears on your website. Example: Maison Lina",

@@ -432,7 +432,7 @@
         -100
       ],
       "retryOnFail": true,
-      "maxTries": 3,
+      "maxTries": 5,
       "waitBetweenTries": 5000
     },
     {
@@ -732,7 +732,7 @@
         420
       ],
       "retryOnFail": true,
-      "maxTries": 3,
+      "maxTries": 5,
       "waitBetweenTries": 5000
     },
     {

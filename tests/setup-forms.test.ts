@@ -35,7 +35,9 @@ describe("customer setup forms", () => {
       const wf = JSON.parse(readFileSync(join(ROOT, d, "workflow.json"), "utf8"));
       const m = JSON.parse(readFileSync(join(ROOT, d, "setup.json"), "utf8"));
       const keys = settingsOf(wf).map((a) => a.name).filter((n) => !hidden.includes(n)).map((n) => n.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`));
-      expect(m.settings.map((s: { key: string }) => s.key), d).toEqual(keys);
+      // Workflows with AI first ask which AI (it sets the hidden address and model).
+      const expected = settingsOf(wf).some((a) => a.name === "openAiModel") ? ["ai_provider", ...keys] : keys;
+      expect(m.settings.map((s: { key: string }) => s.key), d).toEqual(expected);
     }
   });
 });
@@ -44,7 +46,7 @@ describe("personalized workflow download", () => {
   it("writes the answers into the Settings node with the right types and keeps the rest", async () => {
     const form = (await loadSetupForm("ai-lead-generation-follow-up"))!;
     const answers = validateConfig(form, {
-      business_name: "Maison Lina", business_description: "Handmade bags.", ideal_customer: "Boutiques in Paris.",
+      ai_provider: "openai", business_name: "Maison Lina", business_description: "Handmade bags.", ideal_customer: "Boutiques in Paris.",
       sender_name: "Lina", booking_link: "https://cal.com/lina", team_email: "lina@maisonlina.fr",
       google_sheet_url: "https://docs.google.com/spreadsheets/d/abc/edit", auto_send_replies: false, follow_up_days: 3, max_follow_ups: 2,
     });

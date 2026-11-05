@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { parseManifest, type ConfigValues, type Manifest } from "@/lib/manifest";
+import { AI_PROVIDERS, aiProvider } from "@/lib/ai-providers";
 
 // The agency's own automations live in the repository (automations/NN-slug/): the n8n workflow, its setup form
 // (setup.json, generated from the Settings node), the Google Sheet templates (*.csv) and a README.
@@ -58,6 +59,13 @@ export async function readSheetTemplate(slug: string, file: string) {
 function tabName(file: string) {
   const base = file.replace(/\.csv$/, "").replace(/-sheet$/, "").replace(/-/g, " ");
   return base.charAt(0).toUpperCase() + base.slice(1);
+}
+
+/** The workflow's name as imported into n8n ("AI Lead Generation & Follow-up | Ranime Jemal Agency"). */
+export async function workflowName(slug: string) {
+  const dir = await folder(slug);
+  if (!dir) return null;
+  return (JSON.parse(await readFile(join(ROOT, dir, "workflow.json"), "utf8")) as Workflow).name;
 }
 
 /** Integrations the workflow uses, from its credential slots: each one is a "connect your account" step. */
@@ -117,9 +125,15 @@ export async function personalizedWorkflow(slug: string, values: ConfigValues, s
   const form = await loadSetupForm(slug);
   const allowed = new Set(form?.settings.map((s) => s.key));
   const list = (settings.parameters.assignments as { assignments: Assignment[] }).assignments;
+  // The chosen AI decides the address and model; Gemini makes no images, so AI pictures are switched off.
+  // Details saved before the choice existed keep the workflow's own AI (OpenAI).
+  const ai = allowed.has("ai_provider") && values.ai_provider ? AI_PROVIDERS[aiProvider(values.ai_provider)] : null;
   for (const a of list) {
     const key = a.name.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
     if (a.name === "metaVerifyToken") a.value = verifyToken(seed);
+    else if (ai && a.name === "openAiBaseUrl") a.value = ai.baseUrl;
+    else if (ai && a.name === "openAiModel") a.value = ai.model;
+    else if (ai && !ai.images && a.name === "generateImages") a.value = false;
     else if (allowed.has(key) && key in values) a.value = toSettingType(values[key], a.type);
   }
   // A fresh, inactive copy when imported.

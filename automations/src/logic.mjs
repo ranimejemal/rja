@@ -217,7 +217,11 @@ export function bookingTimes(DateTime, args, s) {
 }
 
 /** OpenAI content part for a document: PDFs as files, images as images. */
-export function documentPart(mimeType, base64, fileName) {
+export function documentPart(mimeType, base64, fileName, baseUrl) {
+  // Google Gemini (OpenAI-compatible endpoint) reads PDFs sent as inline data, not as OpenAI "file" parts.
+  if (mimeType === "application/pdf" && /generativelanguage\.googleapis\.com/.test(baseUrl || "")) {
+    return { type: "image_url", image_url: { url: `data:application/pdf;base64,${base64}` } };
+  }
   if (mimeType === "application/pdf") {
     return { type: "file", file: { filename: fileName || "document.pdf", file_data: `data:application/pdf;base64,${base64}` } };
   }

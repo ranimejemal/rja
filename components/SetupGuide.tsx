@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ConfigForm } from "@/components/ConfigForm";
+import { SetupAssistant } from "@/components/SetupAssistant";
 import { Notice } from "@/components/ui";
 import { Markdown } from "@/lib/markdown";
 import type { ConfigValues, Manifest } from "@/lib/manifest";
@@ -17,6 +18,8 @@ type Props = {
   accounts: AccountGuide[];
   readme: { whatItDoes: string; setup: string };
   metaVerifyToken?: string;
+  /** A person can take over from the assistant (buyers; not admins testing their own tool). */
+  canEscalate: boolean;
 };
 
 function Step({ id, n, title, time, children, done }: { id: string; n: number; title: string; time?: string; children: React.ReactNode; done?: boolean }) {
@@ -31,7 +34,7 @@ function Step({ id, n, title, time, children, done }: { id: string; n: number; t
   );
 }
 
-export function SetupGuide({ product, form, latest, sheets, extras, accounts, readme, metaVerifyToken }: Props) {
+export function SetupGuide({ product, form, latest, sheets, extras, accounts, readme, metaVerifyToken, canEscalate }: Props) {
   // Step numbers: the sheet and accounts steps only exist when the automation needs them.
   let k = 0;
   const num = { n8n: ++k, sheet: sheets.length ? ++k : 0, details: ++k, download: ++k, importing: ++k, accounts: accounts.length ? ++k : 0, live: ++k };
@@ -41,7 +44,7 @@ export function SetupGuide({ product, form, latest, sheets, extras, accounts, re
         <h2 className="h3">Set it up yourself in about 30 minutes</h2>
         <p className="small">
           Follow the steps in order. You do not need to write any code: you fill in a form, download your file and
-          click a few buttons. If you get stuck at any step, <Link className="link" href="#support">send us a message</Link> or{" "}
+          click a few buttons. If you get stuck at any step, <Link className="link" href="#assistant">ask the setup assistant</Link> (send it a screenshot) or{" "}
           <Link className="link" href={`/quote?product=${product.slug}`}>let us set it up for you</Link>.
         </p>
         <ol className="setup-toc small">
@@ -147,11 +150,14 @@ export function SetupGuide({ product, form, latest, sheets, extras, accounts, re
       <Step id="go-live" n={num.live} title="Test and switch it on" time="5 minutes">
         <ol className="small">
           <li>Click <strong>Test workflow</strong> (or <strong>Execute workflow</strong>) at the bottom of the screen. Boxes turn green when they work.</li>
-          <li>A box turns red? Click it to read the message. It is almost always an account that is not connected yet, or a sheet tab with a different name.</li>
+          <li>A box turns red? Take a screenshot and send it to the <a className="link" href="#assistant">setup assistant</a> below: it tells you what to click, and can even fix it in your n8n.</li>
           <li>When the test works, switch the <strong>Inactive</strong> toggle at the top to <strong>Active</strong>. Your automation now runs on its own, day and night.</li>
         </ol>
         <Notice>Try it with test data first (your own email, a test lead) before telling customers about it.</Notice>
       </Step>
+
+      <SetupAssistant productId={product.id} canEscalate={canEscalate} />
+      <a href="#assistant" className="btn small accent assistant-fab">Need help?</a>
 
       {(readme.whatItDoes || readme.setup) && (
         <details className="card setup-more">

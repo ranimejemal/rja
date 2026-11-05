@@ -1,5 +1,6 @@
 import "server-only";
 import { createHash } from "node:crypto";
+import type { AiProvider } from "@/lib/ai-providers";
 
 // Plain-language instructions for connecting each account an automation uses, written for people who are not
 // technical. Steps are Markdown (lists, **bold**, `code`). Shown on the buyer's setup page, one card per account.
@@ -32,7 +33,7 @@ export function suggestedSecret(seed: string) {
   return createHash("sha256").update(`webhook-secret:${seed}`).digest("base64url").slice(0, 40);
 }
 
-export function accountGuides(slug: string, credentialTypes: string[], seed: string): AccountGuide[] {
+export function accountGuides(slug: string, credentialTypes: string[], seed: string, ai: AiProvider = "gemini"): AccountGuide[] {
   const out: AccountGuide[] = [];
   const google = credentialTypes.filter((t) => GOOGLE_TYPES.includes(t));
   if (google.length) {
@@ -49,11 +50,27 @@ export function accountGuides(slug: string, credentialTypes: string[], seed: str
   }
   for (const t of credentialTypes) {
     if (GOOGLE_TYPES.includes(t)) continue;
-    const g = guideFor(slug, t, seed);
+    const g = t === "openAiApi" && ai === "gemini" ? GEMINI_GUIDE : guideFor(slug, t, seed);
     if (g) out.push(g);
   }
   return out;
 }
+
+// Gemini through its OpenAI-compatible address: n8n's "OpenAI" credential with a Gemini key and Google's address.
+const GEMINI_GUIDE: AccountGuide = {
+  key: "openAiApi", title: "Google Gemini (the AI, free)", time: "3 minutes",
+  why: "The AI that reads, sorts and writes. Google's free plan needs no card. At very busy hours Google can be slow: the automation then waits and tries again by itself (up to 5 times).",
+  steps: `1. Go to **aistudio.google.com/apikey** and sign in with your Google account.
+2. Click **Create API key** (accept the terms if asked) and **copy the key**. It starts with \`AIza\`.
+3. In n8n, open a box with a red warning that says OpenAI (or "AI"), choose **Create new credential**. Yes, choose the **OpenAI** type: Gemini understands the same language.
+4. Fill in:
+   - **API Key:** your Gemini key.
+   - **Base URL:** \`https://generativelanguage.googleapis.com/v1beta/openai\`
+   - **Allowed HTTP Request Domains:** **All**.
+5. Click **Save**. Every AI box of the automation uses it automatically.
+- Do not choose the "Google Gemini (PaLM)" credential type: it does not work with these boxes.
+- On the free plan Google may use what you send to improve its products. For private customer data, choose OpenAI in your details instead.`,
+};
 
 function guideFor(slug: string, type: string, seed: string): AccountGuide | null {
   switch (type) {
@@ -64,7 +81,8 @@ function guideFor(slug: string, type: string, seed: string): AccountGuide | null
         steps: `1. Go to **platform.openai.com** and create an account.
 2. Open **Settings → Billing** and add a payment method with a small credit (5 to 10 dollars is enough to start).
 3. Open **API keys → Create new secret key**, give it a name (e.g. "n8n") and **copy the key**. It is shown only once.
-4. In n8n, open a box with a red warning that says OpenAI (or "AI"), choose **Create new credential**, paste the key and click **Save**.`,
+4. In n8n, open a box with a red warning that says OpenAI (or "AI"), choose **Create new credential**, paste the key and click **Save**.
+- Leave **Base URL** as it is (\`https://api.openai.com/v1\`).`,
       };
     case "virusTotalApi":
       return {

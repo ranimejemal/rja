@@ -11,6 +11,7 @@ import { ConfigForm } from "@/components/ConfigForm";
 import { SetupGuide } from "@/components/SetupGuide";
 import { credentialsUsed, extraFiles, loadReadme, loadSetupForm, sheetTemplates, verifyToken } from "@/lib/automations";
 import { accountGuides, readmeSections } from "@/lib/setup-guide";
+import { savedProvider } from "@/lib/ai-providers";
 import { SubmitButton } from "@/components/client";
 import { EmptyState, LICENSE_LABEL, Notice, SellerBadge, StatusPill } from "@/components/ui";
 import { openTicket, requestRefund, submitReview } from "./actions";
@@ -58,7 +59,7 @@ export default async function PurchasedProduct({ params }: { params: Promise<{ i
   const guide = setupForm && {
     sheets: await sheetTemplates(p.slug),
     extras: await extraFiles(p.slug),
-    accounts: accountGuides(p.slug, await credentialsUsed(p.slug), session.userId),
+    accounts: accountGuides(p.slug, await credentialsUsed(p.slug), session.userId, savedProvider(latest?.values)),
     readme: readmeSections((await loadReadme(p.slug)) ?? "", setupForm ?? undefined),
   };
 
@@ -78,6 +79,7 @@ export default async function PurchasedProduct({ params }: { params: Promise<{ i
           latest={latest}
           {...guide}
           metaVerifyToken={latest && p.slug === "ai-social-media-automation" ? verifyToken(latest.id) : undefined}
+          canEscalate={Boolean(ent)}
         />
       ) : (
         <>

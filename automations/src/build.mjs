@@ -111,7 +111,7 @@ function openAi(wf, name, position) {
     specifyBody: "json",
     jsonBody: "={{ JSON.stringify($json.request) }}",
     options: { timeout: 120000 },
-  }, position, { retryOnFail: true, maxTries: 3, waitBetweenTries: 5000 });
+  }, position, { retryOnFail: true, maxTries: 5, waitBetweenTries: 5000 });
 }
 
 function condition(leftValue, operation, rightValue = "", type = "string") {
@@ -199,7 +199,7 @@ const s = ${S};
 const items = $input.all();
 for (let i = 0; i < items.length; i++) {
   const buffer = await this.helpers.getBinaryDataBuffer(i, 'data');
-  const part = documentPart(items[i].json.mime_type, buffer.toString('base64'), items[i].json.file_name);
+  const part = documentPart(items[i].json.mime_type, buffer.toString('base64'), items[i].json.file_name, s.openAiBaseUrl);
   items[i].json.request = buildExtractRequest(part, s);
   items[i].pairedItem = { item: i };
 }
