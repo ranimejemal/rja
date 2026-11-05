@@ -65,6 +65,7 @@ function humanCheckHelp(code: string) {
   if (code === "load" || code.startsWith("200")) return "The check could not load. An ad blocker or privacy extension may block challenges.cloudflare.com: allow it for this site.";
   if (code.startsWith("1102")) return "This web address is not allowed for the check yet. Use rja-wd2u.vercel.app.";
   if (code.startsWith("1101") || code.startsWith("4")) return "The check is misconfigured on our side. Please tell us.";
+  if (code.startsWith("3")) return "Your browser stopped the check from running. Turn off a VPN or privacy/ad-block extensions, check your computer's date and time, or try a private window, then try again.";
   if (code.startsWith("6")) return "Cloudflare could not confirm you are human. Turn off a VPN or browser extensions (or try a private window), then try again.";
   return "The check failed.";
 }
