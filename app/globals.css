@@ -482,7 +482,7 @@ code { font-family: var(--font-mono); font-size: 0.85em; background: var(--surfa
 .link-plain { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; text-align: left; }
 .footer-grid .link-plain { display: block; color: var(--text-2); font-size: 0.9rem; padding: 0.2rem 0; }
 .footer-grid .link-plain:hover { color: var(--text); }
-.human-check { min-height: 65px; }
+.human-check:empty { display: none; }
 .sev { display: inline-block; font-family: var(--font-mono); font-size: 0.68rem; text-transform: uppercase; padding: 0.05rem 0.4rem; border-radius: 4px; border: 1px solid var(--line); color: var(--muted); }
 .sev-warn { color: #ffb648; border-color: rgba(255, 182, 72, 0.4); }
 .sev-danger { color: #ff6b5e; border-color: rgba(255, 107, 94, 0.45); }
@@ -649,3 +649,10 @@ code { font-family: var(--font-mono); font-size: 0.85em; background: var(--surfa
   .hide-sm { display: none; }
 }
 @media (max-width: 480px) { .hero-card { border-radius: 16px; } .brands { gap: 24px; } .pipeline-line { width: 56px; } }
+
+/* Browser autofill keeps the dark fields instead of Chrome's light blue. */
+input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--text); caret-color: var(--text);
+  -webkit-box-shadow: 0 0 0 1000px var(--surface) inset; transition: background-color 9999s ease-out 0s;
+}
+.auth-form input:-webkit-autofill { -webkit-box-shadow: 0 0 0 1000px #1a1a1a inset; -webkit-text-fill-color: #fff; }
