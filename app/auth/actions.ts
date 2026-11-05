@@ -67,7 +67,7 @@ export async function signIn(_: AuthState, form: FormData): Promise<AuthState> {
 export async function signUp(_: AuthState, form: FormData): Promise<AuthState> {
   if (!rateLimit(await clientKey("signup"), 5, 60 * 60_000).ok) return { error: "Too many sign-ups from this network. Try again later." };
   const parsed = credentials.extend({ displayName: z.string().trim().min(2, "Enter your name").max(80) }).safeParse({
-    email: form.get("email"), password: form.get("password"), displayName: form.get("displayName"),
+    email: form.get("email"), password: form.get("password"), displayName: form.get("displayName") ?? [form.get("firstName"), form.get("lastName")].filter(Boolean).join(" ").trim(),
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   if (form.get("terms") !== "on") return { error: "Please accept the Terms of Service and Privacy Policy." };
