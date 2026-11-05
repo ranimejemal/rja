@@ -35,8 +35,8 @@ export function HumanCheck({ resetKey }: { resetKey?: unknown }) {
       if (cancelled || !box.current || !window.turnstile) return;
       widget.current = window.turnstile.render(box.current, {
         sitekey: SITE_KEY, theme: "dark", size: "flexible", language: "auto",
-        // Invisible for almost everyone: the box only appears when Cloudflare needs a click.
-        appearance: "interaction-only", retry: "auto", "refresh-expired": "auto",
+        // Always visible, so people see the check and its result.
+        appearance: "always", retry: "auto", "refresh-expired": "auto",
         callback: () => setError(null),
         // Returning true tells Turnstile we show the problem ourselves.
         "error-callback": (code: string) => { setError(String(code || "unknown")); return true; },
