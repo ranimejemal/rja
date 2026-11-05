@@ -96,7 +96,10 @@ export async function resendEmailCode(_: AuthState, form: FormData): Promise<Aut
   if (!email.success) return { error: "Enter a valid email address." };
   const supabase = await createClient();
   const { error } = await supabase.auth.resend({ type: "signup", email: email.data });
-  if (error?.status === 429) return { error: "Please wait a minute before asking for another code." };
+  if (error?.status === 429) {
+    const wait = Number(error.message.match(/after (\d+) seconds/)?.[1] ?? 60);
+    return { error: `A code was just sent. Please wait ${wait} seconds before asking for a new one.` };
+  }
   // Same answer whether or not the account exists or is already confirmed.
   return { notice: "If this email needs confirming, a new code is on its way. Check your inbox (and spam)." };
 }
@@ -107,13 +110,19 @@ async function sendResetCode(form: FormData): Promise<{ email?: string; error?: 
   if (!email.success) return { error: "Enter a valid email address." };
   const supabase = await createClient();
   // The email holds a code ({{ .Token }}); the link fallback still works through /auth/callback.
-  await supabase.auth.resetPasswordForEmail(email.data, { redirectTo: `${await siteOrigin()}/auth/callback?next=/reset-password` });
+  const { error } = await supabase.auth.resetPasswordForEmail(email.data, { redirectTo: `${await siteOrigin()}/auth/callback?next=/reset-password` });
+  // Supabase sends at most one email a minute per address: say so instead of pretending a new code left.
+  if (error?.status === 429) {
+    const wait = Number(error.message.match(/after (\d+) seconds/)?.[1] ?? 60);
+    return { email: email.data, error: `A code was just sent. Please wait ${wait} seconds before asking for a new one.` };
+  }
   return { email: email.data };
 }
 
 export async function requestPasswordReset(_: AuthState, form: FormData): Promise<AuthState> {
   const sent = await sendResetCode(form);
-  if (sent.error) return { error: sent.error };
+  // A code sent less than a minute ago is still valid: go on to the code step.
+  if (sent.error && !sent.email) return { error: sent.error };
   // Same result whether or not the account exists, so the form cannot be used to find accounts.
   redirect(`/reset-password?${new URLSearchParams({ email: sent.email! })}`);
 }
