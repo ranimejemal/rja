@@ -8,7 +8,7 @@ import { Logo } from "@/components/Logo";
 
 export const HERO_VIDEO = "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260506_081238_406ed0e3-5d83-436e-a512-0bbff7ec5b95.mp4";
 
-type Props = { heading: string; intro: string; active: 1 | 2 | 3; title: string; subtitle: string; children: ReactNode };
+type Props = { heading: string; intro: string; /** The getting-started step to highlight; without it no steps are shown. */ active?: 1 | 2 | 3; title: string; subtitle: string; children: ReactNode };
 
 export function AuthShell({ heading, intro, active, title, subtitle, children }: Props) {
   const steps = ["Create your account", "Confirm the code we email you", "Set up your first automation"];
@@ -27,11 +27,13 @@ export function AuthShell({ heading, intro, active, title, subtitle, children }:
             <h2>{heading}</h2>
             <p>{intro}</p>
           </div>
-          <ol className="auth-steps">
-            {steps.map((s, i) => (
-              <StepItem key={s} number={i + 1} text={s} active={i + 1 === active} index={i + 2} />
-            ))}
-          </ol>
+          {active && (
+            <ol className="auth-steps">
+              {steps.map((s, i) => (
+                <StepItem key={s} number={i + 1} text={s} active={i + 1 === active} index={i + 2} />
+              ))}
+            </ol>
+          )}
         </div>
       </aside>
 

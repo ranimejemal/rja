@@ -523,7 +523,7 @@ code { font-family: var(--font-mono); font-size: 0.85em; background: var(--surfa
 .auth-step.active { background: var(--accent); color: var(--accent-ink); border: 1px solid var(--accent); }
 .auth-step.active .auth-step-num { background: #000; color: var(--accent); }
 
-.auth-panel { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem 1rem; overflow-y: auto; }
+.auth-panel { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem 1rem; }
 .auth-panel-inner { width: 100%; max-width: 36rem; display: flex; flex-direction: column; gap: 2rem; }
 .auth-head h1 { margin: 0 0 0.5rem; font-size: 1.875rem; font-weight: 500; letter-spacing: -0.025em; }
 .auth-head p { margin: 0; font-size: 0.875rem; color: rgba(255, 255, 255, 0.45); }
@@ -558,8 +558,10 @@ code { font-family: var(--font-mono); font-size: 0.85em; background: var(--surfa
 
 @media (min-width: 640px) { .auth-panel { padding-inline: 3rem; } .auth-panel-inner { gap: 2.5rem; } }
 @media (min-width: 1024px) {
-  .auth-shell { height: calc(100svh - 4.25rem); min-height: 40rem; padding: 1rem; }
-  .auth-hero { display: flex; }
+  .auth-shell { min-height: calc(100svh - 4.25rem); padding: 1rem; align-items: flex-start; }
+  /* The page scrolls as one; the video stays in view next to a long form. */
+  .auth-hero { display: flex; position: sticky; top: calc(4.25rem + 1rem); height: calc(100svh - 4.25rem - 2rem); min-height: 34rem; }
+  .auth-panel { min-height: calc(100svh - 4.25rem - 2rem); }
   .auth-panel { padding: 1.5rem 4rem; }
   .auth-panel-inner { gap: 1.5rem; }
 }
