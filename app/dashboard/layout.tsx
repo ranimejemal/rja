@@ -13,6 +13,7 @@ export default async function BuyerLayout({ children }: { children: React.ReactN
           ["/dashboard/downloads", "Download history"],
           ["/dashboard/support", "Support requests"],
           ["/dashboard/settings", "Account settings"],
+          ["/dashboard/security", "Security"],
         ]}
       />
       <div className="stack" style={{ "--gap": "1.75rem", minWidth: 0 } as React.CSSProperties}>{children}</div>

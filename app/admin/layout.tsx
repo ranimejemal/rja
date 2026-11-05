@@ -1,6 +1,8 @@
 import { requireRole } from "@/lib/auth";
 import { DashNav } from "@/components/DashNav";
 
+export const metadata = { robots: { index: false, follow: false } };
+
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   await requireRole("admin");
   return (
@@ -10,6 +12,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         items={[
           ["/admin", "Overview"],
           ["/admin/analytics", "Traffic"],
+          ["/admin/visitors", "Visitors"],
+          ["/admin/security", "Security"],
           ["/admin/customers", "Customers"],
           ["/admin/orders", "Orders"],
           ["/admin/quotes", "Quote requests"],

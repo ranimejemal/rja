@@ -1,5 +1,6 @@
 "use client";
 
+import { HumanCheck } from "@/components/HumanCheck";
 import { useActionState } from "react";
 import Link from "next/link";
 import { requestPasswordReset, resendResetCode, updatePassword, verifyResetCode, type AuthState } from "./actions";
@@ -14,6 +15,7 @@ export function ForgotPasswordForm() {
         <input id="email" name="email" type="email" autoComplete="email" required />
       </div>
       {state.error && <div className="notice danger" role="alert">{state.error}</div>}
+      <HumanCheck resetKey={state} />
       <SubmitButton className="btn accent" pendingText="Sending…">Send me a code</SubmitButton>
       <p className="small muted">Remembered it? <Link className="link" href="/login">Log in</Link></p>
     </form>

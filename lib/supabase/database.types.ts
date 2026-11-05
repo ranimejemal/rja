@@ -1002,6 +1002,24 @@ export type Database = {
           { foreignKeyName: "promotion_sends_promotion_id_fkey"; columns: ["promotion_id"]; isOneToOne: false; referencedRelation: "promotions"; referencedColumns: ["id"] },
         ]
       }
+      security_events: {
+        Row: {
+          country: string | null; created_at: string; details: Json; email: string | null; id: number; ip: string | null
+          kind: Database["public"]["Enums"]["security_event_kind"]; path: string | null
+          severity: Database["public"]["Enums"]["security_severity"]; user_agent: string | null; user_id: string | null
+        }
+        Insert: {
+          country?: string | null; created_at?: string; details?: Json; email?: string | null; id?: never; ip?: string | null
+          kind: Database["public"]["Enums"]["security_event_kind"]; path?: string | null
+          severity?: Database["public"]["Enums"]["security_severity"]; user_agent?: string | null; user_id?: string | null
+        }
+        Update: {
+          country?: string | null; created_at?: string; details?: Json; email?: string | null; id?: never; ip?: string | null
+          kind?: Database["public"]["Enums"]["security_event_kind"]; path?: string | null
+          severity?: Database["public"]["Enums"]["security_severity"]; user_agent?: string | null; user_id?: string | null
+        }
+        Relationships: []
+      }
       quote_requests: {
         Row: {
           admin_note: string
@@ -1761,7 +1779,22 @@ export type Database = {
       can_use_product: { Args: { p_product_id: string }; Returns: boolean }
       set_marketing_opt_in: { Args: { p_opt_in: boolean }; Returns: undefined }
       unsubscribe_marketing: { Args: { p_token: string }; Returns: boolean }
-      record_page_view: { Args: { p_id: string; p_path: string; p_seconds: number }; Returns: number }
+      record_page_view: {
+        Args: {
+          p_id: string; p_path: string; p_seconds: number; p_visitor_id?: string | null; p_country?: string | null
+          p_device?: string | null; p_browser?: string | null; p_referrer?: string | null
+        }
+        Returns: number
+      }
+      admin_visits: {
+        Args: { p_limit?: number; p_visitor?: string | null; p_user?: string | null }
+        Returns: {
+          id: string; created_at: string; path: string; seconds: number; user_id: string | null; email: string | null
+          visitor_id: string | null; country: string | null; device: string | null; browser: string | null; referrer: string | null
+        }[]
+      }
+      admin_security_summary: { Args: { p_days?: number }; Returns: Json }
+      purge_old_logs: { Args: Record<PropertyKey, never>; Returns: undefined }
       claim_promotion: {
         Args: Record<PropertyKey, never>
         Returns: { send_id: string; subject: string; message: string; cta_label: string; cta_path: string; unsubscribe_token: string }[]
@@ -1838,6 +1871,10 @@ export type Database = {
       product_ownership: "platform" | "third_party"
       quote_status: "new" | "contacted" | "won" | "lost" | "spam"
       promotion_send_status: "sending" | "sent" | "failed"
+      security_event_kind:
+        | "login_success" | "login_failed" | "login_locked" | "signup" | "password_reset_requested" | "password_changed"
+        | "mfa_failed" | "admin_denied" | "probe" | "bot_blocked" | "rate_limited" | "alert_sent"
+      security_severity: "info" | "low" | "medium" | "high" | "critical"
       product_status:
         | "draft"
         | "submitted"
@@ -2056,6 +2093,9 @@ export const Constants = {
       product_ownership: ["platform", "third_party"],
       quote_status: ["new", "contacted", "won", "lost", "spam"],
       promotion_send_status: ["sending", "sent", "failed"],
+      security_event_kind: ["login_success", "login_failed", "login_locked", "signup", "password_reset_requested", "password_changed",
+        "mfa_failed", "admin_denied", "probe", "bot_blocked", "rate_limited", "alert_sent"],
+      security_severity: ["info", "low", "medium", "high", "critical"],
       product_status: [
         "draft",
         "submitted",

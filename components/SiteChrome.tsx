@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { Logo } from "./Logo";
 import { SiteMenu } from "./SiteMenu";
+import { CookieSettingsLink } from "./CookieBanner";
 
 export async function SiteHeader() {
   const session = await getSession();
@@ -60,7 +61,7 @@ export function SiteFooter() {
           <div><span className="tag">Marketplace</span><Link href="/explore">Explore</Link><Link href="/categories">Categories</Link><Link href="/pricing">Pricing &amp; licensing</Link><Link href="/help">Help center</Link></div>
           <div><span className="tag">Creators</span><Link href="/sell">Become a seller</Link><Link href="/seller">Seller dashboard</Link><Link href="/legal/seller-agreement">Seller agreement</Link></div>
           <div><span className="tag">Account</span><Link href="/dashboard">My automations</Link><Link href="/login">Log in</Link><Link href="/signup">Sign up</Link></div>
-          <div><span className="tag">Legal</span><Link href="/legal/terms">Terms of service</Link><Link href="/legal/privacy">Privacy policy</Link><Link href="/legal/buyer-license">Buyer license</Link><Link href="/legal/refund-policy">Refund policy</Link></div>
+          <div><span className="tag">Legal</span><Link href="/legal/terms">Terms of service</Link><Link href="/legal/privacy">Privacy policy</Link><Link href="/legal/buyer-license">Buyer license</Link><Link href="/legal/refund-policy">Refund policy</Link><CookieSettingsLink /></div>
         </div>
         <div className="row between tiny muted" style={{ borderTop: "1px solid var(--line)", paddingTop: "1.25rem" }}>
           <span>© {new Date().getFullYear()} Ranime Jemal Agency</span>

@@ -14,12 +14,15 @@ export function EngagementTracker() {
     let seconds = 0;
     let visibleSince = document.visibilityState === "visible" ? Date.now() : 0;
     let sent = -1;
+    // The site the visitor came from (its host name only), on the first report of the visit.
+    let referrer: string | null = null;
+    try { const r = document.referrer ? new URL(document.referrer).hostname : ""; referrer = r && r !== location.hostname ? r : null; } catch { referrer = null; }
     const total = () => seconds + (visibleSince ? Math.round((Date.now() - visibleSince) / 1000) : 0);
     const send = (leaving = false) => {
       const s = total();
       if (s === sent && !leaving) return;
       sent = s;
-      const body = JSON.stringify({ id, path: pathname, seconds: s });
+      const body = JSON.stringify({ id, path: pathname, seconds: s, ...(referrer ? { referrer } : {}) });
       if (leaving && navigator.sendBeacon) navigator.sendBeacon("/api/track", new Blob([body], { type: "application/json" }));
       else fetch("/api/track", { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true }).catch(() => {});
     };

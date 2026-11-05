@@ -5,6 +5,7 @@ import { z } from "zod";
 import { rateLimit } from "@/lib/rate-limit";
 import { features } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { HUMAN_CHECK_FAILED, verifyHuman } from "@/lib/human-check";
 
 export type NewsletterState = { ok?: boolean; message?: string };
 
@@ -14,6 +15,7 @@ export async function subscribe(_: NewsletterState, form: FormData): Promise<New
   const email = z.email().max(254).safeParse(String(form.get("email") ?? "").trim().toLowerCase());
   if (!email.success) return { message: "Enter a valid email address." };
   if (form.get("consent") !== "on") return { message: "Please confirm you want to receive the newsletter." };
+  if (!(await verifyHuman(form, "/newsletter"))) return { message: HUMAN_CHECK_FAILED };
   if (!features.serverAdmin) return { message: "The newsletter is not open yet. Please check back soon." };
   const { error } = await createAdminClient().from("newsletter_subscribers").upsert({ email: email.data }, { onConflict: "email", ignoreDuplicates: true });
   if (error) return { message: "Something went wrong. Please try again." };

@@ -373,6 +373,39 @@ reset role;
 select test.ok('unsubscribed customer no longer receives offers', not (select marketing_opt_in from profiles where id = test.id('buyer2')));
 select test.ok('sign-up consent is recorded from the form', (select marketing_opt_in is not null from profiles limit 1));
 
+-- ---------------------------------------------------------------- visitor log, security events, admin MFA
+set role anon;
+select record_page_view('00000000-0000-0000-0000-00000000b001', '/pricing', 12, '00000000-0000-0000-0000-0000000000f1', 'TN', 'mobile', 'Chrome', 'google.com');
+reset role;
+select test.ok('anonymous visit keeps country, device and the consented visitor id, no account',
+  (select country = 'TN' and device = 'mobile' and visitor_id is not null and user_id is null from page_views where id = '00000000-0000-0000-0000-00000000b001'));
+select record_page_view('00000000-0000-0000-0000-00000000b002', '/', 1, null, 'tunisia', 'phone', null, null);
+select test.ok('invalid context values are dropped, not stored',
+  (select country is null and device is null from page_views where id = '00000000-0000-0000-0000-00000000b002'));
+select test.act_as('buyer');
+select test.fails('customers cannot read the visit log', $q$select * from admin_visits(10)$q$, 'admins only');
+select test.fails('customers cannot write security events',
+  $q$insert into security_events (kind, severity) values ('probe', 'high')$q$, 'permission denied');
+select test.ok('customers cannot read security events', (select count(*) from security_events) = 0);
+select test.act_as('service');
+insert into security_events (kind, severity, email, ip, path) values ('login_failed', 'low', 'x@example.com', '203.0.113.9', '/login');
+select test.act_as('admin');
+select test.ok('admins read the visit log with emails of signed-in visitors',
+  (select count(*) from admin_visits(50)) >= 1 and exists (select 1 from admin_visits(500) where email is not null));
+select test.ok('admins read security events and the summary',
+  (select count(*) from security_events) = 1 and (admin_security_summary(7) -> 'by_kind' ->> 'login_failed')::int = 1);
+select test.ok('admin without two-step verification keeps admin rights', is_admin());
+select test.act_as(null);
+insert into auth.mfa_factors (user_id, status) values (test.id('admin'), 'verified');
+select test.act_as('admin');
+select test.ok('after turning on two-step verification, a session without the code is not admin', not is_admin());
+select test.fails('and cannot read admin data', $q$select * from admin_users()$q$, 'admins only');
+select set_config('request.jwt.claims', '{"aal":"aal2"}', false);
+select test.ok('a session with the code is admin again', is_admin());
+select set_config('request.jwt.claims', '', false);
+select test.act_as(null);
+delete from auth.mfa_factors;
+
 -- ---------------------------------------------------------------- report
 \o
 select name, ok, detail from test.results where not ok;

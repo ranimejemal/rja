@@ -44,8 +44,28 @@ export async function requireUser(next = "/dashboard"): Promise<Session> {
 }
 
 /** UI-level gate. The database enforces the same rules again on every query and function call. */
-export async function requireRole(role: Role): Promise<Session> {
+export async function requireRole(role: Role, next = "/admin"): Promise<Session> {
   const session = await requireUser();
-  if (!session.roles.includes(role)) notFound();
+  if (!session.roles.includes(role)) {
+    if (role === "admin") {
+      const { securityEvent } = await import("@/lib/security");
+      await securityEvent({ kind: "admin_denied", severity: "high", email: session.email, userId: session.userId, path: next });
+    }
+    notFound();
+  }
+  if (role === "admin") await requireAdminVerification(next);
   return session;
+}
+
+/**
+ * Admins must use two-step verification (an authenticator app). Without it set up, they are sent to set it up;
+ * with it set up, a session that has not entered the code yet is sent to the code page. The database checks the
+ * same thing in is_admin().
+ */
+export async function requireAdminVerification(next = "/admin") {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (!data) return;
+  if (data.nextLevel !== "aal2") redirect(`/dashboard/security?setup=admin&next=${encodeURIComponent(next)}`);
+  if (data.currentLevel !== "aal2") redirect(`/login/mfa?next=${encodeURIComponent(next)}`);
 }

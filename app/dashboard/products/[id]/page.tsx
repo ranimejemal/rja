@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireUser } from "@/lib/auth";
+import { requireAdminVerification, requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { filesForBuyer } from "@/lib/entitlement";
 import { parseManifest, type ConfigValues } from "@/lib/manifest";
@@ -32,6 +32,7 @@ export default async function PurchasedProduct({ params }: { params: Promise<{ i
   // Admins open every agency automation's setup tool for free, to test it or to set it up for a client.
   const adminAccess = !ent && session.roles.includes("admin");
   if (!ent && !adminAccess) notFound();
+  if (adminAccess) await requireAdminVerification(`/dashboard/products/${id}`);
 
   const [{ data: p }, { data: versions }, { data: configs }, { data: review }, { data: refunds }] = await Promise.all([
     supabase.from("products").select("id, slug, name, install_instructions, prerequisites, integrations, current_version_id, ownership, support_policy, seller:seller_profiles!products_seller_id_fkey(display_name, slug)").eq("id", id).single(),
@@ -58,7 +59,7 @@ export default async function PurchasedProduct({ params }: { params: Promise<{ i
     sheets: await sheetTemplates(p.slug),
     extras: await extraFiles(p.slug),
     accounts: accountGuides(p.slug, await credentialsUsed(p.slug), session.userId),
-    readme: readmeSections((await loadReadme(p.slug)) ?? ""),
+    readme: readmeSections((await loadReadme(p.slug)) ?? "", setupForm ?? undefined),
   };
 
   return (

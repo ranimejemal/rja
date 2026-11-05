@@ -1,5 +1,6 @@
 "use client";
 
+import { HumanCheck } from "@/components/HumanCheck";
 import { useActionState } from "react";
 import Link from "next/link";
 import { signIn, signUp, type AuthState } from "./actions";
@@ -42,6 +43,7 @@ export function AuthForm({ mode, next }: { mode: "login" | "signup"; next: strin
       )}
       {state.error && <div className="notice danger" role="alert">{state.error}</div>}
       {state.notice && <div className="notice ok" role="status">{state.notice}</div>}
+      <HumanCheck resetKey={state} />
       <SubmitButton className="btn accent">{mode === "login" ? "Log in" : "Create account"}</SubmitButton>
       <p className="small muted">
         {mode === "login"

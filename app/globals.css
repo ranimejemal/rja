@@ -471,3 +471,19 @@ code { font-family: var(--font-mono); font-size: 0.85em; background: var(--surfa
 .bar { flex: 1; height: 100%; display: flex; align-items: flex-end; min-width: 2px; }
 .bar span { display: block; width: 100%; min-height: 1px; background: var(--accent); border-radius: 3px 3px 0 0; opacity: 0.85; }
 .bar:hover span { opacity: 1; }
+
+/* ---------- Cookie banner, human check ---------- */
+.cookie-banner {
+  position: fixed; z-index: 60; left: 1rem; right: 1rem; bottom: 1rem; max-width: 34rem; margin-left: auto;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.9rem 1.25rem; padding: 1rem 1.15rem;
+  background: rgba(23, 23, 22, 0.97); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 16px 50px rgba(0, 0, 0, 0.5);
+}
+.cookie-banner p { flex: 1 1 18rem; margin: 0; }
+.link-plain { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; text-align: left; }
+.footer-grid .link-plain { display: block; color: var(--text-2); font-size: 0.9rem; padding: 0.2rem 0; }
+.footer-grid .link-plain:hover { color: var(--text); }
+.human-check { min-height: 65px; }
+.sev { display: inline-block; font-family: var(--font-mono); font-size: 0.68rem; text-transform: uppercase; padding: 0.05rem 0.4rem; border-radius: 4px; border: 1px solid var(--line); color: var(--muted); }
+.sev-warn { color: #ffb648; border-color: rgba(255, 182, 72, 0.4); }
+.sev-danger { color: #ff6b5e; border-color: rgba(255, 107, 94, 0.45); }
+.danger-text { color: #ff6b5e; }

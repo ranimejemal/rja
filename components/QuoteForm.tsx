@@ -1,5 +1,6 @@
 "use client";
 
+import { HumanCheck } from "@/components/HumanCheck";
 import { useActionState } from "react";
 import { submitQuote, type QuoteState } from "@/app/quote/actions";
 import { SubmitButton } from "./client";
@@ -41,6 +42,7 @@ export function QuoteForm({ product, options, defaults }: { product?: Option; op
       {/* Honeypot for bots, hidden from people and screen readers. */}
       <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" style={{ position: "absolute", left: "-9999px", width: 1, height: 1 }} />
       {state.error && <div className="notice danger" role="alert">{state.error}</div>}
+      <HumanCheck resetKey={state} />
       <SubmitButton className="btn accent" pendingText="Sending…">Request a quote</SubmitButton>
     </form>
   );

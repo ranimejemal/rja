@@ -1,5 +1,6 @@
 "use client";
 
+import { HumanCheck } from "@/components/HumanCheck";
 import { useActionState } from "react";
 import { subscribe, type NewsletterState } from "@/app/newsletter";
 import { SubmitButton } from "./client";
@@ -11,7 +12,8 @@ export function NewsletterForm() {
       <div className="search-bar">
         <label htmlFor="nl-email" className="sr-only">Email address</label>
         <input id="nl-email" name="email" type="email" placeholder="you@company.com" autoComplete="email" required />
-        <SubmitButton className="btn accent">Subscribe</SubmitButton>
+        <HumanCheck resetKey={state} />
+      <SubmitButton className="btn accent">Subscribe</SubmitButton>
       </div>
       <label className="check small">
         <input type="checkbox" name="consent" required />

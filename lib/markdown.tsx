@@ -11,23 +11,36 @@ function inline(text: string): ReactNode[] {
         : <Fragment key={i}>{part}</Fragment>);
 }
 
+type Item = { text: string; children: string[] };
+
 export function Markdown({ source }: { source: string }) {
   const blocks: ReactNode[] = [];
-  let list: { ordered: boolean; items: string[] } | null = null;
+  let list: { ordered: boolean; items: Item[] } | null = null;
   const flush = () => {
     if (!list) return;
-    const items = list.items.map((it, i) => <li key={i}>{inline(it)}</li>);
+    const items = list.items.map((it, i) => (
+      <li key={i}>{inline(it.text)}{it.children.length > 0 && <ul>{it.children.map((c, j) => <li key={j}>{inline(c)}</li>)}</ul>}</li>
+    ));
     blocks.push(list.ordered ? <ol key={blocks.length}>{items}</ol> : <ul key={blocks.length}>{items}</ul>);
     list = null;
   };
   for (const raw of source.split("\n")) {
     const line = raw.trim();
+    const indented = /^\s{2,}\S/.test(raw);
     const ol = line.match(/^\d+\.\s+(.*)$/);
     const ul = line.match(/^[-*]\s+(.*)$/);
+    const last = list?.items[list.items.length - 1];
+    // Indented lines belong to the list item above: sub-points, or the rest of its text.
+    if (indented && last) {
+      if (ol || ul) last.children.push((ol ?? ul)![1]);
+      else if (last.children.length) last.children[last.children.length - 1] += ` ${line}`;
+      else last.text += ` ${line}`;
+      continue;
+    }
     if (ol || ul) {
       const ordered = Boolean(ol);
       if (!list || list.ordered !== ordered) { flush(); list = { ordered, items: [] }; }
-      list.items.push((ol ?? ul)![1]);
+      list.items.push({ text: (ol ?? ul)![1], children: [] });
       continue;
     }
     flush();

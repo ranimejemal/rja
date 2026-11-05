@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import "./globals.css";
 import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
 import { EngagementTracker } from "@/components/EngagementTracker";
+import { CookieBanner } from "@/components/CookieBanner";
 import { Toast } from "@/components/client";
 import { Motion } from "@/components/Motion";
 import { SITE_URL } from "@/lib/public-env";
@@ -36,6 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <main id="main">{children}</main>
         <SiteFooter />
         <EngagementTracker />
+        <CookieBanner />
         <Suspense><Toast /></Suspense>
         <Suspense><Motion /></Suspense>
       </body>

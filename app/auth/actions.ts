@@ -6,6 +6,8 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/rate-limit";
 import { env } from "@/lib/env";
+import { HUMAN_CHECK_FAILED, verifyHuman } from "@/lib/human-check";
+import { loginLocked, securityEvent } from "@/lib/security";
 
 export type AuthState = { error?: string; notice?: string };
 
@@ -36,8 +38,22 @@ export async function signIn(_: AuthState, form: FormData): Promise<AuthState> {
   if (!rateLimit(await clientKey("login"), 10, 10 * 60_000).ok) return { error: "Too many attempts. Try again in a few minutes." };
   const parsed = credentials.safeParse({ email: form.get("email"), password: form.get("password") });
   if (!parsed.success) return { error: "Email or password is incorrect." };
+  if (!(await verifyHuman(form, "/login"))) return { error: HUMAN_CHECK_FAILED };
+  const email = parsed.data.email.toLowerCase();
+  // Too many failures for this account or network: refuse without even checking the password.
+  if (await loginLocked(email)) {
+    await securityEvent({ kind: "login_locked", severity: "high", email, path: "/login" });
+    return { error: "Too many failed attempts. For your security, sign-in is paused for 15 minutes." };
+  }
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword(parsed.data);
+  const { data: signedIn, error } = await supabase.auth.signInWithPassword(parsed.data);
+  // The audit log records who tried and from where, never the password.
+  if (error) await securityEvent({ kind: "login_failed", severity: "low", email, path: "/login", details: { reason: error.code ?? error.message.slice(0, 80) } });
+  else {
+    const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", signedIn.user.id);
+    const isAdmin = (roles ?? []).some((r) => r.role === "admin");
+    await securityEvent({ kind: "login_success", severity: isAdmin ? "high" : "info", email, userId: signedIn.user.id, path: "/login", details: { admin: isAdmin } });
+  }
   if (error?.code === "email_not_confirmed") {
     // Right password, unconfirmed email: send a fresh code and go to the code page.
     await supabase.auth.resend({ type: "signup", email: parsed.data.email });
@@ -55,6 +71,8 @@ export async function signUp(_: AuthState, form: FormData): Promise<AuthState> {
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   if (form.get("terms") !== "on") return { error: "Please accept the Terms of Service and Privacy Policy." };
+  if (!(await verifyHuman(form, "/signup"))) return { error: HUMAN_CHECK_FAILED };
+  await securityEvent({ kind: "signup", severity: "info", email: parsed.data.email, path: "/signup" });
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
@@ -108,6 +126,7 @@ async function sendResetCode(form: FormData): Promise<{ email?: string; error?: 
   if (!rateLimit(await clientKey("reset"), 5, 60 * 60_000).ok) return { error: "Too many requests. Try again later." };
   const email = z.email().max(254).safeParse(form.get("email"));
   if (!email.success) return { error: "Enter a valid email address." };
+  await securityEvent({ kind: "password_reset_requested", severity: "info", email: email.data, path: "/forgot-password" });
   const supabase = await createClient();
   // The email holds a code ({{ .Token }}); the link fallback still works through /auth/callback.
   const { error } = await supabase.auth.resetPasswordForEmail(email.data, { redirectTo: `${await siteOrigin()}/auth/callback?next=/reset-password` });
@@ -120,6 +139,7 @@ async function sendResetCode(form: FormData): Promise<{ email?: string; error?: 
 }
 
 export async function requestPasswordReset(_: AuthState, form: FormData): Promise<AuthState> {
+  if (!(await verifyHuman(form, "/forgot-password"))) return { error: HUMAN_CHECK_FAILED };
   const sent = await sendResetCode(form);
   // A code sent less than a minute ago is still valid: go on to the code step.
   if (sent.error && !sent.email) return { error: sent.error };
@@ -153,5 +173,6 @@ export async function updatePassword(_: AuthState, form: FormData): Promise<Auth
   if (!data.user) return { error: "This link has expired. Ask for a new one." };
   const { error } = await supabase.auth.updateUser({ password });
   if (error) return { error: error.message.includes("different") ? "Choose a password different from the old one." : "Could not update the password. Try again." };
+  await securityEvent({ kind: "password_changed", severity: "medium", email: data.user.email, userId: data.user.id, path: "/reset-password" });
   redirect("/dashboard?notice=Your+password+was+updated.");
 }

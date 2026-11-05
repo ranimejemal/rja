@@ -4,8 +4,12 @@ import { createClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/rate-limit";
 import { features, env } from "@/lib/env";
 import { brandedEmail, sendMail } from "@/lib/mailer";
+import { requestInfo } from "@/lib/request-info";
 
-const body = z.object({ id: z.uuid(), path: z.string().regex(/^\/[^\s]*$/).max(300), seconds: z.number().int().min(0).max(7200) });
+const body = z.object({
+  id: z.uuid(), path: z.string().regex(/^\/[^\s]*$/).max(300), seconds: z.number().int().min(0).max(7200),
+  referrer: z.string().regex(/^[a-z0-9.-]+$/i).max(200).optional(),
+});
 
 // Receives page-view time from the EngagementTracker. Signed-in customers who agreed to receive offers get the
 // running promotion by email once they have spent its minimum time on the site today (claim_promotion decides).
@@ -16,8 +20,16 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return new NextResponse(null, { status: 400 });
   // Query strings can carry personal data (search terms, tokens): only the path is kept.
   const path = parsed.data.path.split("?")[0];
+  const info = requestInfo(req.headers);
+  // The visitor id is only used when the visitor accepted the cookie.
+  const consent = req.cookies.get("rja_consent")?.value === "yes";
+  const vid = req.cookies.get("rja_vid")?.value;
   const supabase = await createClient();
-  const { data: today } = await supabase.rpc("record_page_view", { p_id: parsed.data.id, p_path: path, p_seconds: parsed.data.seconds });
+  const { data: today } = await supabase.rpc("record_page_view", {
+    p_id: parsed.data.id, p_path: path, p_seconds: parsed.data.seconds,
+    p_visitor_id: consent && vid && /^[0-9a-f-]{36}$/.test(vid) ? vid : null,
+    p_country: info.country, p_device: info.device, p_browser: info.browser, p_referrer: parsed.data.referrer ?? null,
+  });
   if (features.email && typeof today === "number" && today >= 60) await maybeSendPromotion(supabase);
   return new NextResponse(null, { status: 204 });
 }

@@ -146,8 +146,20 @@ function guideFor(slug: string, type: string, seed: string): AccountGuide | null
   }
 }
 
-/** The automation-specific part of the README: what it does and the setup notes, without the sales line. */
-export function readmeSections(readme: string) {
+/**
+ * The automation-specific part of the README: what it does and the setup notes, without the sales line. With the
+ * setup form, technical names are replaced by what the customer sees: `autoSendReplies` becomes the field's label,
+ * `workflow.json` the file they downloaded.
+ */
+export function readmeSections(readme: string, form?: { settings: { key: string; label: string }[] }) {
+  const labels = new Map(form?.settings.map((s) => [s.key, s.label]));
+  readme = readme.replace(/`([a-zA-Z][\w.-]*)`/g, (whole, name: string) => {
+    const label = labels.get(name.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`));
+    if (label) return `**${label}**`;
+    if (name === "workflow.json") return "the file you downloaded";
+    if (/^[\w-]+\.csv$/.test(name)) return `the ${name.replace(/-sheet\.csv$|\.csv$/, "").replace(/-/g, " ")} sheet template`;
+    return whole;
+  });
   const lines = readme.split("\n");
   const pick = (heading: string) => {
     const start = lines.findIndex((l) => l.trim().toLowerCase() === `## ${heading}`);

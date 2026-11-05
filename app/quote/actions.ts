@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/rate-limit";
 import { env, features } from "@/lib/env";
+import { HUMAN_CHECK_FAILED, verifyHuman } from "@/lib/human-check";
 
 export type QuoteState = { error?: string; sent?: boolean };
 
@@ -28,6 +29,7 @@ export async function submitQuote(_: QuoteState, form: FormData): Promise<QuoteS
     phone: String(form.get("phone") ?? ""), company: String(form.get("company") ?? ""), message: form.get("message"),
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (!(await verifyHuman(form, "/quote"))) return { error: HUMAN_CHECK_FAILED };
   const q = parsed.data;
   const supabase = await createClient();
   const { error } = await supabase.rpc("submit_quote_request", {
