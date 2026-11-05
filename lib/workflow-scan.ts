@@ -21,6 +21,7 @@ const SECRET_PATTERNS: [RegExp, string][] = [
   [/\bxox[abposr]-[A-Za-z0-9-]{10,}/, "Slack token"],
   [/-----BEGIN [A-Z ]*PRIVATE KEY-----/, "private key"],
   [/\bAIza[0-9A-Za-z_-]{35}\b/, "Google API key"],
+  [/\bAQ\.[0-9A-Za-z_-]{40,}/, "Google API key"],
   [/\bBearer\s+[A-Za-z0-9._-]{30,}/, "bearer token"],
 ];
 

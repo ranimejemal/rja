@@ -37,14 +37,14 @@ export const KNOWN_PROBLEMS: KnownProblem[] = [
     patterns: [/missing or invalid authorization header/i, /PaLM/i, /googlePalmApi/i],
     answer: `Your Gemini key is saved in a "Google Gemini (PaLM)" credential, which these boxes cannot use.
 1. In n8n, open the AI box, next to **Credential** choose **Create new credential** of type **OpenAI**.
-2. **API Key:** your Gemini key (starts with \`AIza\`). **Base URL:** \`https://generativelanguage.googleapis.com/v1beta/openai\`. **Allowed HTTP Request Domains:** **All**.
+2. **API Key:** your Gemini key (starts with \`AIza\` or \`AQ.\`). **Base URL:** \`https://generativelanguage.googleapis.com/v1beta/openai\`. **Allowed HTTP Request Domains:** **All**.
 3. Save, and choose this credential in every AI box.`,
   },
   {
     id: "ai-auth", title: "The AI refused the key", fix: "ai_settings",
     patterns: [/authorization failed/i, /\b401\b/, /incorrect api key/i, /invalid api key/i, /API key not valid/i, /unauthorized/i, /PERMISSION_DENIED/],
     answer: `The AI did not accept the key. Usually the key and the address do not match (a Gemini key sent to OpenAI, or the reverse).
-1. In n8n open **Credentials**, open your AI credential and check: an OpenAI key starts with \`sk-\` and keeps Base URL \`https://api.openai.com/v1\`; a Gemini key starts with \`AIza\` and needs Base URL \`https://generativelanguage.googleapis.com/v1beta/openai\`.
+1. In n8n open **Credentials**, open your AI credential and check: an OpenAI key starts with \`sk-\` and keeps Base URL \`https://api.openai.com/v1\`; a Gemini key starts with \`AIza\` or \`AQ.\` and needs Base URL \`https://generativelanguage.googleapis.com/v1beta/openai\`.
 2. The **Settings** box of the automation must point to the same AI: I can correct it for you with one click.
 3. If the key was deleted or copied badly, create a new one and paste it again.`,
   },

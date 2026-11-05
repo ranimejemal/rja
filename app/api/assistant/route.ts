@@ -30,7 +30,7 @@ const body = z.discriminatedUnion("action", [
 
 const IMAGE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
 // API keys people paste by mistake: removed before anything is sent to the AI or saved in a ticket.
-const SECRET = /\b(sk-[A-Za-z0-9_-]{16,}|AIza[0-9A-Za-z_-]{30,}|n8n_api_[A-Za-z0-9]{16,}|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,})\b/g;
+const SECRET = /\b(sk-[A-Za-z0-9_-]{16,}|AIza[0-9A-Za-z_-]{30,}|AQ\.[0-9A-Za-z_-]{30,}|n8n_api_[A-Za-z0-9]{16,}|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,})\b/g;
 const HAS_SECRET = new RegExp(SECRET.source);
 const redact = (s: string) => s.replace(SECRET, "[key removed]");
 

@@ -61,7 +61,7 @@ const GEMINI_GUIDE: AccountGuide = {
   key: "openAiApi", title: "Google Gemini (the AI, free)", time: "3 minutes",
   why: "The AI that reads, sorts and writes. Google's free plan needs no card. At very busy hours Google can be slow: the automation then waits and tries again by itself (up to 5 times).",
   steps: `1. Go to **aistudio.google.com/apikey** and sign in with your Google account.
-2. Click **Create API key** (accept the terms if asked) and **copy the key**. It starts with \`AIza\`.
+2. Click **Create API key** (accept the terms if asked) and **copy the key**. It starts with \`AIza\` or \`AQ.\`.
 3. In n8n, open a box with a red warning that says OpenAI (or "AI"), choose **Create new credential**. Yes, choose the **OpenAI** type: Gemini understands the same language.
 4. Fill in:
    - **API Key:** your Gemini key.

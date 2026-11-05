@@ -6,7 +6,7 @@ import { ProductGrid } from "@/components/ProductCard";
 import { EmptyState, SectionHead, SellerBadge } from "@/components/ui";
 import { NewsletterForm } from "@/components/NewsletterForm";
 import { HomeIntro } from "@/components/HomeIntro";
-import { HeroHeadline } from "@/components/HeroHeadline";
+import { BeamHero } from "@/components/BeamHero";
 import { thumbnailUrl } from "@/lib/catalog";
 
 export default async function HomePage() {
@@ -29,26 +29,15 @@ export default async function HomePage() {
   return (
     <>
       <HomeIntro images={[...top, ...featured, ...best, ...recent].map((p) => thumbnailUrl(p.thumbnail_path)).filter((v, i, a) => a.indexOf(v) === i)} />
-      <section className="hero hero-v2">
-        <div className="container stack" style={{ "--gap": "1.6rem" } as React.CSSProperties}>
-          <span className="tag" data-scramble-loop="">(AI automation marketplace)</span>
-          <HeroHeadline />
-          <p className="hero-lead" data-reveal="">
-            Ready-to-use AI automations and workflows, set up for your business by Ranime Jemal Agency and
-            independent creators. Save time, streamline operations, and work smarter.
-          </p>
-          <div className="hero-actions" data-reveal="">
-            <Link className="btn-glow" href="/explore">Explore automations</Link>
-            <Link className="btn ghost" href="/quote">Request a quote</Link>
-          </div>
-          <form action="/explore" className="search-bar hero-search" role="search" data-reveal="">
-            <label htmlFor="hero-q" className="sr-only">Search automations</label>
-            <input id="hero-q" name="q" placeholder="What do you want to automate?" />
-            <button className="btn accent" type="submit">Search</button>
-          </form>
-          {anyDemo && <p className="tiny muted">Listings marked “Demo data” are sample products for development and cannot be purchased.</p>}
-        </div>
-      </section>
+      <BeamHero />
+      <div className="container">
+        <form action="/explore" className="search-bar hero-search" role="search" style={{ margin: "1.5rem auto 0" }}>
+          <label htmlFor="hero-q" className="sr-only">Search automations</label>
+          <input id="hero-q" name="q" placeholder="What do you want to automate?" />
+          <button className="btn accent" type="submit">Search</button>
+        </form>
+        {anyDemo && <p className="tiny muted" style={{ textAlign: "center" }}>Listings marked “Demo data” are sample products for development and cannot be purchased.</p>}
+      </div>
 
       {top.length > 0 && (
         <section className="section">
