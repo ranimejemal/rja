@@ -158,12 +158,22 @@ function QuestionCard({ q, answers, busy, error, onSave, onCancel }: {
 
 // ---------------------------------------------------------------- voice
 
-type Recognition = { lang: string; interimResults: boolean; onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null; onend: (() => void) | null; onerror: (() => void) | null; start: () => void; stop: () => void };
+type Recognition = { lang: string; interimResults: boolean; onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null; onend: (() => void) | null; onerror: ((e: { error?: string }) => void) | null; start: () => void; stop: () => void };
+
+const VOICE_ERRORS: Record<string, string> = {
+  "not-allowed": "Your browser blocked the microphone. Click the lock icon next to the address, allow the microphone, then try again.",
+  "service-not-allowed": "Your browser blocked the microphone. Click the lock icon next to the address, allow the microphone, then try again.",
+  "no-speech": "I didn’t hear anything. Click “Speak instead” and talk right away.",
+  "audio-capture": "No microphone was found. Check that one is connected.",
+  network: "Voice typing needs an internet connection to your browser’s speech service. Please type instead.",
+  "language-not-supported": "Voice typing doesn’t support your browser’s language. Please type instead.",
+};
 type RecognitionCtor = new () => Recognition;
 
 function VoiceButton({ onText }: { onText: (t: string) => void }) {
   const [Ctor, setCtor] = useState<RecognitionCtor | null>(null);
   const [listening, setListening] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
   const rec = useRef<Recognition | null>(null);
   useEffect(() => {
     const w = window as unknown as { SpeechRecognition?: RecognitionCtor; webkitSpeechRecognition?: RecognitionCtor };
@@ -173,20 +183,21 @@ function VoiceButton({ onText }: { onText: (t: string) => void }) {
   if (!Ctor) return null;
   const toggle = () => {
     if (listening) { rec.current?.stop(); return; }
+    setProblem(null);
     const r = new Ctor();
     r.lang = navigator.language || "en-US";
     r.interimResults = false;
     r.onresult = (e) => onText(Array.from(e.results).map((x) => x[0].transcript).join(" "));
     r.onend = () => setListening(false);
-    r.onerror = () => setListening(false);
+    r.onerror = (e) => { setListening(false); if (e.error !== "aborted") setProblem(VOICE_ERRORS[e.error ?? ""] ?? "Voice typing didn’t work this time. Please try again or type instead."); };
     rec.current = r;
-    setListening(true);
-    r.start();
+    try { r.start(); setListening(true); } catch { setProblem("Voice typing couldn’t start. Please try again or type instead."); }
   };
   return (
     <div className="row" style={{ "--gap": "0.5rem" } as React.CSSProperties}>
       <button type="button" className="btn ghost small" onClick={toggle} aria-pressed={listening}>{listening ? "■ Stop" : "🎤 Speak instead"}</button>
-      {listening && <span className="tiny muted" role="status">Listening… your browser turns your voice into text.</span>}
+      {listening && <span className="tiny muted" role="status">Listening… speak now, then click Stop.</span>}
+      {problem && <span className="tiny" role="alert" style={{ color: "var(--danger)" }}>{problem}</span>}
     </div>
   );
 }
