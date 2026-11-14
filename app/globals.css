@@ -680,7 +680,7 @@ input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:foc
   font: inherit; font-size: 0.9rem; cursor: pointer; text-align: left; transition: background 0.15s, border-color 0.15s; }
 .discovery-option:hover { border-color: var(--accent); }
 .discovery-option.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-.discovery-option:disabled { opacity: 0.6; cursor: wait; }
+.discovery-option:disabled { opacity: 0.4; cursor: not-allowed; }
 .discovery-cta { align-items: center; border-color: rgba(200, 255, 61, 0.35); }
 .profile-list { margin: 0; display: flex; flex-direction: column; }
 .profile-row { display: grid; grid-template-columns: minmax(8rem, 12rem) minmax(0, 1fr) auto; gap: 0.25rem 1rem; padding: 0.7rem 0; border-top: 1px solid var(--line); align-items: baseline; }

@@ -18,7 +18,7 @@ type Base = {
 export type Question =
   | (Base & { kind: "text" | "long"; placeholder?: (a: Answers) => string; max: number })
   | (Base & { kind: "choice"; options: (a: Answers) => Option[] })
-  | (Base & { kind: "multi"; options: (a: Answers) => Option[]; prefill?: (a: Answers) => string[] });
+  | (Base & { kind: "multi"; options: (a: Answers) => Option[]; prefill?: (a: Answers) => string[]; maxPicks?: number });
 
 const opt = (value: string, label: string): Option => ({ value, label });
 
@@ -155,7 +155,7 @@ export const QUESTIONS: Question[] = [
     showIf: (a) => list(a, "apps").includes("other"),
   },
   {
-    id: "time_sinks", kind: "multi",
+    id: "time_sinks", kind: "multi", maxPicks: 5,
     title: () => "Which tasks take most of your time?",
     help: () => "Pick up to five. These are the first things we look at.",
     options: (a) => {
@@ -279,7 +279,8 @@ export function validateAnswer(q: Question, raw: unknown, a: Answers): { ok: tru
   const values = Array.isArray(raw) ? [...new Set(raw.filter((v): v is string => typeof v === "string"))] : [];
   if (values.some((v) => !allowed.has(v))) return { ok: false, error: "Please pick from the options." };
   if (!values.length && !q.optional) return { ok: false, error: "Please pick at least one." };
-  if (q.id === "time_sinks" && values.length > 5) return { ok: false, error: "Pick up to five, the ones that matter most." };
+  const maxPicks = q.kind === "multi" ? q.maxPicks : undefined;
+  if (maxPicks && values.length > maxPicks) return { ok: false, error: `Pick up to ${maxPicks}, the ones that matter most.` };
   return { ok: true, value: values };
 }
 

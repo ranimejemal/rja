@@ -116,15 +116,24 @@ function QuestionCard({ q, answers, busy, error, onSave, onCancel }: {
       )}
 
       {q.kind === "multi" && (
-        <div className="discovery-options" role="group" aria-labelledby={`${id}-t`}>
-          {options.map((o) => {
-            const on = picked.includes(o.value);
-            return (
-              <button key={o.value} type="button" className={`discovery-option${on ? " on" : ""}`} aria-pressed={on} disabled={busy}
-                onClick={() => setPicked((p) => (on ? p.filter((v) => v !== o.value) : [...p, o.value]))}>{on ? "✓ " : ""}{o.label}</button>
-            );
-          })}
-        </div>
+        <>
+          <div className="discovery-options" role="group" aria-labelledby={`${id}-t`}>
+            {options.map((o) => {
+              const on = picked.includes(o.value);
+              // At the limit, the options not chosen wait until one is unticked.
+              const full = Boolean(q.maxPicks && picked.length >= q.maxPicks && !on);
+              return (
+                <button key={o.value} type="button" className={`discovery-option${on ? " on" : ""}`} aria-pressed={on} disabled={busy || full}
+                  onClick={() => setPicked((p) => (on ? p.filter((v) => v !== o.value) : [...p, o.value]))}>{on ? "✓ " : ""}{o.label}</button>
+              );
+            })}
+          </div>
+          {q.maxPicks && (
+            <p className="tiny muted" role="status">
+              {picked.length} of {q.maxPicks} chosen{picked.length >= q.maxPicks ? " — untick one to pick another." : "."}
+            </p>
+          )}
+        </>
       )}
 
       {(q.kind === "text" || q.kind === "long") && (
