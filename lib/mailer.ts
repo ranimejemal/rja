@@ -1,11 +1,11 @@
 import "server-only";
-import nodemailer from "nodemailer";
+import nodemailer, { type Transporter } from "nodemailer";
 import { env, features } from "@/lib/env";
 
 // Outgoing email through the agency's own SMTP account (SMTP_* variables), e.g. the same Gmail app password as the
 // Supabase auth emails. Without it, nothing is sent and callers are told so.
 
-let transport: nodemailer.Transporter | null = null;
+let transport: Transporter | null = null;
 
 export async function sendMail(to: string, subject: string, html: string, text: string) {
   if (!features.email) return { ok: false as const, error: "email is not configured (SMTP_HOST, SMTP_USER, SMTP_PASS)" };

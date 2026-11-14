@@ -1,0 +1,1 @@
+[{"id":"openaiTestCred01","name":"OpenAI test","type":"openAiApi","data":{"apiKey":"test-key","url":"http://127.0.0.1:5999/v1"}}]

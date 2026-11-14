@@ -1,0 +1,35 @@
+# Checks every push and pull request: types, lint, unit tests, database tests (migrations + RLS on a throwaway
+# Postgres 16) and that the generated n8n workflows match their source. No secrets are needed.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Types
+        run: npx tsc --noEmit -p .
+      - name: Lint
+        run: npx eslint app components lib tests
+      - name: Unit tests
+        run: npx vitest run
+      - name: Generated workflows match their source
+        run: |
+          node automations/src/build.mjs > /dev/null
+          node automations/src/setup.mjs > /dev/null
+          git diff --exit-code -- automations
+      - name: Database tests (migrations, RLS, functions)
+        run: sh supabase/tests/run.sh
