@@ -38,7 +38,7 @@ export function AuthShell({ heading, intro, active, title, subtitle, children }:
       </aside>
 
       <div className="auth-panel">
-        <div className="auth-panel-inner auth-fade">
+        <div className="auth-panel-inner">
           <div className="auth-head">
             <h1>{title}</h1>
             <p>{subtitle}</p>
