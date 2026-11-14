@@ -406,6 +406,31 @@ select set_config('request.jwt.claims', '', false);
 select test.act_as(null);
 delete from auth.mfa_factors;
 
+-- ---------------------------------------------------------------- connected devices
+select test.act_as(null);
+insert into auth.sessions (id, user_id, user_agent, ip, created_at) values
+  ('aaaaaaaa-0000-0000-0000-000000000001', test.id('admin'), 'node', '3.3.3.3', now() - interval '2 days'),
+  ('aaaaaaaa-0000-0000-0000-000000000002', test.id('admin'), 'node', '3.3.3.3', now() - interval '1 hour'),
+  ('aaaaaaaa-0000-0000-0000-000000000003', test.id('buyer'), 'node', '3.3.3.3', now());
+insert into security_events (kind, user_id, ip, country, user_agent, details) values
+  ('login_success', test.id('admin'), '41.226.10.2', 'TN', 'Mozilla/5.0 (iPhone) Safari', '{"session_id": "aaaaaaaa-0000-0000-0000-000000000001"}');
+select test.act_as('admin');
+select set_config('request.jwt.claims', '{"session_id": "aaaaaaaa-0000-0000-0000-000000000002"}', false);
+select test.ok('people see only their own devices, the current one first',
+  (select array_agg(id::text order by current desc, id) from my_sessions()) = array['aaaaaaaa-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000001']
+  and (select current from my_sessions() limit 1));
+select test.ok('a device shows the real place and browser of its login',
+  exists (select 1 from my_sessions() where ip = '41.226.10.2' and country = 'TN' and user_agent like '%iPhone%'));
+select test.ok('another person''s device cannot be signed out', not sign_out_device('aaaaaaaa-0000-0000-0000-000000000003'));
+select test.ok('the current device is not signed out from the list', not sign_out_device('aaaaaaaa-0000-0000-0000-000000000002'));
+select test.ok('another device of your own is signed out', sign_out_device('aaaaaaaa-0000-0000-0000-000000000001'));
+select test.ok('and disappears from the list', (select count(*) from my_sessions()) = 1);
+select set_config('request.jwt.claims', '', false);
+select test.act_as(null);
+select test.fails('visitors who are not signed in cannot list devices', $q$select * from my_sessions()$q$, 'sign in first');
+select test.ok('the other person''s session is untouched', exists (select 1 from auth.sessions where id = 'aaaaaaaa-0000-0000-0000-000000000003'));
+delete from auth.sessions;
+
 -- ---------------------------------------------------------------- report
 \o
 select name, ok, detail from test.results where not ok;

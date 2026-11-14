@@ -8,6 +8,7 @@ import { rateLimit } from "@/lib/rate-limit";
 import { env } from "@/lib/env";
 import { HUMAN_CHECK_FAILED, verifyHuman } from "@/lib/human-check";
 import { loginLocked, securityEvent } from "@/lib/security";
+import { sessionIdOf } from "@/lib/request-info";
 
 export type AuthState = { error?: string; notice?: string };
 
@@ -52,7 +53,7 @@ export async function signIn(_: AuthState, form: FormData): Promise<AuthState> {
   else {
     const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", signedIn.user.id);
     const isAdmin = (roles ?? []).some((r) => r.role === "admin");
-    await securityEvent({ kind: "login_success", severity: isAdmin ? "high" : "info", email, userId: signedIn.user.id, path: "/login", details: { admin: isAdmin } });
+    await securityEvent({ kind: "login_success", severity: isAdmin ? "high" : "info", email, userId: signedIn.user.id, path: "/login", details: { admin: isAdmin, session_id: sessionIdOf(signedIn.session?.access_token) } });
   }
   if (error?.code === "email_not_confirmed") {
     // Right password, unconfirmed email: send a fresh code and go to the code page.
@@ -102,8 +103,11 @@ export async function verifyEmailCode(_: AuthState, form: FormData): Promise<Aut
   const parsed = codeForm.safeParse({ email: form.get("email"), token: form.get("token") });
   if (!parsed.success) return { error: "Enter the code from the email." };
   const supabase = await createClient();
-  const { error } = await supabase.auth.verifyOtp({ email: parsed.data.email, token: parsed.data.token, type: "email" });
+  const { data: verified, error } = await supabase.auth.verifyOtp({ email: parsed.data.email, token: parsed.data.token, type: "email" });
   if (error) return { error: "This code is wrong or has expired. Check the latest email, or send a new code." };
+  // Confirming the email signs the person in: a new device in their list.
+  await securityEvent({ kind: "login_success", severity: "info", email: parsed.data.email, userId: verified.user?.id ?? null, path: "/verify",
+    details: { session_id: sessionIdOf(verified.session?.access_token) } });
   const next = safeNext(form.get("next"));
   redirect(`${next}${next.includes("?") ? "&" : "?"}notice=${encodeURIComponent("Your email is confirmed. Welcome!")}`);
 }
@@ -159,8 +163,10 @@ export async function verifyResetCode(_: AuthState, form: FormData): Promise<Aut
   const code = codeForm.safeParse({ email: form.get("email"), token: form.get("token") });
   if (!code.success) return { error: "Enter the code from the email." };
   const supabase = await createClient();
-  const { error } = await supabase.auth.verifyOtp({ email: code.data.email, token: code.data.token, type: "recovery" });
+  const { data: verified, error } = await supabase.auth.verifyOtp({ email: code.data.email, token: code.data.token, type: "recovery" });
   if (error) return { error: "This code is wrong or has expired. Check the latest email, or send a new code." };
+  await securityEvent({ kind: "login_success", severity: "info", email: code.data.email, userId: verified.user?.id ?? null, path: "/reset-password",
+    details: { session_id: sessionIdOf(verified.session?.access_token) } });
   redirect("/reset-password?step=new");
 }
 

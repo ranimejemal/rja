@@ -656,3 +656,9 @@ input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:foc
   -webkit-box-shadow: 0 0 0 1000px var(--surface) inset; transition: background-color 9999s ease-out 0s;
 }
 .auth-form input:-webkit-autofill { -webkit-box-shadow: 0 0 0 1000px #1a1a1a inset; -webkit-text-fill-color: #fff; }
+
+/* ---- connected devices */
+.devices { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.device-row { display: grid; grid-template-columns: 2rem minmax(0, 1fr) auto; align-items: center; gap: 0.5rem 0.9rem; padding: 0.85rem 0; border-bottom: 1px solid var(--line); }
+.device-icon { font-size: 1.4rem; text-align: center; }
+@media (max-width: 560px) { .device-action { grid-column: 2; justify-self: start; } }

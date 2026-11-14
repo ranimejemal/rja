@@ -1795,6 +1795,11 @@ export type Database = {
       }
       admin_security_summary: { Args: { p_days?: number }; Returns: Json }
       purge_old_logs: { Args: Record<PropertyKey, never>; Returns: undefined }
+      my_sessions: {
+        Args: Record<PropertyKey, never>
+        Returns: { id: string; created_at: string; last_active: string; aal: string; user_agent: string | null; ip: string | null; country: string | null; current: boolean }[]
+      }
+      sign_out_device: { Args: { p_session_id: string }; Returns: boolean }
       claim_promotion: {
         Args: Record<PropertyKey, never>
         Returns: { send_id: string; subject: string; message: string; cta_label: string; cta_path: string; unsubscribe_token: string }[]
@@ -1874,6 +1879,7 @@ export type Database = {
       security_event_kind:
         | "login_success" | "login_failed" | "login_locked" | "signup" | "password_reset_requested" | "password_changed"
         | "mfa_failed" | "admin_denied" | "probe" | "bot_blocked" | "rate_limited" | "alert_sent"
+        | "session_revoked"
       security_severity: "info" | "low" | "medium" | "high" | "critical"
       product_status:
         | "draft"
@@ -2094,7 +2100,7 @@ export const Constants = {
       quote_status: ["new", "contacted", "won", "lost", "spam"],
       promotion_send_status: ["sending", "sent", "failed"],
       security_event_kind: ["login_success", "login_failed", "login_locked", "signup", "password_reset_requested", "password_changed",
-        "mfa_failed", "admin_denied", "probe", "bot_blocked", "rate_limited", "alert_sent"],
+        "mfa_failed", "admin_denied", "probe", "bot_blocked", "rate_limited", "alert_sent", "session_revoked"],
       security_severity: ["info", "low", "medium", "high", "critical"],
       product_status: [
         "draft",

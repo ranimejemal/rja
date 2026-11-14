@@ -24,3 +24,13 @@ export function deviceOf(ua: string): { device: "desktop" | "mobile" | "tablet" 
 // Paths that only attackers and vulnerability scanners ask for on this site (it runs no PHP, WordPress or admin
 // panels of that kind). Asking for one is logged as a probe and answered with a plain 404.
 export const PROBE_PATHS = /^\/(wp-admin|wp-login|wp-content|wp-includes|xmlrpc\.php|phpmyadmin|pma|myadmin|adminer|\.env|\.git|\.aws|\.ssh|\.htaccess|\.htpasswd|\.DS_Store|config\.(php|json|yml)|server-status|cgi-bin|vendor\/phpunit|actuator|solr|boaform|HNAP1|owa|ecp|autodiscover|telescope|_profiler|debug|console|shell|backup|dump\.sql|db\.sql|database\.sql|.*\.(php|asp|aspx|jsp|cgi|env|bak|sql|ini|log))(\/|$)/i;
+
+/** The session id inside a Supabase access token (its `session_id` claim), to link a login to the device list. */
+export function sessionIdOf(accessToken: string | undefined | null): string | null {
+  try {
+    const payload = JSON.parse(Buffer.from(String(accessToken).split(".")[1], "base64url").toString("utf8")) as { session_id?: unknown };
+    return typeof payload.session_id === "string" && /^[0-9a-f-]{36}$/i.test(payload.session_id) ? payload.session_id : null;
+  } catch {
+    return null;
+  }
+}

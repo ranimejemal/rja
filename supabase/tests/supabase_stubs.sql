@@ -23,6 +23,11 @@ create function auth.jwt() returns jsonb language sql stable as $$
   select coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb
 $$;
 create table auth.mfa_factors (id uuid primary key default gen_random_uuid(), user_id uuid, status text);
+create type auth.aal_level as enum ('aal1', 'aal2', 'aal3');
+create table auth.sessions (
+  id uuid primary key default gen_random_uuid(), user_id uuid, created_at timestamptz default now(), updated_at timestamptz default now(),
+  aal auth.aal_level default 'aal1', not_after timestamptz, refreshed_at timestamp, user_agent text, ip inet
+);
 grant usage on schema auth to anon, authenticated, service_role;
 grant execute on function auth.uid(), auth.jwt() to anon, authenticated, service_role;
 grant select on auth.mfa_factors to anon, authenticated, service_role;

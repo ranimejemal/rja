@@ -10,7 +10,7 @@ const KIND: Record<string, string> = {
   login_success: "Signed in", login_failed: "Failed sign-in", login_locked: "Sign-in blocked (too many failures)", signup: "New account",
   password_reset_requested: "Password reset asked", password_changed: "Password / security changed", mfa_failed: "Wrong 2-step code",
   admin_denied: "Admin area refused", probe: "Hacking scan blocked", bot_blocked: "Bot stopped by human check",
-  rate_limited: "Too many requests", alert_sent: "Alert email sent",
+  rate_limited: "Too many requests", alert_sent: "Alert email sent", session_revoked: "Device signed out",
 };
 const TONE: Record<string, string> = { info: "", low: "", medium: "warn", high: "danger", critical: "danger" };
 const KINDS = ["all", "serious", "login_failed", "login_locked", "login_success", "probe", "bot_blocked", "admin_denied", "mfa_failed"];
@@ -41,6 +41,7 @@ export default async function Security({ searchParams }: { searchParams: Promise
           Sign-ins (successful and failed), blocked attackers, scans for weaknesses and bots, with IP address, country and browser,
           kept 90 days. Passwords are never recorded. Serious events are emailed to you at once (at most one email per kind every 30 minutes).
         </p>
+        <p className="small"><Link className="link" href="/dashboard/security#devices">See the devices connected to your admin account →</Link></p>
       </div>
       {!features.serverAdmin && <Notice tone="warn">The security log needs SUPABASE_SERVICE_ROLE_KEY in Vercel to record events.</Notice>}
       {!features.email && <Notice tone="warn">Alert emails need the SMTP settings in Vercel.</Notice>}

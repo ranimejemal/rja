@@ -58,3 +58,27 @@ export async function verifyMfaCode(_: MfaState, form: FormData): Promise<MfaSta
   }
   redirect(safeNext(form.get("next")));
 }
+
+const back = (notice: string, tone: "notice" | "error" = "notice") =>
+  redirect(`/dashboard/security?${tone}=${encodeURIComponent(notice)}#devices`);
+
+/** Signs one of your other devices out (it must log in again). */
+export async function signOutDevice(form: FormData) {
+  const session = await requireUser("/dashboard/security");
+  if (!rateLimit(`devices:${session.userId}`, 30, 60 * 60_000).ok) back("Too many requests. Try again later.", "error");
+  const id = z.string().regex(/^[0-9a-f-]{36}$/i).safeParse(form.get("session_id"));
+  if (!id.success) back("This device was not found.", "error");
+  const supabase = await createClient();
+  const { data: ok } = await supabase.rpc("sign_out_device", { p_session_id: id.data! });
+  if (ok) await securityEvent({ kind: "session_revoked", severity: "info", email: session.email, userId: session.userId, path: "/dashboard/security", details: { scope: "one_device" } });
+  back(ok ? "That device is signed out. It must log in again." : "That device was already signed out.");
+}
+
+/** Signs out every device except this one: use it if you think someone else is in your account. */
+export async function signOutOtherDevices() {
+  const session = await requireUser("/dashboard/security");
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signOut({ scope: "others" });
+  if (!error) await securityEvent({ kind: "session_revoked", severity: "info", email: session.email, userId: session.userId, path: "/dashboard/security", details: { scope: "other_devices" } });
+  back(error ? "Could not sign the other devices out. Please try again." : "All your other devices are signed out.", error ? "error" : "notice");
+}
