@@ -132,8 +132,8 @@ export function BeamHero() {
             Ready-to-use AI automations, set up with your details in minutes,<br className="hide-sm" /> or done for you by Ranime Jemal Agency.
           </p>
           <div className="hero-cta-row">
-            <Link href="/explore" className="btn-cta">Explore automations</Link>
-            <Link href="/quote" className="btn-cta ghost">Request a quote</Link>
+            <Link href="/start" className="btn-cta">Tell us about your business</Link>
+            <Link href="/explore" className="btn-cta ghost">Explore automations</Link>
           </div>
         </div>
       </section>

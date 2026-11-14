@@ -431,6 +431,29 @@ select test.fails('visitors who are not signed in cannot list devices', $q$selec
 select test.ok('the other person''s session is untouched', exists (select 1 from auth.sessions where id = 'aaaaaaaa-0000-0000-0000-000000000003'));
 delete from auth.sessions;
 
+-- ---------------------------------------------------------------- business discovery
+select test.act_as('buyer');
+select test.ok('a business is created on first use and reused', ensure_my_tenant() = ensure_my_tenant());
+select test.ok('the first answer creates the profile', (save_discovery_answer('business_name', '"Maison Lina"') ->> 'business_name') = 'Maison Lina');
+select test.ok('answers add up', save_discovery_answer('channels', '["email","whatsapp"]') ? 'business_name');
+select test.ok('the business takes the name', (select name from tenants where id = my_tenant_id()) = 'Maison Lina');
+select test.ok('null removes an answer', not (save_discovery_answer('channels', null) ? 'channels'));
+select test.fails('question ids are checked', $q$select save_discovery_answer('Bad Key!', '"x"')$q$, 'invalid question');
+select test.fails('long answers are refused', $q$select save_discovery_answer('problem', to_jsonb(repeat('x', 5000)))$q$, 'too long');
+select test.fails('the profile cannot be written directly', $q$update business_profiles set answers = '{}'$q$, 'permission denied');
+select test.ok('finishing records the time', finish_discovery() is not null);
+select test.act_as('buyer2');
+select test.ok('another business sees nothing of it', (select count(*) from business_profiles) = 0 and (select count(*) from tenants) <= 1);
+select test.ok('and gets its own business', ensure_my_tenant() is distinct from (select tenant_id from tenant_members where user_id = test.id('buyer')));
+select test.fails('nobody else can finish an empty profile', $q$select finish_discovery()$q$, 'nothing to finish');
+select test.act_as(null);
+select test.fails('visitors cannot save answers', $q$select save_discovery_answer('business_name', '"x"')$q$, 'sign in first');
+select test.act_as('admin');
+select set_config('request.jwt.claims', '{"aal":"aal2"}', false);
+select test.ok('admins read every business profile', (select count(*) from business_profiles) = 1);
+select set_config('request.jwt.claims', '', false);
+select test.act_as(null);
+
 -- ---------------------------------------------------------------- report
 \o
 select name, ok, detail from test.results where not ok;

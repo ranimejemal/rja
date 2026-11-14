@@ -1002,6 +1002,26 @@ export type Database = {
           { foreignKeyName: "promotion_sends_promotion_id_fkey"; columns: ["promotion_id"]; isOneToOne: false; referencedRelation: "promotions"; referencedColumns: ["id"] },
         ]
       }
+      tenants: {
+        Row: { id: string; name: string; created_by: string | null; created_at: string; updated_at: string }
+        Insert: { id?: string; name?: string; created_by?: string | null; created_at?: string; updated_at?: string }
+        Update: { id?: string; name?: string; created_by?: string | null; created_at?: string; updated_at?: string }
+        Relationships: []
+      }
+      tenant_members: {
+        Row: { tenant_id: string; user_id: string; role: "owner" | "member"; created_at: string }
+        Insert: { tenant_id: string; user_id: string; role?: "owner" | "member"; created_at?: string }
+        Update: { tenant_id?: string; user_id?: string; role?: "owner" | "member"; created_at?: string }
+        Relationships: []
+      }
+      business_profiles: {
+        Row: { tenant_id: string; answers: Json; completed_at: string | null; updated_by: string | null; created_at: string; updated_at: string }
+        Insert: { tenant_id: string; answers?: Json; completed_at?: string | null; updated_by?: string | null; created_at?: string; updated_at?: string }
+        Update: { tenant_id?: string; answers?: Json; completed_at?: string | null; updated_by?: string | null; created_at?: string; updated_at?: string }
+        Relationships: [
+          { foreignKeyName: "business_profiles_tenant_id_fkey"; columns: ["tenant_id"]; isOneToOne: true; referencedRelation: "tenants"; referencedColumns: ["id"] },
+        ]
+      }
       security_events: {
         Row: {
           country: string | null; created_at: string; details: Json; email: string | null; id: number; ip: string | null
@@ -1800,6 +1820,11 @@ export type Database = {
         Returns: { id: string; created_at: string; last_active: string; aal: string; user_agent: string | null; ip: string | null; country: string | null; current: boolean }[]
       }
       sign_out_device: { Args: { p_session_id: string }; Returns: boolean }
+      is_tenant_member: { Args: { p_tenant_id: string }; Returns: boolean }
+      my_tenant_id: { Args: Record<PropertyKey, never>; Returns: string | null }
+      ensure_my_tenant: { Args: Record<PropertyKey, never>; Returns: string }
+      save_discovery_answer: { Args: { p_key: string; p_value: Json }; Returns: Json }
+      finish_discovery: { Args: Record<PropertyKey, never>; Returns: string }
       claim_promotion: {
         Args: Record<PropertyKey, never>
         Returns: { send_id: string; subject: string; message: string; cta_label: string; cta_path: string; unsubscribe_token: string }[]

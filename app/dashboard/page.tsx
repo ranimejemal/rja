@@ -18,6 +18,7 @@ export default async function BuyerDashboard() {
     ? await supabase.from("products").select("id, slug, name, thumbnail_path, price_minor, currency")
       .eq("ownership", "platform").eq("status", "published").order("top_rank", { nullsFirst: false }).order("name")
     : { data: null };
+  const { data: profile } = await supabase.from("business_profiles").select("completed_at").limit(1).maybeSingle();
   const owned = new Set(items.map((it) => it.product.id));
   const free = (agency ?? []).filter((p) => !owned.has(p.id));
   return (
@@ -27,6 +28,17 @@ export default async function BuyerDashboard() {
         <h1 className="h2">Hello, {session.displayName}.</h1>
         <p className="muted small">Everything you bought, with downloads, setup steps and saved configurations. Workflows run in your own n8n — we never show them as running.</p>
       </div>
+      <Link href="/start" className="card row discovery-cta" style={{ textDecoration: "none", "--gap": "1rem" } as React.CSSProperties}>
+        <div className="stack" style={{ "--gap": "0.3rem", flex: 1, minWidth: "14rem" } as React.CSSProperties}>
+          <h2 className="h3">{profile?.completed_at ? "Your business profile" : profile ? "Finish telling us about your business" : "Tell us about your business"}</h2>
+          <p className="small muted">
+            {profile?.completed_at
+              ? "Review or change your answers, and see the automations that fit."
+              : "About 5 minutes, no technical words: we find the automations that save you the most time."}
+          </p>
+        </div>
+        <span className="btn small accent">{profile?.completed_at ? "Open" : profile ? "Continue" : "Start"}</span>
+      </Link>
       {items.length === 0 && free.length > 0 ? null : items.length === 0 ? (
         <EmptyState title="Nothing yet" action={<Link className="btn accent small" href="/explore">Explore automations</Link>}>
           Automations you buy appear here.
