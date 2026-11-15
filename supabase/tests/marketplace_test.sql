@@ -477,6 +477,66 @@ select test.ok('another business sees none of it', (select count(*) from solutio
 select test.fails('nor decide on it', $q$select decide_recommendation('inventory_manager', 'declined')$q$, 'not found');
 select test.act_as(null);
 
+-- ---------------------------------------------------------------- automation engine
+select test.act_as('buyer');
+select decide_recommendation('inventory_manager', 'accepted');
+select test.fails('only accepted solutions can be set up', $q$select save_automation('cart_recovery', '{}', '{}')$q$, 'accept this solution first');
+select test.ok('an accepted solution becomes a draft automation', save_automation('inventory_manager', '{"threshold":2}', '{"solution":"inventory_manager"}') is not null);
+select test.ok('it starts as a draft at version 1', (select status::text || current_version from automations) = 'draft1');
+select test.fails('it cannot be switched on before a passed test', $q$select activate_automation((select id from automations))$q$, 'test this version first');
+select test.fails('customers cannot record a test themselves', $q$update automation_versions set test_passed = true$q$, 'permission denied');
+select test.fails('nor queue jobs', $q$select claim_jobs('me')$q$, 'permission denied');
+select test.act_as('service');
+update automation_versions set test_passed = true, tested_at = now();
+select test.act_as('buyer');
+select activate_automation((select id from automations));
+select test.ok('after a passed test it can be switched on', (select status from automations) = 'active');
+select save_automation('inventory_manager', '{"threshold":3}', '{"solution":"inventory_manager"}');
+select test.ok('a new version keeps the tested one running', (select status::text || current_version || active_version from automations) = 'active21');
+select test.fails('and must be tested before it replaces it', $q$select activate_automation((select id from automations))$q$, 'test this version first');
+select test.ok('the customer can pause it', set_automation_paused((select id from automations), true) = 'paused');
+select test.act_as('buyer2');
+select test.ok('another business sees no automations or runs', (select count(*) from automations) = 0 and (select count(*) from executions) = 0);
+select test.fails('nor pauses them', $q$select set_automation_paused((select id from automations where false), true)$q$, 'not found');
+
+select test.act_as('service');
+insert into jobs (tenant_id, automation_id, kind, idempotency_key)
+  select tenant_id, id, 'shopify.event', 'evt-1' from automations;
+select test.fails('the same event is queued only once', $q$insert into jobs (tenant_id, automation_id, kind, idempotency_key) select tenant_id, id, 'shopify.event', 'evt-1' from automations$q$, 'duplicate key');
+select test.ok('a paused automation gets no jobs', (select count(*) from claim_jobs('w1')) = 0);
+select test.act_as('buyer');
+select set_automation_paused((select id from automations), false);
+select test.act_as('service');
+select test.ok('a running automation gets its job', (select count(*) from claim_jobs('w1')) = 1);
+select test.ok('a job is not handed out twice', (select count(*) from claim_jobs('w2')) = 0);
+select test.fails('only the worker holding it can finish it', $q$select finish_job((select id from jobs), 'w2', true)$q$, 'not held');
+select test.ok('a failure is retried', finish_job((select id from jobs), 'w1', false, 'Shopify timeout') = 'queued');
+select test.ok('later, not at once', (select run_at > now() and last_error = 'Shopify timeout' from jobs));
+update jobs set run_at = now(), attempts = max_attempts - 1;
+select claim_jobs('w1');
+select test.ok('after the last attempt the job is dead, kept for review', finish_job((select id from jobs), 'w1', false, 'still failing') = 'dead');
+update jobs set status = 'queued', attempts = 0, run_at = now();
+select claim_jobs('w1');
+select test.ok('an uncertain irreversible action is not retried', finish_job((select id from jobs), 'w1', false, 'email unknown', false) = 'dead');
+update jobs set status = 'queued', attempts = 0, run_at = now();
+select test.act_as('buyer');
+select set_business_automations_paused(true);
+select test.act_as('service');
+select test.ok('the business emergency stop holds every job', (select count(*) from claim_jobs('w1')) = 0);
+select test.act_as('buyer');
+select set_business_automations_paused(false);
+select test.act_as('admin');
+select set_engine_paused(true);
+select test.act_as('service');
+select test.ok('the global stop holds every job', (select count(*) from claim_jobs('w1')) = 0);
+select test.ok('duplicate guard: first time is new', not engine_seen((select tenant_id from automations), 'inventory_manager:p1', 24));
+select test.ok('duplicate guard: second time is a repeat', engine_seen((select tenant_id from automations), 'inventory_manager:p1', 24));
+select test.act_as('admin');
+select set_engine_paused(false);
+select test.act_as('buyer');
+select test.fails('customers cannot stop the whole engine', $q$select set_engine_paused(true)$q$, 'admins only');
+select test.act_as(null);
+
 -- ---------------------------------------------------------------- report
 \o
 select name, ok, detail from test.results where not ok;
