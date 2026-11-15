@@ -1015,12 +1015,24 @@ export type Database = {
         Relationships: []
       }
       business_profiles: {
-        Row: { tenant_id: string; answers: Json; completed_at: string | null; updated_by: string | null; created_at: string; updated_at: string }
-        Insert: { tenant_id: string; answers?: Json; completed_at?: string | null; updated_by?: string | null; created_at?: string; updated_at?: string }
-        Update: { tenant_id?: string; answers?: Json; completed_at?: string | null; updated_by?: string | null; created_at?: string; updated_at?: string }
+        Row: { tenant_id: string; answers: Json; completed_at: string | null; updated_by: string | null; created_at: string; updated_at: string; analysis: Json | null; analysed_at: string | null }
+        Insert: { tenant_id: string; answers?: Json; completed_at?: string | null; updated_by?: string | null; created_at?: string; updated_at?: string; analysis?: Json | null; analysed_at?: string | null }
+        Update: { tenant_id?: string; answers?: Json; completed_at?: string | null; updated_by?: string | null; created_at?: string; updated_at?: string; analysis?: Json | null; analysed_at?: string | null }
         Relationships: [
           { foreignKeyName: "business_profiles_tenant_id_fkey"; columns: ["tenant_id"]; isOneToOne: true; referencedRelation: "tenants"; referencedColumns: ["id"] },
         ]
+      }
+      solutions: {
+        Row: { id: string; name: string; setup_price_minor: number | null; monthly_price_minor: number | null; currency: string; active: boolean; updated_at: string }
+        Insert: { id: string; name: string; setup_price_minor?: number | null; monthly_price_minor?: number | null; currency?: string; active?: boolean; updated_at?: string }
+        Update: { id?: string; name?: string; setup_price_minor?: number | null; monthly_price_minor?: number | null; currency?: string; active?: boolean; updated_at?: string }
+        Relationships: []
+      }
+      solution_recommendations: {
+        Row: { tenant_id: string; solution_id: string; status: "proposed" | "accepted" | "postponed" | "declined"; rank: number; reasons: Json; explanation: Json; decided_at: string | null; decided_by: string | null; created_at: string; updated_at: string }
+        Insert: { tenant_id: string; solution_id: string; status?: "proposed" | "accepted" | "postponed" | "declined"; rank?: number; reasons?: Json; explanation?: Json; decided_at?: string | null; decided_by?: string | null; created_at?: string; updated_at?: string }
+        Update: { tenant_id?: string; solution_id?: string; status?: "proposed" | "accepted" | "postponed" | "declined"; rank?: number; reasons?: Json; explanation?: Json; decided_at?: string | null; decided_by?: string | null; created_at?: string; updated_at?: string }
+        Relationships: []
       }
       security_events: {
         Row: {
@@ -1825,6 +1837,8 @@ export type Database = {
       ensure_my_tenant: { Args: Record<PropertyKey, never>; Returns: string }
       save_discovery_answer: { Args: { p_key: string; p_value: Json }; Returns: Json }
       finish_discovery: { Args: Record<PropertyKey, never>; Returns: string }
+      store_analysis: { Args: { p_analysis: Json; p_items: Json }; Returns: undefined }
+      decide_recommendation: { Args: { p_solution_id: string; p_decision: string }; Returns: "proposed" | "accepted" | "postponed" | "declined" }
       claim_promotion: {
         Args: Record<PropertyKey, never>
         Returns: { send_id: string; subject: string; message: string; cta_label: string; cta_path: string; unsubscribe_token: string }[]

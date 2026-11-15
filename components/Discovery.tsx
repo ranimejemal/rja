@@ -246,11 +246,16 @@ function Summary({ answers, products, onEdit }: { answers: Answers; products: Pr
         </dl>
       </section>
 
+      <section className="card stack discovery-next" aria-labelledby="plan-h">
+        <h2 id="plan-h" className="h3">Your recommendations are ready</h2>
+        <p className="small">What we suggest for your business, why, what each solution can see and do, and what it costs. You choose.</p>
+        <Link className="btn accent" href="/plan">See my recommendations</Link>
+      </section>
+
       <section className="card stack" aria-labelledby="matches-h">
-        <h2 id="matches-h" className="h3">Ready-made automations that fit</h2>
+        <h2 id="matches-h" className="h3">Also available today, to set up yourself</h2>
         <p className="small muted">
-          Picked from the tasks you said take most of your time. Personalised recommendations with costs and a step-by-step plan come
-          next; until then, these are ready today, or <Link className="link" href="/quote">ask us to build what you need</Link>.
+          Ready-made automations for the tasks you picked, or <Link className="link" href="/quote">ask us to build what you need</Link>.
         </p>
         {matches.length ? (
           <ul className="match-list">

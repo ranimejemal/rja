@@ -454,6 +454,29 @@ select test.ok('admins read every business profile', (select count(*) from busin
 select set_config('request.jwt.claims', '', false);
 select test.act_as(null);
 
+-- ---------------------------------------------------------------- recommendations
+select test.ok('the price list has the three solutions', (select count(*) from solutions) = 3);
+select test.act_as('buyer');
+select store_analysis('{"overview":"Maison Lina spends time on stock."}',
+  '[{"solution_id":"inventory_manager","rank":1,"reasons":["stock"]},{"solution_id":"cart_recovery","rank":2,"reasons":["carts"]}]');
+select test.ok('the analysis is stored with its recommendations',
+  (select count(*) from solution_recommendations) = 2 and (select analysis ->> 'overview' from business_profiles) like 'Maison Lina%');
+select test.ok('the customer accepts one', decide_recommendation('inventory_manager', 'accepted') = 'accepted');
+select test.ok('and postpones another', decide_recommendation('cart_recovery', 'postponed') = 'postponed');
+select store_analysis('{"overview":"again"}', '[{"solution_id":"inventory_manager","rank":1,"reasons":["stock"]}]');
+select test.ok('a new analysis keeps decisions, even of solutions it no longer lists',
+  (select status from solution_recommendations where solution_id = 'inventory_manager') = 'accepted'
+  and (select status from solution_recommendations where solution_id = 'cart_recovery') = 'postponed');
+select test.fails('unknown solutions are refused', $q$select store_analysis('{}', '[{"solution_id":"hack"}]')$q$, 'foreign key');
+select test.fails('decisions are checked', $q$select decide_recommendation('inventory_manager', 'paid')$q$, 'invalid decision');
+select test.fails('recommendations cannot be written directly', $q$update solution_recommendations set status = 'accepted'$q$, 'permission denied');
+update solutions set setup_price_minor = 0 where id = 'cart_recovery';
+select test.ok('customers cannot change prices', (select setup_price_minor from solutions where id = 'cart_recovery') is distinct from 0);
+select test.act_as('buyer2');
+select test.ok('another business sees none of it', (select count(*) from solution_recommendations) = 0);
+select test.fails('nor decide on it', $q$select decide_recommendation('inventory_manager', 'declined')$q$, 'not found');
+select test.act_as(null);
+
 -- ---------------------------------------------------------------- report
 \o
 select name, ok, detail from test.results where not ok;

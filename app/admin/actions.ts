@@ -232,3 +232,20 @@ export async function sendPromotionTest(form: FormData) {
   const sent = await sendMail(session.email, `[Test] ${p.subject}`, mail.html, mail.text);
   go("/admin/promotions", sent.ok ? null : sent.error, `Test email sent to ${session.email}.`);
 }
+
+/** Sets the setup and monthly price of an RJA solution (empty = not set yet). Audited. */
+export async function saveSolutionPrice(form: FormData) {
+  const session = await requireRole("admin");
+  const amount = z.union([z.literal(""), z.coerce.number().min(0).max(1_000_000)]);
+  const parsed = z.object({ id: z.string().regex(/^[a-z][a-z0-9_]{2,40}$/), setup: amount, monthly: amount })
+    .safeParse({ id: text(form, "id"), setup: text(form, "setup"), monthly: text(form, "monthly") });
+  if (!parsed.success) go("/admin/solutions", "Enter prices as numbers (or leave them empty).", "");
+  const minor = (v: number | "") => (v === "" ? null : Math.round(v * 100));
+  const values = { setup_price_minor: minor(parsed.data.setup), monthly_price_minor: minor(parsed.data.monthly), updated_at: new Date().toISOString() };
+  const supabase = await createClient();
+  const { error } = await supabase.from("solutions").update(values).eq("id", parsed.data.id);
+  if (!error && features.serverAdmin) {
+    await createAdminClient().from("audit_logs").insert({ actor_id: session.userId, action: "solution.price", entity_type: "solution", entity_id: parsed.data.id, details: values });
+  }
+  go("/admin/solutions", error?.message, "Prices saved.");
+}

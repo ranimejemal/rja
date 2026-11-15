@@ -693,3 +693,11 @@ input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:foc
   .profile-row dd { grid-column: 1 / -1; grid-row: 2; }
   .discovery-a { max-width: 100%; }
 }
+
+/* ---- recommendations */
+.solution-card { --gap: 0.9rem; }
+.solution-card.accepted { border-color: rgba(200, 255, 61, 0.5); }
+.solution-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 1rem 1.5rem; padding-top: 0.5rem; border-top: 1px solid var(--line); }
+.solution-grid h3 { margin: 0 0 0.35rem; }
+.solution-grid ul { margin: 0; padding-left: 1.1rem; }
+.discovery-next { border-color: rgba(200, 255, 61, 0.45); }
