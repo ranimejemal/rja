@@ -22,7 +22,7 @@ export const FIELDS: Record<string, readonly string[]> = {
   "checkouts/create": ["checkout.id", "checkout.total", "checkout.currency", "checkout.items_count", "checkout.first_item",
     "customer.first_name", "customer.accepts_marketing", "checkout.completed", "checkout.recovery_url"],
   "orders/create": ["order.id", "order.name", "order.total", "order.currency", "customer.first_name"],
-  schedule: ["now.date"],
+  schedule: ["now.date", "draft.caption", "draft.platform"],
 };
 FIELDS["checkouts/update"] = FIELDS["checkouts/create"];
 
@@ -38,7 +38,10 @@ export const step = z.discriminatedUnion("type", [
   z.object({ type: z.literal("notify.owner"), channel: z.enum(["email"]), subject: text(150), body: text(2000), alsoTeam: z.boolean().default(false) }),
   z.object({ type: z.literal("email.customer"), templateId: z.string().regex(/^[a-z0-9_-]{2,60}$/), subject: text(150), body: text(4000) }),
   z.object({ type: z.literal("approval"), ask: text(300), expiresHours: z.number().int().min(1).max(24 * 14) }),
-  z.object({ type: z.literal("metric"), name: z.enum(["low_stock_alert", "cart_reminder_sent", "cart_recovered", "question_answered"]) }),
+  z.object({ type: z.literal("metric"), name: z.enum(["low_stock_alert", "cart_reminder_sent", "cart_recovered", "question_answered", "post_published"]) }),
+  // Publishes one post the owner approved. Public and hard to take back, so it is critical: an approval step
+  // must come first (the checker enforces it), and it is never retried blindly.
+  z.object({ type: z.literal("social.publish"), platform: z.enum(["instagram", "facebook", "tiktok", "linkedin"]), draftId: z.string().regex(/^[a-z0-9-]{8,64}$/) }),
 ]);
 export type Step = z.infer<typeof step>;
 
@@ -60,6 +63,7 @@ export const BLOCKS: Record<Step["type"], { risk: Risk; scopes: string[]; label:
   "email.customer": { risk: "controlled_write", scopes: [], label: "Email the customer" },
   approval: { risk: "read", scopes: [], label: "Ask the owner" },
   metric: { risk: "read", scopes: [], label: "Count a result" },
+  "social.publish": { risk: "critical", scopes: ["publish_posts"], label: "Publish a post" },
 };
 
 export const TRIGGER_SCOPES: Record<string, string[]> = {

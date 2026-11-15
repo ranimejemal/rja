@@ -455,7 +455,7 @@ select set_config('request.jwt.claims', '', false);
 select test.act_as(null);
 
 -- ---------------------------------------------------------------- recommendations
-select test.ok('the price list has the three solutions', (select count(*) from solutions) = 3);
+select test.ok('the price list has the four solutions', (select count(*) from solutions) = 4);
 select test.act_as('buyer');
 select store_analysis('{"overview":"Maison Lina spends time on stock."}',
   '[{"solution_id":"inventory_manager","rank":1,"reasons":["stock"]},{"solution_id":"cart_recovery","rank":2,"reasons":["carts"]}]');

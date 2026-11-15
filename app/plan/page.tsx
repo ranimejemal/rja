@@ -90,6 +90,7 @@ export default async function PlanPage() {
                 </div>
               </div>
               {s.availability !== "milestone_1" && <p className="tiny muted">Coming after the first two solutions. Accept it to be first in line.</p>}
+              {s.id === "social_studio" && <p className="small"><Link className="btn small" href="/studio">Open the Studio</Link> <span className="muted">Works today with your account’s export file.</span></p>}
 
               <form action={decide} className="row">
                 <input type="hidden" name="solution_id" value={s.id} />

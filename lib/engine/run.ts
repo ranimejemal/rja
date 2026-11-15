@@ -17,6 +17,7 @@ export interface Effects {
   emailCustomer(templateId: string, subject: string, body: string, event: Event): Promise<void>;
   requestApproval(ask: string, expiresHours: number, event: Event): Promise<void>;
   metric(name: string): Promise<void>;
+  publish(platform: string, draftId: string): Promise<void>;
 }
 
 export type LogLine = { step: number; type: Step["type"]; outcome: "passed" | "stopped" | "done" | "would_send" | "waiting" | "asked"; detail: string };
@@ -99,6 +100,10 @@ export async function runAutomation(spec: AutomationSpec, event: Event, fx: Effe
         }
         log.push({ step: n, type: s.type, outcome: "asked", detail: `would ask: ${render(s.ask, ev)}` });
         break;
+      case "social.publish":
+        if (opts.mode === "live") await fx.publish(s.platform, s.draftId);
+        log.push({ step: n, type: s.type, outcome: opts.mode === "live" ? "done" : "would_send", detail: `${s.platform} post ${s.draftId}` });
+        break;
       case "metric":
         if (opts.mode === "live") await fx.metric(s.name);
         log.push({ step: n, type: s.type, outcome: "done", detail: s.name });
@@ -116,6 +121,6 @@ export function testEffects(checkout: Event = {}): Effects & { seenKeys: Set<str
     async seen(key) { if (seenKeys.has(key)) return true; seenKeys.add(key); return false; },
     async forget(key) { seenKeys.delete(key); },
     async refreshCheckout() { return checkout; },
-    async notifyOwner() {}, async emailCustomer() {}, async requestApproval() {}, async metric() {},
+    async notifyOwner() {}, async emailCustomer() {}, async requestApproval() {}, async metric() {}, async publish() {},
   };
 }

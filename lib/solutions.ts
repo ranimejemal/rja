@@ -5,7 +5,7 @@
 
 import type { BusinessProfile } from "@/lib/discovery";
 
-export type SolutionId = "inventory_manager" | "cart_recovery" | "customer_assistant";
+export type SolutionId = "inventory_manager" | "cart_recovery" | "customer_assistant" | "social_studio";
 
 export type Solution = {
   id: SolutionId;
@@ -86,6 +86,32 @@ export const SOLUTIONS: Solution[] = [
     tasks: ["answer_messages", "support_tickets"],
     availability: "later",
   },
+  {
+    id: "social_studio",
+    name: "Social Media Studio",
+    tagline: "Learn what works on your account, then get new posts and reels in your own style.",
+    does: [
+      "Analyses your posts and reels: which formats work, your best times, your caption habits, your top posts",
+      "Describes your style and your main topics",
+      "Writes new posts and reel plans in that style (hook, shots, on-screen text, caption, hashtags)",
+      "Suggests visuals: AI images, photos to take, or free licensed stock photos",
+      "Later: publishes on the day and time you choose, after you approve each post",
+    ],
+    example: "“Reel: 0 s hook ‘3 bags, one outfit’, 2 s close-up of the stitching… post Thursday 18–21 h.”",
+    reads: ["Your posts, captions and their statistics (from your export file today; from your connected accounts later)", "Audience totals: reach, age, city, active hours (never who viewed)"],
+    permissions: ["Today: none, you upload your own export file", "Later: Instagram / Facebook / TikTok: read posts and insights, publish"],
+    needsApproval: ["Every post before it is published", "Every reel plan before you film it"],
+    limits: [
+      "Instagram, Facebook, TikTok and LinkedIn; Snapchat has no official way for apps to read or post",
+      "Never reposts other people’s images (no Pinterest images)",
+      "Shows audience totals only: no platform reveals who viewed a post",
+      "Figma and Canva: reads your designs to learn your style; new designs come as images or briefs",
+    ],
+    externalCosts: "None today. AI usage is included up to your plan’s limit.",
+    apps: [],
+    tasks: ["social_posts", "reviews"],
+    availability: "milestone_1",
+  },
 ];
 
 export const solutionById = (id: string) => SOLUTIONS.find((s) => s.id === id) ?? null;
@@ -93,6 +119,7 @@ export const solutionById = (id: string) => SOLUTIONS.find((s) => s.id === id) ?
 export type Candidate = { id: SolutionId; reasons: string[]; blockers: string[] };
 
 const TASK_LABEL: Record<string, string> = {
+  social_posts: "writing and posting on social media", reviews: "watching and answering reviews",
   orders_stock: "handling orders and stock", abandoned_carts: "customers who leave without paying",
   answer_messages: "answering the same questions", support_tickets: "sorting support requests",
 };
@@ -114,6 +141,8 @@ export function candidatesFor(p: BusinessProfile): Candidate[] {
     if (s.id === "inventory_manager" && /stock|inventory|sold out|out of stock|rupture/.test(text)) { reasons.push("You want to fix stock problems first."); score += 8; }
     if (s.id === "cart_recovery" && /cart|panier|checkout|abandon/.test(text)) { reasons.push("You mentioned abandoned carts."); score += 8; }
     if (s.id === "customer_assistant" && /question|whatsapp|message|answer|reply/.test(text)) { reasons.push("You want to answer customers faster."); score += 5; }
+    if (s.id === "social_studio" && /instagram|tiktok|facebook|reel|post|social/.test(text)) { reasons.push("You mentioned social media."); score += 5; }
+    if (s.id === "social_studio" && p.channels.includes("social") && reasons.length) score += 2;
     if (s.id === "customer_assistant" && p.goal === "faster_answers") { reasons.push("Answering customers faster is your main goal."); score += 4; }
     if (!reasons.length) continue;
     const blockers: string[] = [];

@@ -39,6 +39,13 @@ export default async function BuyerDashboard() {
         </div>
         <span className="btn small accent">{profile?.completed_at ? "Open" : profile ? "Continue" : "Start"}</span>
       </Link>
+      <Link href="/studio" className="card row" style={{ textDecoration: "none", "--gap": "1rem" } as React.CSSProperties}>
+        <div className="stack" style={{ "--gap": "0.3rem", flex: 1, minWidth: "14rem" } as React.CSSProperties}>
+          <h2 className="h3">Social Media Studio <span className="badge">beta</span></h2>
+          <p className="small muted">See what works on your Instagram, Facebook or TikTok, and get new posts and reel plans in your style.</p>
+        </div>
+        <span className="btn small ghost">Open</span>
+      </Link>
       {items.length === 0 && free.length > 0 ? null : items.length === 0 ? (
         <EmptyState title="Nothing yet" action={<Link className="btn accent small" href="/explore">Explore automations</Link>}>
           Automations you buy appear here.
